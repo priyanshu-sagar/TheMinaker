@@ -1,5 +1,7 @@
 import { useAuthStore } from '@/store/auth.store';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useState } from 'react';
+import { useTelemetry } from '@/hooks/use-telemetry';
 
 /**
  * Conductor Trip Dashboard
@@ -11,6 +13,13 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
  */
 export default function ConductorTripScreen() {
   const { user } = useAuthStore();
+  
+  // Minimal placeholder state for now — in reality, this comes from GET /fleet/trips/my-active
+  const [isActive, setIsActive] = useState(false);
+  // Fake bus ID for local testing/demo
+  const demoBusId = "00000000-0000-0000-0000-000000000000"; 
+  
+  useTelemetry(demoBusId, isActive);
 
   return (
     <View style={styles.container}>
@@ -20,11 +29,14 @@ export default function ConductorTripScreen() {
       </View>
 
       <View style={styles.tripCard}>
-        <Text style={styles.tripStatus}>⏳ No active trip</Text>
-        <Text style={styles.tripHint}>Press Start Trip when you begin your route</Text>
+        <Text style={styles.tripStatus}>{isActive ? "🟢 Trip Active" : "⏳ No active trip"}</Text>
+        <Text style={styles.tripHint}>{isActive ? "GPS is broadcasting in the background" : "Press Start Trip when you begin your route"}</Text>
 
-        <Pressable style={styles.startBtn}>
-          <Text style={styles.startBtnText}>🚌 Start Trip</Text>
+        <Pressable 
+          style={[styles.startBtn, isActive && { backgroundColor: '#ef4444' }]} 
+          onPress={() => setIsActive(!isActive)}
+        >
+          <Text style={styles.startBtnText}>{isActive ? "🛑 End Trip" : "🚌 Start Trip"}</Text>
         </Pressable>
       </View>
 

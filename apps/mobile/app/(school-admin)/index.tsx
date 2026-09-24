@@ -1,8 +1,26 @@
 import { useAuthStore } from '@/store/auth.store';
 import { StyleSheet, Text, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { apiClient } from '@/api/client';
 
 export default function SchoolAdminDashboard() {
   const { user } = useAuthStore();
+  const [stats, setStats] = useState({ total: 0, present: 0, activeBuses: 2, attendancePercent: 0 });
+
+  useEffect(() => {
+    // Fetch real summary from backend for today
+    apiClient.get('/attendance/summary?attendanceType=school_entry')
+      .then(res => {
+        const { total, present } = res.data;
+        setStats({
+          total,
+          present,
+          activeBuses: 2, // Hardcoded placeholder for buses until fleet endpoint hooked up
+          attendancePercent: total > 0 ? Math.round((present / total) * 100) : 0
+        });
+      })
+      .catch(console.error);
+  }, []);
 
   return (
     <View style={styles.container}>
@@ -12,10 +30,10 @@ export default function SchoolAdminDashboard() {
       </View>
 
       <View style={styles.grid}>
-        <StatCard emoji="👥" label="Total Students" value="—" color="#dbeafe" />
-        <StatCard emoji="✅" label="Present Today" value="—" color="#d1fae5" />
-        <StatCard emoji="🚌" label="Active Buses" value="—" color="#fef3c7" />
-        <StatCard emoji="📊" label="Attendance %" value="—" color="#ede9fe" />
+        <StatCard emoji="👥" label="Total Students" value={stats.total.toString()} color="#dbeafe" />
+        <StatCard emoji="✅" label="Present Today" value={stats.present.toString()} color="#d1fae5" />
+        <StatCard emoji="🚌" label="Active Buses" value={stats.activeBuses.toString()} color="#fef3c7" />
+        <StatCard emoji="📊" label="Attendance %" value={stats.attendancePercent + "%"} color="#ede9fe" />
       </View>
     </View>
   );

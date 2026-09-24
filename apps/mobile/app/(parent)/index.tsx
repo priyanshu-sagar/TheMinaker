@@ -1,27 +1,43 @@
 import { StyleSheet, Text, View } from 'react-native';
+import MapView, { Marker } from 'react-native-maps';
+import { useLiveTracking } from '@/hooks/use-live-tracking';
 
 /**
  * Parent Live Tracking Screen
- *
  * Shows the real-time position of the child's school bus on a map.
- * Connects to the /tracking WebSocket namespace.
- * MapView + real-time updates implemented in feat(tracking) commit.
  */
 export default function ParentTrackingScreen() {
+  const { buses } = useLiveTracking();
+
   return (
     <View style={styles.container}>
-      <View style={styles.mapPlaceholder}>
-        <Text style={styles.mapEmoji}>🗺️</Text>
-        <Text style={styles.mapText}>Live map coming soon</Text>
-        <Text style={styles.mapHint}>
-          Real-time bus tracking via WebSocket will be shown here
-        </Text>
-      </View>
+      <MapView
+        style={styles.map}
+        initialRegion={{
+          latitude: 19.0760, // Mumbai default
+          longitude: 72.8777,
+          latitudeDelta: 0.0922,
+          longitudeDelta: 0.0421,
+        }}
+      >
+        {Object.entries(buses).map(([busId, coords]) => (
+          <Marker
+            key={busId}
+            coordinate={{ latitude: coords.lat, longitude: coords.lng }}
+            title="School Bus"
+            description="Live Location"
+          >
+            <Text style={{ fontSize: 30 }}>🚌</Text>
+          </Marker>
+        ))}
+      </MapView>
 
       <View style={styles.infoCard}>
         <Text style={styles.infoTitle}>Bus Status</Text>
-        <Text style={styles.infoValue}>—</Text>
-        <Text style={styles.infoSub}>No active trip for your child's route</Text>
+        <Text style={styles.infoValue}>
+          {Object.keys(buses).length > 0 ? '🟢 On Route' : '⏳ No active trip'}
+        </Text>
+        <Text style={styles.infoSub}>Live tracking updates automatically</Text>
       </View>
     </View>
   );
@@ -29,17 +45,9 @@ export default function ParentTrackingScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f9fafb' },
-  mapPlaceholder: {
+  map: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#e0f2fe',
-    margin: 16,
-    borderRadius: 16,
   },
-  mapEmoji: { fontSize: 60, marginBottom: 16 },
-  mapText: { fontSize: 18, fontWeight: '700', color: '#0369a1' },
-  mapHint: { fontSize: 13, color: '#0284c7', marginTop: 8, textAlign: 'center', paddingHorizontal: 32 },
   infoCard: {
     backgroundColor: '#fff',
     margin: 16,
