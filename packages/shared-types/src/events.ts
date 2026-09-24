@@ -1,5 +1,5 @@
-import { BusLastPosition, GpsTelemetryPoint } from './entities';
-import { ScanType, TripStatus } from './enums';
+import { AttendanceStatus, AttendanceType, TripStatus } from './enums.js';
+import { BusLastPosition, GpsTelemetryPoint, StudentWithAttendance } from './entities.js';
 
 // ─── MQTT Events (conductor → broker → NestJS) ───────────────────────────────
 
@@ -8,6 +8,7 @@ export interface MqttLocationPayload {
   busId: string;
   tenantId: string;
   conductorId: string;
+  tripId: string;
   lat: number;
   lng: number;
   speedKmh: number;
@@ -17,7 +18,7 @@ export interface MqttLocationPayload {
   ts: number; // Unix timestamp ms
 }
 
-/** Published when conductor starts/ends a trip */
+/** Published when conductor starts or ends a trip */
 export interface MqttTripEventPayload {
   tripId: string;
   busId: string;
@@ -27,13 +28,18 @@ export interface MqttTripEventPayload {
   ts: number;
 }
 
-/** Published when conductor marks student boarding/alighting */
+/**
+ * Published when conductor marks a student boarding or alighting.
+ * No QR — studentId is from the roster list tap.
+ */
 export interface MqttBoardingPayload {
   busId: string;
   tenantId: string;
+  tripId: string;
   studentId: string;
   conductorId: string;
-  scanType: ScanType.BUS_BOARDING | ScanType.BUS_ALIGHTING;
+  attendanceType: AttendanceType.BUS_BOARDING | AttendanceType.BUS_ALIGHTING;
+  status: AttendanceStatus;
   ts: number;
 }
 
@@ -45,20 +51,20 @@ export const MQTT_TOPICS = {
     `minaker/${tenantId}/bus/${busId}/trip`,
   boarding: (tenantId: string, busId: string) =>
     `minaker/${tenantId}/bus/${busId}/boarding`,
-  // Wildcard subscription for NestJS server
+  // Wildcard subscriptions for NestJS server
   allLocations: (tenantId: string) => `minaker/${tenantId}/bus/+/location`,
   allBusEvents: (tenantId: string) => `minaker/${tenantId}/bus/#`,
 } as const;
 
-// ─── WebSocket Events (NestJS → Parent/Admin browser) ───────────────────────
+// ─── WebSocket Events (NestJS → client browsers & mobile apps) ───────────────
 
-/** NestJS emits this to parent's socket room when bus position updates */
+/** Emitted to parent's socket room when bus position updates */
 export interface WsBusLocationUpdate {
   event: 'bus:location_updated';
   data: BusLastPosition;
 }
 
-/** NestJS emits this when trip status changes */
+/** Emitted when trip status changes */
 export interface WsTripStatusUpdate {
   event: 'trip:status_changed';
   data: {
@@ -69,34 +75,51 @@ export interface WsTripStatusUpdate {
   };
 }
 
-/** NestJS emits this to parent when their student is scanned at gate */
-export interface WsStudentScanned {
-  event: 'student:scanned';
+/**
+ * Emitted to parent when their child's attendance is marked.
+ * Replaces the old "student:scanned" event — no scanning anymore.
+ */
+export interface WsAttendanceMarked {
+  event: 'attendance:marked';
   data: {
     studentId: string;
     studentName: string;
-    scanType: ScanType;
-    scannedAt: string;
+    attendanceType: AttendanceType;
+    status: AttendanceStatus;
+    markedAt: string;
     gateLocation?: string;
   };
 }
 
-/** NestJS emits attendance updates to school admin dashboard */
-export interface WsAttendanceUpdate {
-  event: 'attendance:updated';
+/**
+ * Emitted to school admin dashboard when aggregate attendance changes.
+ * Used to update the live summary card without polling.
+ */
+export interface WsAttendanceSummaryUpdate {
+  event: 'attendance:summary_updated';
   data: {
     date: string;
     classSection?: string;
     presentCount: number;
     absentCount: number;
+    lateCount: number;
     totalCount: number;
   };
 }
 
+/**
+ * Emitted to gatekeeper app when another device marks the same student.
+ * Keeps multiple devices at the same gate in sync.
+ */
+export interface WsStudentMarkedByOther {
+  event: 'attendance:student_updated';
+  data: StudentWithAttendance;
+}
+
 // ─── WebSocket Namespaces & Room Conventions ─────────────────────────────────
 export const WS_NAMESPACES = {
-  TRACKING: '/tracking',   // Bus GPS tracking → parents
-  SCHOOL: '/school',       // Attendance + admin events
+  TRACKING: '/tracking',   // GPS bus tracking → parents
+  SCHOOL: '/school',       // Attendance & admin events
   ADMIN: '/admin',         // Super-admin SaaS events
 } as const;
 
@@ -106,6 +129,7 @@ export const WS_ROOMS = {
   school: (tenantId: string) => `school:${tenantId}`,
   class: (tenantId: string, classSection: string) =>
     `class:${tenantId}:${classSection}`,
+  gate: (tenantId: string) => `gate:${tenantId}`,
 } as const;
 
 // ─── API Response Wrappers ────────────────────────────────────────────────────
@@ -139,5 +163,5 @@ export interface PaginatedResponse<T> {
   };
 }
 
-// ─── Re-export from entities and enums for convenience ───────────────────────
+// ─── Re-exports ───────────────────────────────────────────────────────────────
 export type { GpsTelemetryPoint };

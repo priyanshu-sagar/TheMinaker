@@ -1,9 +1,10 @@
 import {
   AttendanceStatus,
+  AttendanceType,
   BusStatus,
+  LoginMethod,
   NotificationChannel,
   NotificationType,
-  ScanType,
   StudentStatus,
   TenantPlan,
   TenantStatus,
@@ -11,7 +12,7 @@ import {
   TripType,
   UserRole,
   UserStatus,
-} from './enums';
+} from './enums.js';
 
 // ─── Base ─────────────────────────────────────────────────────────────────────
 export interface BaseEntity {
@@ -28,6 +29,8 @@ export interface Tenant extends BaseEntity {
   status: TenantStatus;
   dpdpRegion: string;
   logoUrl?: string;
+  maxStudents: number;
+  maxBuses: number;
 }
 
 // ─── User ─────────────────────────────────────────────────────────────────────
@@ -37,8 +40,11 @@ export interface User extends BaseEntity {
   fullName: string;
   email?: string;
   phone?: string;
+  employeeId?: string;  // Conductor / Gatekeeper
+  parentUid?: string;   // Parent — printed on school letter (e.g. "DPS-P-00123")
   fcmToken?: string;
   status: UserStatus;
+  lastLoginAt?: string;
 }
 
 export interface AuthUser {
@@ -47,17 +53,78 @@ export interface AuthUser {
   role: UserRole;
 }
 
+// ─── Auth — Multi-credential login ───────────────────────────────────────────
+
+/**
+ * Login payload varies by role:
+ *
+ * Parent:         { role: 'parent',     identifier: parentUid,    credential: otp }
+ * Gatekeeper:     { role: 'gatekeeper', identifier: employeeId,   credential: pin }
+ * Conductor:      { role: 'conductor',  identifier: employeeId,   credential: pin }
+ * School Admin:   { role: 'school_admin', identifier: phone,      credential: otp }
+ * Teacher:        { role: 'teacher',    identifier: phone,        credential: otp }
+ */
+export interface LoginRequest {
+  role: UserRole;
+  tenantSlug: string;    // School slug — user selects school first
+  identifier: string;    // parentUid | employeeId | phone
+  credential: string;    // OTP | PIN
+  loginMethod: LoginMethod;
+}
+
+export interface LoginResponse {
+  accessToken: string;
+  user: User;
+}
+
+export interface SendOtpRequest {
+  phone?: string;
+  parentUid?: string;   // Parent: OTP sent to the registered phone on file
+  tenantSlug: string;
+}
+
 // ─── Student ──────────────────────────────────────────────────────────────────
+/**
+ * No QR code. Students are identified by roll number or full name search
+ * in the gatekeeper/conductor roster list.
+ */
 export interface Student extends BaseEntity {
   tenantId: string;
   rollNumber: string;
+  studentUid?: string;         // Optional human-readable short ID for reports
   fullName: string;
-  classSection: string;
+  classSection: string;        // e.g. "10-A"
+  dob?: string;
+  gender?: 'male' | 'female' | 'other';
   parentUserId?: string;
-  qrCodePayload: string;
   photoUrl?: string;
   busRouteId?: string;
+  address?: string;
+  emergencyContactName?: string;
+  emergencyContactPhone?: string;
   status: StudentStatus;
+}
+
+/**
+ * Student with today's attendance status — used in gatekeeper/conductor list view.
+ * The API pre-loads today's attendance so the app doesn't need a second request.
+ */
+export interface StudentWithAttendance extends Student {
+  todayStatus?: AttendanceStatus;
+  todayAttendanceType?: AttendanceType;
+  markedAt?: string;
+}
+
+// ─── Gatekeeper Session ───────────────────────────────────────────────────────
+export interface GatekeeperSessionSummary {
+  date: string;
+  mode: AttendanceType.SCHOOL_ENTRY | AttendanceType.SCHOOL_EXIT;
+  classFilter?: string;
+  totalStudents: number;
+  markedPresent: number;
+  markedAbsent: number;
+  markedLate: number;
+  unmarked: number;
 }
 
 // ─── Routes & Buses ───────────────────────────────────────────────────────────
@@ -73,12 +140,14 @@ export interface Route extends BaseEntity {
   tenantId: string;
   name: string;
   stops: RouteStop[];
-  status: string;
+  polyline?: string;
+  status: 'active' | 'inactive';
 }
 
 export interface Bus extends BaseEntity {
   tenantId: string;
   numberPlate: string;
+  makeModel?: string;
   routeId?: string;
   conductorId?: string;
   capacity: number;
@@ -95,6 +164,7 @@ export interface Trip extends BaseEntity {
   status: TripStatus;
   startedAt?: string;
   completedAt?: string;
+  studentCount: number;
 }
 
 // ─── GPS Telemetry ────────────────────────────────────────────────────────────
@@ -103,6 +173,7 @@ export interface GpsTelemetryPoint {
   tenantId: string;
   busId: string;
   conductorId: string;
+  tripId?: string;
   lat: number;
   lng: number;
   speedKmh?: number;
@@ -123,15 +194,45 @@ export interface BusLastPosition {
   tripStatus?: TripStatus;
 }
 
-// ─── Attendance ───────────────────────────────────────────────────────────────
+// ─── Attendance Events ────────────────────────────────────────────────────────
+/**
+ * Created when a gatekeeper or conductor marks a student.
+ * No QR scan — manual tap/toggle from student roster.
+ */
 export interface AttendanceEvent extends BaseEntity {
   tenantId: string;
   studentId: string;
-  scannedBy: string;
-  scanType: ScanType;
-  scannedAt: string;
+  studentName: string;      // Denormalized — avoids extra join on list render
+  markedBy: string;         // User ID of gatekeeper or conductor
+  tripId?: string;          // Present only for bus attendance events
+  attendanceType: AttendanceType;
+  status: AttendanceStatus;
+  markedAt: string;
+  gateLocation?: string;    // e.g. "Main Gate"
+  notes?: string;
+}
+
+/** Payload to mark a single student */
+export interface MarkAttendanceRequest {
+  studentId: string;
+  attendanceType: AttendanceType;
+  status: AttendanceStatus;
+  tripId?: string;
   gateLocation?: string;
-  photoUrl?: string;
+  notes?: string;
+}
+
+/** Payload to mark multiple students at once (batch submit at session end) */
+export interface MarkAttendanceBatchRequest {
+  marks: Array<{
+    studentId: string;
+    status: AttendanceStatus;
+    attendanceType: AttendanceType;
+    notes?: string;
+  }>;
+  attendanceType: AttendanceType;
+  tripId?: string;
+  gateLocation?: string;
 }
 
 export interface DailyAttendanceSummary {
@@ -140,7 +241,13 @@ export interface DailyAttendanceSummary {
   present: number;
   absent: number;
   late: number;
-  byClass: Record<string, { present: number; absent: number; total: number }>;
+  unmarked: number;
+  byClass: Record<string, {
+    present: number;
+    absent: number;
+    late: number;
+    total: number;
+  }>;
 }
 
 // ─── Notifications ────────────────────────────────────────────────────────────
@@ -150,12 +257,13 @@ export interface Notification extends BaseEntity {
   type: NotificationType;
   title: string;
   body: string;
+  data: Record<string, unknown>;
   channel: NotificationChannel;
   sentAt?: string;
   readAt?: string;
 }
 
-// ─── Billing (Phase 1: manual) ───────────────────────────────────────────────
+// ─── Billing ──────────────────────────────────────────────────────────────────
 export interface TenantBillingInfo {
   tenantId: string;
   plan: TenantPlan;

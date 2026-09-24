@@ -10,8 +10,8 @@ export enum UserRole {
 
 // ─── Tenant / Plan ────────────────────────────────────────────────────────────
 export enum TenantPlan {
-  STARTER = 'starter',      // Up to 500 students, 5 buses
-  GROWTH = 'growth',        // Up to 2000 students, 20 buses
+  STARTER = 'starter',       // Up to 500 students, 5 buses
+  GROWTH = 'growth',         // Up to 2000 students, 20 buses
   ENTERPRISE = 'enterprise', // Unlimited
 }
 
@@ -21,11 +21,26 @@ export enum TenantStatus {
   SUSPENDED = 'suspended',
 }
 
-// ─── User / Auth ──────────────────────────────────────────────────────────────
+// ─── User ─────────────────────────────────────────────────────────────────────
 export enum UserStatus {
   ACTIVE = 'active',
   INACTIVE = 'inactive',
   SUSPENDED = 'suspended',
+}
+
+/**
+ * How a user authenticates — depends on their role.
+ *
+ * Parent        → PARENT_ID_OTP   (Parent UID + phone OTP)
+ * Conductor     → EMPLOYEE_PIN    (Employee ID + 4–6 digit PIN)
+ * Gatekeeper    → EMPLOYEE_PIN    (Employee ID + PIN — no SIM required)
+ * School Admin  → PHONE_OTP       (Phone + OTP)
+ * Teacher       → PHONE_OTP       (Phone + OTP)
+ */
+export enum LoginMethod {
+  PHONE_OTP = 'phone_otp',
+  EMPLOYEE_PIN = 'employee_pin',
+  PARENT_ID_OTP = 'parent_id_otp',
 }
 
 // ─── Student ──────────────────────────────────────────────────────────────────
@@ -36,18 +51,22 @@ export enum StudentStatus {
 }
 
 // ─── Attendance ───────────────────────────────────────────────────────────────
-export enum ScanType {
-  ENTRY = 'entry',
-  EXIT = 'exit',
-  BUS_BOARDING = 'bus_boarding',
-  BUS_ALIGHTING = 'bus_alighting',
+/**
+ * How attendance is recorded — manually from a student roster list.
+ * All marks are made by a human (gatekeeper or conductor) tapping a name.
+ */
+export enum AttendanceType {
+  SCHOOL_ENTRY = 'school_entry',     // Gatekeeper: student entered campus
+  SCHOOL_EXIT = 'school_exit',       // Gatekeeper: student left campus
+  BUS_BOARDING = 'bus_boarding',     // Conductor: student boarded bus
+  BUS_ALIGHTING = 'bus_alighting',   // Conductor: student alighted from bus
+  ABSENT = 'absent',                 // Explicitly marked absent
 }
 
 export enum AttendanceStatus {
   PRESENT = 'present',
   ABSENT = 'absent',
   LATE = 'late',
-  HALF_DAY = 'half_day',
 }
 
 // ─── Fleet ────────────────────────────────────────────────────────────────────
@@ -84,4 +103,16 @@ export enum NotificationChannel {
   FCM = 'fcm',
   SMS = 'sms',
   IN_APP = 'in_app',
+}
+
+// ─── Mobile App Portal ────────────────────────────────────────────────────────
+/**
+ * Determines which portal/navigation tree is shown in the single unified app.
+ * Maps directly to UserRole — separated to make the mobile routing intent clear.
+ */
+export enum AppPortal {
+  PARENT = 'parent',
+  GATEKEEPER = 'gatekeeper',
+  CONDUCTOR = 'conductor',
+  SCHOOL_ADMIN = 'school_admin',
 }
