@@ -1,26 +1,32 @@
 ---
 role: backend-developer
-status: done
-updated: 2026-09-24T20:47:11.389Z
+status: pending
+updated: 2026-09-24T21:05:14.096Z
 source: supervisor
 ---
 
 paths:
-- apps/api/src/modules/attendance/attendance.module.ts
-- apps/api/src/modules/attendance/attendance.entity.ts
-- apps/api/src/modules/attendance/attendance.service.ts
-- apps/api/src/modules/attendance/attendance.controller.ts
-- apps/api/src/modules/students/students.module.ts
-- apps/api/src/modules/students/student.entity.ts
-- apps/api/src/modules/students/students.service.ts
-- apps/api/src/modules/students/students.controller.ts
-- Table: students (tenant_id, roll_number, full_name, class_section,
-- Table: attendance_events (tenant_id, student_id, marked_by,
-- No QR columns. No synchronize.
-- All routes use JWT + Roles + Tenant guards.
-- Tenant context is SET LOCAL inside the transaction.
-- Mark endpoint must enforce the unique constraint
-- Batch endpoint accepts up to 200 marks in one call.
+- apps/api/src/modules/schools/school.entity.ts
+- apps/api/src/modules/schools/schools.service.ts
+- apps/api/src/modules/schools/schools.controller.ts
+- apps/api/src/modules/schools/schools.module.ts
+- apps/api/src/modules/fleet/route.entity.ts
+- apps/api/src/modules/fleet/bus.entity.ts
+- apps/api/src/modules/fleet/trip.entity.ts
+- apps/api/src/modules/fleet/fleet.service.ts
+- apps/api/src/modules/fleet/fleet.controller.ts
+- apps/api/src/modules/fleet/fleet.module.ts
+- apps/api/src/modules/telemetry/gps-telemetry.entity.ts
+- apps/api/src/modules/telemetry/telemetry.module.ts
+- apps/api/src/modules/telemetry/telemetry.service.ts
+- apps/api/src/modules/tracking/tracking.gateway.ts
+- apps/api/src/modules/tracking/tracking.module.ts
+- apps/api/src/modules/notifications/notification.entity.ts
+- apps/api/src/modules/notifications/notifications.processor.ts
+- apps/api/src/modules/notifications/notifications.service.ts
+- apps/api/src/modules/notifications/notifications.controller.ts
+- apps/api/src/modules/notifications/notifications.module.ts
+- apps/api/package.json
 
 Follow agents/backend-developer.md and AgentDirectory/backend-developer/standards.md.
 Save web research in AgentDirectory/backend-developer/research/ and the chosen approach in AgentDirectory/backend-developer/preview/.
