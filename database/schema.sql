@@ -7,7 +7,6 @@
 
 -- ─── Extensions ──────────────────────────────────────────────
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-CREATE EXTENSION IF NOT EXISTS "postgis";
 CREATE EXTENSION IF NOT EXISTS "timescaledb";
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
@@ -153,9 +152,8 @@ CREATE INDEX idx_students_tenant_id ON students (tenant_id);
 CREATE INDEX idx_students_parent ON students (parent_user_id);
 CREATE INDEX idx_students_route ON students (bus_route_id);
 CREATE INDEX idx_students_class ON students (tenant_id, class_section);
--- Full-text search index for name search in gatekeeper/conductor app
-CREATE INDEX idx_students_name_fts ON students
-  USING GIN (to_tsvector('english', full_name));
+-- Case-insensitive LIKE search for name lookup in gatekeeper/conductor app
+CREATE INDEX idx_students_name ON students (tenant_id, lower(full_name));
 
 CREATE TRIGGER set_students_updated_at
   BEFORE UPDATE ON students
@@ -248,6 +246,7 @@ CREATE POLICY trips_tenant_isolation ON trips
 -- ============================================================
 -- GPS TELEMETRY — TimescaleDB Hypertable
 -- Conductor's phone publishes GPS every 5s via MQTT.
+-- Plain lat/lng (no PostGIS needed for dev — distance calcs done in app layer).
 -- ============================================================
 CREATE TABLE gps_telemetry (
   time            TIMESTAMPTZ NOT NULL,
@@ -255,7 +254,8 @@ CREATE TABLE gps_telemetry (
   bus_id          UUID NOT NULL,
   conductor_id    UUID NOT NULL,
   trip_id         UUID,
-  location        geography(Point, 4326) NOT NULL,
+  lat             FLOAT8 NOT NULL,    -- WGS84 latitude  (-90  to +90)
+  lng             FLOAT8 NOT NULL,    -- WGS84 longitude (-180 to +180)
   speed_kmh       NUMERIC(5, 2),
   heading         NUMERIC(5, 2),
   accuracy_m      NUMERIC(6, 2),
@@ -264,7 +264,7 @@ CREATE TABLE gps_telemetry (
 
 SELECT create_hypertable('gps_telemetry', 'time', chunk_time_interval => INTERVAL '1 week');
 
-CREATE INDEX idx_gps_location ON gps_telemetry USING GIST (location);
+-- Composite index for fetching a bus's latest position
 CREATE INDEX idx_gps_bus_time ON gps_telemetry (bus_id, time DESC);
 
 ALTER TABLE gps_telemetry SET (
@@ -296,15 +296,13 @@ CREATE TABLE attendance_events (
   status          TEXT NOT NULL DEFAULT 'present'
                   CHECK (status IN ('present', 'absent', 'late')),
   marked_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
+  -- Immutable date column used for uniqueness constraint
+  marked_date     DATE NOT NULL GENERATED ALWAYS AS (CAST(marked_at AT TIME ZONE 'UTC' AS DATE)) STORED,
   gate_location   TEXT,   -- e.g. "Main Gate", "Back Gate"
   notes           TEXT,   -- Optional remark (e.g. "Parent pickup")
-  -- One record per student per attendance_type per calendar day
+  -- One record per student per attendance_type per calendar day (UTC)
   CONSTRAINT no_duplicate_mark
-    EXCLUDE USING btree (
-      student_id WITH =,
-      attendance_type WITH =,
-      date_trunc('day', marked_at) WITH =
-    )
+    UNIQUE (student_id, attendance_type, marked_date)
 );
 CREATE INDEX idx_attendance_tenant_date ON attendance_events (tenant_id, marked_at DESC);
 CREATE INDEX idx_attendance_student ON attendance_events (student_id, marked_at DESC);

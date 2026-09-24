@@ -1,6 +1,6 @@
 # ─────────────────────────────────────────────────────────────────────────────
 # TheMinaker — Local Development Stack
-# Simulates: AWS Aurora → timescaledb-ha, ElastiCache → Redis,
+# Simulates: Aurora → timescaledb pg16, ElastiCache → Redis,
 #             Amazon MQ → Mosquitto, S3 → LocalStack
 #
 # Usage: docker compose up -d
@@ -8,8 +8,9 @@
 
 services:
   # ─── PostgreSQL 16 + TimescaleDB + PostGIS ──────────────────
+  # timescale/timescaledb:latest-pg16 = TimescaleDB community + PostGIS on PG16
   postgres:
-    image: timescale/timescaledb-ha:pg16-latest
+    image: timescale/timescaledb:latest-pg16
     container_name: minaker_postgres
     restart: unless-stopped
     environment:
@@ -19,7 +20,7 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - postgres_data:/home/postgres/pgdata/data
+      - postgres_data:/var/lib/postgresql/data
       # Auto-run schema on first start
       - ./database/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
     healthcheck:
@@ -30,24 +31,25 @@ services:
       start_period: 30s
 
   # ─── PgBouncer — Transaction Pooling ────────────────────────
-  # CRITICAL: transaction mode required for PostgreSQL RLS with SET commands
+  # CRITICAL: transaction mode is required for PostgreSQL RLS with SET LOCAL commands.
+  # pgbouncer/pgbouncer is the official upstream image (bitnami/pgbouncer was deprecated).
   pgbouncer:
-    image: bitnami/pgbouncer:1.22.1
+    image: pgbouncer/pgbouncer:latest
     container_name: minaker_pgbouncer
     restart: unless-stopped
     environment:
-      POSTGRESQL_HOST: postgres
-      POSTGRESQL_PORT: 5432
-      POSTGRESQL_USERNAME: minaker
-      POSTGRESQL_PASSWORD: minaker_secret
-      POSTGRESQL_DATABASE: minaker_dev
+      # pgbouncer/pgbouncer image uses DATABASES_* env vars
+      DATABASES_HOST: postgres
+      DATABASES_PORT: "5432"
+      DATABASES_USER: minaker
+      DATABASES_PASSWORD: minaker_secret
+      DATABASES_DBNAME: minaker_dev
+      # Pool settings — transaction mode required for RLS SET LOCAL
       PGBOUNCER_POOL_MODE: transaction
-      PGBOUNCER_MAX_CLIENT_CONN: 1000
-      PGBOUNCER_DEFAULT_POOL_SIZE: 25
-      PGBOUNCER_MIN_POOL_SIZE: 5
-      PGBOUNCER_RESERVE_POOL_SIZE: 10
-      PGBOUNCER_RESERVE_POOL_TIMEOUT: 5
-      PGBOUNCER_LOG_CONNECTIONS: 0
+      PGBOUNCER_MAX_CLIENT_CONN: "1000"
+      PGBOUNCER_DEFAULT_POOL_SIZE: "25"
+      PGBOUNCER_LOG_CONNECTIONS: "0"
+      PGBOUNCER_LOG_DISCONNECTIONS: "0"
     ports:
       - "6432:6432"
     depends_on:
@@ -56,7 +58,7 @@ services:
 
   # ─── Redis 7 — Cache + BullMQ Queues + Socket.io Adapter ───
   redis:
-    image: redis:7.2-alpine
+    image: redis:7-alpine
     container_name: minaker_redis
     restart: unless-stopped
     command: >
@@ -76,29 +78,31 @@ services:
       retries: 5
 
   # ─── Eclipse Mosquitto — MQTT Broker ────────────────────────
-  # Bus conductors publish GPS to this broker
-  # NestJS API subscribes and bridges to WebSocket for parents
+  # Conductor publishes GPS to this broker every 5 seconds.
+  # NestJS API subscribes and bridges to WebSocket for parents.
   mosquitto:
-    image: eclipse-mosquitto:2.0
+    image: eclipse-mosquitto:2
     container_name: minaker_mosquitto
     restart: unless-stopped
     ports:
-      - "1883:1883"    # MQTT (TCP) — conductor mobile apps
-      - "9001:9001"    # MQTT over WebSocket — browser-based debugging
+      - "1883:1883"   # MQTT (TCP) — conductor mobile app
+      - "9001:9001"   # MQTT over WebSocket — browser debugging
     volumes:
-      - ./infra/docker/mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - ./infra/docker/mosquitto/mosquitto.dev.conf:/mosquitto/config/mosquitto.conf:ro
       - mosquitto_data:/mosquitto/data
       - mosquitto_log:/mosquitto/log
     healthcheck:
-      test: ["CMD-SHELL", "mosquitto_pub -h localhost -t 'health/check' -m 'ping' -u minaker_server -P minaker_mqtt_pass 2>/dev/null && echo ok"]
+      test: ["CMD-SHELL", "mosquitto_pub -h localhost -t 'health/check' -m 'ping' 2>/dev/null && echo ok"]
       interval: 30s
       timeout: 10s
       retries: 3
+      start_period: 10s
 
   # ─── LocalStack — AWS S3 Simulation ─────────────────────────
-  # Simulates S3 for student photos, QR codes, attendance reports
+  # Simulates S3 for student photos and attendance report exports.
+  # Using :3 tag — last free community edition. "latest" is now Pro (paid).
   localstack:
-    image: localstack/localstack:3.5
+    image: localstack/localstack:3
     container_name: minaker_localstack
     restart: unless-stopped
     environment:
@@ -116,10 +120,13 @@ services:
       interval: 15s
       timeout: 10s
       retries: 5
+      start_period: 15s
 
   # ─── Adminer — Database GUI ──────────────────────────────────
+  # Open http://localhost:8080
+  # Server: pgbouncer | User: minaker | Pass: minaker_secret | DB: minaker_dev
   adminer:
-    image: adminer:4.8.1
+    image: adminer:latest
     container_name: minaker_adminer
     restart: unless-stopped
     ports:
