@@ -1,0 +1,68 @@
+name: CI — Lint, Typecheck & Test
+
+on:
+  pull_request:
+    branches: [main, staging]
+  push:
+    branches: [staging]
+
+jobs:
+  ci:
+    name: CI Pipeline
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: timescale/timescaledb-ha:pg16-latest
+        env:
+          POSTGRES_DB: minaker_test
+          POSTGRES_USER: minaker
+          POSTGRES_PASSWORD: minaker_secret
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U minaker -d minaker_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
+      redis:
+        image: redis:7.2-alpine
+        ports:
+          - 6379:6379
+        options: --health-cmd "redis-cli ping" --health-interval 10s
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup PNPM
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck all packages
+        run: pnpm typecheck
+
+      - name: Lint all packages
+        run: pnpm lint
+
+      - name: Build shared packages
+        run: pnpm --filter @minaker/shared-types build
+
+      - name: Run API unit tests
+        run: pnpm --filter @minaker/api test
+        env:
+          DATABASE_URL: postgresql://minaker:minaker_secret@localhost:5432/minaker_test
+          REDIS_URL: redis://localhost:6379
+          JWT_SECRET: ci-test-secret-do-not-use-in-prod
+          NODE_ENV: test

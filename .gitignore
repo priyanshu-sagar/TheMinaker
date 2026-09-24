@@ -1,0 +1,64 @@
+# ─── Dependencies ─────────────────────────────────────────────
+node_modules/
+.pnpm-store/
+
+# ─── Build outputs ────────────────────────────────────────────
+dist/
+build/
+.next/
+out/
+*.tsbuildinfo
+
+# ─── Environment files ────────────────────────────────────────
+.env
+.env.local
+.env.*.local
+# Keep .env.example in git
+!.env.example
+
+# ─── Turborepo ────────────────────────────────────────────────
+.turbo/
+
+# ─── OS & Editor ──────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+.vscode/
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea/
+
+# ─── Logs ─────────────────────────────────────────────────────
+logs/
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# ─── Test coverage ────────────────────────────────────────────
+coverage/
+.nyc_output/
+
+# ─── Docker ───────────────────────────────────────────────────
+infra/docker/mosquitto/passwd
+infra/docker/mosquitto/acl
+
+# ─── Terraform state ──────────────────────────────────────────
+infra/terraform/**/.terraform/
+infra/terraform/**/terraform.tfstate
+infra/terraform/**/terraform.tfstate.backup
+infra/terraform/**/*.tfvars
+!infra/terraform/**/*.tfvars.example
+
+# ─── Expo / React Native ──────────────────────────────────────
+.expo/
+android/
+ios/
+*.apk
+*.aab
+*.ipa
+
+# ─── Misc ─────────────────────────────────────────────────────
+*.pem
+*.key
+*.cert

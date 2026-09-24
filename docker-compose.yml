@@ -1,0 +1,150 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# TheMinaker — Local Development Stack
+# Simulates: AWS Aurora → timescaledb-ha, ElastiCache → Redis,
+#             Amazon MQ → Mosquitto, S3 → LocalStack
+#
+# Usage: docker compose up -d
+# ─────────────────────────────────────────────────────────────────────────────
+
+services:
+  # ─── PostgreSQL 16 + TimescaleDB + PostGIS ──────────────────
+  postgres:
+    image: timescale/timescaledb-ha:pg16-latest
+    container_name: minaker_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: minaker_dev
+      POSTGRES_USER: minaker
+      POSTGRES_PASSWORD: minaker_secret
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/home/postgres/pgdata/data
+      # Auto-run schema on first start
+      - ./database/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U minaker -d minaker_dev"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  # ─── PgBouncer — Transaction Pooling ────────────────────────
+  # CRITICAL: transaction mode required for PostgreSQL RLS with SET commands
+  pgbouncer:
+    image: bitnami/pgbouncer:1.22.1
+    container_name: minaker_pgbouncer
+    restart: unless-stopped
+    environment:
+      POSTGRESQL_HOST: postgres
+      POSTGRESQL_PORT: 5432
+      POSTGRESQL_USERNAME: minaker
+      POSTGRESQL_PASSWORD: minaker_secret
+      POSTGRESQL_DATABASE: minaker_dev
+      PGBOUNCER_POOL_MODE: transaction
+      PGBOUNCER_MAX_CLIENT_CONN: 1000
+      PGBOUNCER_DEFAULT_POOL_SIZE: 25
+      PGBOUNCER_MIN_POOL_SIZE: 5
+      PGBOUNCER_RESERVE_POOL_SIZE: 10
+      PGBOUNCER_RESERVE_POOL_TIMEOUT: 5
+      PGBOUNCER_LOG_CONNECTIONS: 0
+    ports:
+      - "6432:6432"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # ─── Redis 7 — Cache + BullMQ Queues + Socket.io Adapter ───
+  redis:
+    image: redis:7.2-alpine
+    container_name: minaker_redis
+    restart: unless-stopped
+    command: >
+      redis-server
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+      --appendonly yes
+      --appendfsync everysec
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─── Eclipse Mosquitto — MQTT Broker ────────────────────────
+  # Bus conductors publish GPS to this broker
+  # NestJS API subscribes and bridges to WebSocket for parents
+  mosquitto:
+    image: eclipse-mosquitto:2.0
+    container_name: minaker_mosquitto
+    restart: unless-stopped
+    ports:
+      - "1883:1883"    # MQTT (TCP) — conductor mobile apps
+      - "9001:9001"    # MQTT over WebSocket — browser-based debugging
+    volumes:
+      - ./infra/docker/mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - mosquitto_data:/mosquitto/data
+      - mosquitto_log:/mosquitto/log
+    healthcheck:
+      test: ["CMD-SHELL", "mosquitto_pub -h localhost -t 'health/check' -m 'ping' -u minaker_server -P minaker_mqtt_pass 2>/dev/null && echo ok"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ─── LocalStack — AWS S3 Simulation ─────────────────────────
+  # Simulates S3 for student photos, QR codes, attendance reports
+  localstack:
+    image: localstack/localstack:3.5
+    container_name: minaker_localstack
+    restart: unless-stopped
+    environment:
+      SERVICES: s3
+      DEFAULT_REGION: ap-south-1
+      AWS_DEFAULT_REGION: ap-south-1
+      LOCALSTACK_HOST: localstack
+    ports:
+      - "4566:4566"
+    volumes:
+      - localstack_data:/var/lib/localstack
+      - /var/run/docker.sock:/var/run/docker.sock
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4566/_localstack/health"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+
+  # ─── Adminer — Database GUI ──────────────────────────────────
+  adminer:
+    image: adminer:4.8.1
+    container_name: minaker_adminer
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      ADMINER_DESIGN: dracula
+      ADMINER_DEFAULT_SERVER: pgbouncer
+    depends_on:
+      - pgbouncer
+
+# ─── Named Volumes ───────────────────────────────────────────
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  mosquitto_data:
+    driver: local
+  mosquitto_log:
+    driver: local
+  localstack_data:
+    driver: local
+
+# ─── Network ─────────────────────────────────────────────────
+networks:
+  default:
+    name: minaker_network
+    driver: bridge

@@ -1,0 +1,16 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# docker-compose.override.yml — Development overrides (hot reload)
+# This file is auto-merged with docker-compose.yml in development
+# ─────────────────────────────────────────────────────────────────────────────
+services:
+  postgres:
+    environment:
+      # Enable query logging in dev (disable in prod — high I/O)
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8"
+
+  mosquitto:
+    # Dev: allow anonymous connections (no password needed for local testing)
+    volumes:
+      - ./infra/docker/mosquitto/mosquitto.dev.conf:/mosquitto/config/mosquitto.conf:ro
+      - mosquitto_data:/mosquitto/data
+      - mosquitto_log:/mosquitto/log
