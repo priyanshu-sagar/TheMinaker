@@ -3,7 +3,6 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { ThrottlerStorageRedisService } from 'nestjs-throttler-storage-redis';
 import { AuthModule } from './modules/auth/auth.module';
 import { AttendanceModule } from './modules/attendance/attendance.module';
 import { FleetModule } from './modules/fleet/fleet.module';
@@ -21,7 +20,7 @@ import { UsersModule } from './modules/users/users.module';
     // Config — loads .env
     ConfigModule.forRoot({ isGlobal: true, cache: true }),
 
-    // Database — TypeORM with PostgreSQL
+    // Database — TypeORM with PostgreSQL (via PgBouncer in prod)
     TypeOrmModule.forRootAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
@@ -36,15 +35,14 @@ import { UsersModule } from './modules/users/users.module';
       }),
     }),
 
-    // Redis-backed rate limiting
+    // Rate limiting — in-memory store for MVP, swap to Redis adapter for prod
     ThrottlerModule.forRootAsync({
       inject: [ConfigService],
-      useFactory: (config: ConfigService) => ({
+      useFactory: (_config: ConfigService) => ({
         throttlers: [
-          { name: 'short',  ttl: 1000,  limit: 10  }, // 10 req/sec burst
-          { name: 'medium', ttl: 60000, limit: 100 }, // 100 req/min
+          { name: 'short', ttl: 1000, limit: 10 },    // 10 req/sec burst
+          { name: 'medium', ttl: 60000, limit: 100 },  // 100 req/min
         ],
-        storage: new ThrottlerStorageRedisService(config.get('REDIS_URL')!),
       }),
     }),
 
@@ -52,7 +50,9 @@ import { UsersModule } from './modules/users/users.module';
     BullModule.forRootAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
-        connection: { url: config.get<string>('REDIS_URL') },
+        connection: {
+          url: config.get<string>('REDIS_URL', 'redis://localhost:6379'),
+        },
       }),
     }),
 

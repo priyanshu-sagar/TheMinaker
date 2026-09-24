@@ -2,14 +2,15 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "module": "commonjs",
+    "moduleResolution": "node",
     "target": "ES2022",
     "outDir": "./dist",
     "rootDir": "./src",
-    "baseUrl": "./src",
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
+    "baseUrl": "./src",
     "paths": {
-      "@minaker/shared-types": ["../../packages/shared-types/src"]
+      "@minaker/shared-types": ["../../packages/shared-types/src/index.ts"]
     }
   },
   "include": ["src/**/*"],
