@@ -58,6 +58,9 @@ ios/
 *.aab
 *.ipa
 
+# ─── Agent supervisor snapshot ────────────────────────────────
+AgentDirectory/bus/.watch-state.json
+
 # ─── Misc ─────────────────────────────────────────────────────
 *.pem
 *.key
