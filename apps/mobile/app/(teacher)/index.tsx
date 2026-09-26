@@ -1,88 +1,126 @@
-import { router } from 'expo-router';
-import { useMemo } from 'react';
-import { FlatList, StyleSheet, Text, View } from 'react-native';
+import { useMemo, useState } from 'react';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, spacing, statusColors } from '@/design/teacher-theme';
 import { MeshBackground } from '@/components/glass/MeshBackground';
 import { GlassCard } from '@/components/glass/GlassCard';
-import { ScheduleCard } from '@/components/teacher/ScheduleCard';
-import { QuickActionsRow } from '@/components/teacher/QuickActionsRow';
-import { parsePeriodTime, useTeacherStore } from '@/store/teacher.store';
+import { ClassSelector } from '@/components/teacher/ClassSelector';
+import { AddClassTile, ScheduleCard } from '@/components/teacher/ScheduleCard';
+import { MaterialsList } from '@/components/teacher/MaterialsList';
+import { UpcomingTasksCard } from '@/components/teacher/UpcomingTasksCard';
+import { UploadMaterialModal } from '@/components/teacher/UploadMaterialModal';
+import { EditTimetableModal } from '@/components/teacher/ManagementModals';
+import { parsePeriodTime, useSelectedClass, useTeacherStore } from '@/store/teacher.store';
 import { useAuthStore } from '@/store/auth.store';
 
-function useCurrentPeriodInfo() {
+export default function TeacherDashboardScreen() {
+  const user = useAuthStore((state) => state.user);
+  const selected = useSelectedClass();
+  const selectedClassId = useTeacherStore((state) => state.selectedClassId);
+  const classes = useTeacherStore((state) => state.classes);
   const schedule = useTeacherStore((state) => state.schedule);
-  return useMemo(() => {
-    const now = new Date();
-    let activeId: string | null = null;
-    let nextLabel: string | null = null;
+  const materials = useTeacherStore((state) => state.materials);
+  const tests = useTeacherStore((state) => state.tests);
+  const students = useTeacherStore((state) => state.students);
+  const communications = useTeacherStore((state) => state.communications);
+  const uploadMaterial = useTeacherStore((state) => state.uploadMaterial);
+  const removeMaterial = useTeacherStore((state) => state.removeMaterial);
+  const [uploading, setUploading] = useState(false);
+  const [editingTimetable, setEditingTimetable] = useState(false);
 
-    for (const period of schedule) {
+  const classSchedule = useMemo(
+    () => schedule.filter((period) => period.classId === selectedClassId).sort((a, b) => a.period - b.period),
+    [schedule, selectedClassId],
+  );
+  const classMaterials = useMemo(
+    () => materials.filter((item) => item.classId === selectedClassId),
+    [materials, selectedClassId],
+  );
+
+  const { activeId, summary } = useMemo(() => {
+    const now = new Date();
+    let currentId: string | null = null;
+    let nextLabel: string | null = null;
+    for (const period of classSchedule) {
       const start = parsePeriodTime(period.time, now);
       const end = parsePeriodTime(period.endTime, now);
-      if (now >= start && now <= end) {
-        activeId = period.id;
-      }
+      if (now >= start && now <= end) currentId = period.id;
       if (!nextLabel && now < start) {
         const minutesAway = Math.round((start.getTime() - now.getTime()) / 60000);
-        nextLabel = `Period ${period.period} (${period.subject}) starting in ${minutesAway} min`;
+        nextLabel = `Period ${period.period} (${period.subject}) in ${minutesAway} min`;
       }
     }
+    return { activeId: currentId, summary: currentId ? 'Class in session now' : nextLabel ?? 'No more periods today' };
+  }, [classSchedule]);
 
-    return { activeId, summary: activeId ? 'Class in session now' : nextLabel ?? 'No more periods today' };
-  }, [schedule]);
-}
-
-export default function TeacherDashboardScreen() {
-  const schedule = useTeacherStore((state) => state.schedule);
-  const user = useAuthStore((state) => state.user);
-  const { activeId, summary } = useCurrentPeriodInfo();
-
-  function onQuickAction(key: 'attendance' | 'test' | 'broadcast') {
-    if (key === 'attendance') router.push('/(teacher)/roster');
-    if (key === 'test') router.push('/(teacher)/academics');
-    if (key === 'broadcast') router.push('/(teacher)/comms');
-  }
+  const ungradedTests = tests.filter(
+    (test) => test.classId === selectedClassId && test.scores.some((entry) => entry.score === null),
+  ).length;
+  const pendingRoster = selected?.isClassTeacher
+    ? students.filter((student) => student.classId === selectedClassId && student.classAttendance === 'Pending').length
+    : 0;
+  const parentMessages = communications.filter(
+    (message) => message.classId === selectedClassId && message.channel === 'DirectReport' && message.route === 'Parent',
+  ).length;
 
   return (
     <MeshBackground>
       <SafeAreaView style={styles.safe} edges={['top']}>
-        <FlatList
-          data={schedule}
-          keyExtractor={(period) => period.id}
-          contentContainerStyle={styles.list}
-          ListHeaderComponent={
-            <View style={styles.header}>
-              <Text style={styles.greeting}>Good Morning, {user?.fullName?.split(' ')[0] ?? 'Teacher'}</Text>
-              <GlassCard style={styles.summaryCard} padded={false}>
-                <View style={styles.summaryInner}>
-                  <Text style={styles.summaryText}>{summary}</Text>
-                </View>
-              </GlassCard>
+        <ScrollView contentContainerStyle={styles.scroll}>
+          <Text style={styles.greeting}>Good morning, {user?.fullName?.split(' ')[0] ?? 'Teacher'}</Text>
+          <ClassSelector subtitle={summary} />
 
-              <View style={styles.quickActionsWrap}>
-                <QuickActionsRow onAction={onQuickAction} />
-              </View>
-
-              <Text style={styles.sectionTitle}>Today's Timetable</Text>
+          <GlassCard style={styles.summaryCard} padded={false}>
+            <View style={styles.summaryInner}>
+              <Text style={styles.summaryText}>{summary}</Text>
             </View>
-          }
-          ItemSeparatorComponent={() => <View style={{ height: spacing.sm }} />}
-          renderItem={({ item }) => <ScheduleCard period={item} active={item.id === activeId} />}
-        />
+          </GlassCard>
+
+          <Text style={styles.sectionTitle}>Today's timetable</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.scheduleRow}>
+            {classSchedule.map((period) => (
+              <ScheduleCard
+                key={period.id}
+                period={period}
+                active={period.id === activeId}
+                className={classes.find((cls) => cls.id === period.classId)?.name}
+              />
+            ))}
+            <AddClassTile onPress={() => setEditingTimetable(true)} />
+          </ScrollView>
+
+          <UpcomingTasksCard
+            ungradedTests={ungradedTests}
+            pendingRoster={pendingRoster}
+            parentMessages={parentMessages}
+          />
+
+          <MaterialsList
+            materials={classMaterials}
+            canManage
+            onUpload={() => setUploading(true)}
+            onRemove={removeMaterial}
+          />
+        </ScrollView>
       </SafeAreaView>
+
+      <UploadMaterialModal
+        visible={uploading}
+        onClose={() => setUploading(false)}
+        onUpload={(input) => uploadMaterial({ ...input, classId: selectedClassId })}
+      />
+      <EditTimetableModal visible={editingTimetable} classId={selectedClassId} onClose={() => setEditingTimetable(false)} />
     </MeshBackground>
   );
 }
 
 const styles = StyleSheet.create({
   safe: { flex: 1 },
-  list: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xl },
-  header: { gap: spacing.md, paddingTop: spacing.md, paddingBottom: spacing.sm },
-  greeting: { fontSize: 20, fontWeight: '700', color: colors.textPrimary },
-  summaryCard: {},
+  scroll: { paddingBottom: spacing.xl, gap: spacing.md },
+  greeting: { fontSize: 22, fontWeight: '800', color: colors.textPrimary, paddingHorizontal: spacing.lg, paddingTop: spacing.md },
+  summaryCard: { marginHorizontal: spacing.lg },
   summaryInner: { paddingVertical: spacing.md, paddingHorizontal: spacing.lg },
   summaryText: { fontSize: 13, fontWeight: '700', color: statusColors.info },
-  quickActionsWrap: { marginTop: spacing.xs },
-  sectionTitle: { fontSize: 15, fontWeight: '700', color: colors.textPrimary, marginTop: spacing.sm },
+  sectionTitle: { fontSize: 15, fontWeight: '700', color: colors.textPrimary, paddingHorizontal: spacing.lg },
+  scheduleRow: { paddingHorizontal: spacing.lg, gap: spacing.sm },
 });

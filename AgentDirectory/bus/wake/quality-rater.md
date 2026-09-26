@@ -1,12 +1,12 @@
 ---
 role: quality-rater
 status: done
-updated: 2026-09-26T10:41:58.078Z
-source: supervisor
+updated: 2026-09-26T11:46:00.000Z
+source: cursor
 ---
 
 paths:
-- AgentDirectory/bus/messages/2026-09-26-frontend-to-quality-rater-teacher-portal.md
+- AgentDirectory/bus/messages/2026-09-26-frontend-to-quality-rater-teacher-crash.md
 
 Follow agents/quality-rater.md and AgentDirectory/quality-rater/standards.md.
 Save web research in AgentDirectory/quality-rater/research/ and the chosen approach in AgentDirectory/quality-rater/preview/.

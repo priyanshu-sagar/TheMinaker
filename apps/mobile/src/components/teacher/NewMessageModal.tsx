@@ -1,157 +1,185 @@
-import { useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { Alert, StyleSheet, Text, TextInput, View } from 'react-native';
 import { glass } from '@/design/glass-theme';
 import { colors, radius, spacing, statusColors } from '@/design/teacher-theme';
 import { GlassModal } from '@/components/glass/GlassModal';
-import { CommsType, RosterStudent } from '@/store/teacher.store';
+import { AnimatedPressable } from '@/components/glass/AnimatedPressable';
+import { DirectReportRoute, RosterStudent } from '@/store/teacher.store';
 
-const MESSAGE_TYPES = [
-  { key: 'general', label: 'General Announcement', commsType: 'Broadcast' as CommsType },
-  { key: 'homework', label: 'Homework Alert', commsType: 'Broadcast' as CommsType },
-  { key: 'disciplinary', label: 'Disciplinary Complaint', commsType: 'Complaint' as CommsType },
-] as const;
-
-type MessageTypeKey = (typeof MESSAGE_TYPES)[number]['key'];
-type Target = 'class' | 'student';
-
-export function NewMessageModal({
+export function AnnouncementModal({
   visible,
+  className,
   onClose,
-  roster,
   onSend,
 }: {
   visible: boolean;
+  className: string;
   onClose: () => void;
-  roster: RosterStudent[];
-  onSend: (payload: { type: CommsType; title: string; body: string; targetStudentId?: string }) => void;
+  onSend: (payload: { title: string; body: string }) => void;
 }) {
-  const [typeKey, setTypeKey] = useState<MessageTypeKey>('general');
-  const [target, setTarget] = useState<Target>('class');
-  const [studentId, setStudentId] = useState<string | null>(null);
+  const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
 
-  function reset() {
-    setTypeKey('general');
-    setTarget('class');
-    setStudentId(null);
-    setBody('');
-  }
-
   function handleClose() {
-    reset();
+    setTitle('');
+    setBody('');
     onClose();
   }
 
   function handleSend() {
-    if (!body.trim()) return;
-    const selectedType = MESSAGE_TYPES.find((item) => item.key === typeKey)!;
-    const targetStudentId = target === 'student' ? studentId ?? undefined : undefined;
-    if (target === 'student' && !targetStudentId) return;
-
-    onSend({
-      type: selectedType.commsType,
-      title: selectedType.label,
-      body: body.trim(),
-      targetStudentId,
-    });
-
-    const targetLabel = targetStudentId
-      ? roster.find((student) => student.id === targetStudentId)?.name ?? 'student'
-      : 'the entire class';
-    Alert.alert('Notification sent', `"${selectedType.label}" was pushed to ${targetLabel}.`);
+    if (!title.trim() || !body.trim()) return;
+    onSend({ title: title.trim(), body: body.trim() });
+    Alert.alert('Announcement sent', `Pushed to every parent in ${className}.`);
     handleClose();
   }
 
-  const canSend = body.trim().length > 0 && (target === 'class' || studentId !== null);
+  const canSend = title.trim().length > 0 && body.trim().length > 0;
 
   return (
-    <GlassModal visible={visible} title="New Message" onClose={handleClose}>
-      <Text style={styles.label}>Select Type</Text>
-      <View style={styles.optionList}>
-        {MESSAGE_TYPES.map((option) => (
-          <Pressable
-            key={option.key}
-            style={[styles.option, typeKey === option.key ? styles.optionActive : null]}
-            onPress={() => setTypeKey(option.key)}
-          >
-            <Text style={[styles.optionText, typeKey === option.key ? styles.optionTextActive : null]}>{option.label}</Text>
-          </Pressable>
-        ))}
-      </View>
-
-      <Text style={styles.label}>Target</Text>
-      <View style={styles.optionRow}>
-        <Pressable style={[styles.pill, target === 'class' ? styles.pillActive : null]} onPress={() => { setTarget('class'); setStudentId(null); }}>
-          <Text style={[styles.pillText, target === 'class' ? styles.pillTextActive : null]}>Entire Class</Text>
-        </Pressable>
-        <Pressable style={[styles.pill, target === 'student' ? styles.pillActive : null]} onPress={() => setTarget('student')}>
-          <Text style={[styles.pillText, target === 'student' ? styles.pillTextActive : null]}>Specific Student</Text>
-        </Pressable>
-      </View>
-
-      {target === 'student' ? (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.studentRow}>
-          {roster.map((student) => (
-            <Pressable
-              key={student.id}
-              style={[styles.studentChip, studentId === student.id ? styles.studentChipActive : null]}
-              onPress={() => setStudentId(student.id)}
-            >
-              <Text style={[styles.studentChipText, studentId === student.id ? styles.studentChipTextActive : null]}>
-                {student.name}
-              </Text>
-            </Pressable>
-          ))}
-        </ScrollView>
-      ) : null}
-
-      <Text style={styles.label}>Message Body</Text>
-      <TextInput
-        value={body}
-        onChangeText={setBody}
-        placeholder="Type your message…"
-        placeholderTextColor={colors.textMuted}
-        multiline
-        numberOfLines={4}
-        style={styles.input}
-      />
-
-      <Pressable style={[styles.sendBtn, !canSend ? styles.sendBtnDisabled : null]} onPress={handleSend} disabled={!canSend}>
-        <Text style={styles.sendText}>Send Push Notification</Text>
-      </Pressable>
+    <GlassModal visible={visible} title="Class Announcement" onClose={handleClose}>
+      <Text style={styles.hint}>Goes to the whole of {className}. Subject teachers cannot post class announcements.</Text>
+      <Field label="Title" value={title} onChangeText={setTitle} placeholder="e.g. Homework for Monday" />
+      <Field label="Message" value={body} onChangeText={setBody} placeholder="Write the announcement…" multiline />
+      <AnimatedPressable haptic="medium" onPress={handleSend} disabled={!canSend} style={[styles.sendBtn, !canSend ? styles.disabled : null]}>
+        <Text style={styles.sendText}>Send to Class</Text>
+      </AnimatedPressable>
     </GlassModal>
   );
 }
 
+export function DirectReportModal({
+  visible,
+  roster,
+  presetStudentId,
+  onClose,
+  onSend,
+}: {
+  visible: boolean;
+  roster: RosterStudent[];
+  presetStudentId?: string | null;
+  onClose: () => void;
+  onSend: (payload: { title: string; body: string; targetStudentId: string; route: DirectReportRoute }) => void;
+}) {
+  const [studentId, setStudentId] = useState<string | null>(presetStudentId ?? null);
+  const [route, setRoute] = useState<DirectReportRoute>('Parent');
+  const [title, setTitle] = useState('');
+  const [body, setBody] = useState('');
+
+  useEffect(() => {
+    if (visible) setStudentId(presetStudentId ?? null);
+  }, [visible, presetStudentId]);
+
+  function handleClose() {
+    setStudentId(presetStudentId ?? null);
+    setRoute('Parent');
+    setTitle('');
+    setBody('');
+    onClose();
+  }
+
+  function handleSend() {
+    if (!studentId || !title.trim() || !body.trim()) return;
+    const student = roster.find((item) => item.id === studentId);
+    onSend({ title: title.trim(), body: body.trim(), targetStudentId: studentId, route });
+    const destination = route === 'SchoolAdmin' ? 'the school admin' : `${student?.parentName ?? 'the parent'}`;
+    Alert.alert('Report sent', `Delivered to ${destination}.`);
+    handleClose();
+  }
+
+  const canSend = Boolean(studentId) && title.trim().length > 0 && body.trim().length > 0;
+
+  return (
+    <GlassModal visible={visible} title="Direct Report" onClose={handleClose}>
+      <Text style={styles.label}>About which student?</Text>
+      <View style={styles.chipWrap}>
+        {roster.map((student) => {
+          const active = student.id === studentId;
+          return (
+            <AnimatedPressable
+              key={student.id}
+              haptic="selection"
+              onPress={() => setStudentId(student.id)}
+              style={[styles.chip, active ? styles.chipActive : null]}
+            >
+              <Text style={[styles.chipText, active ? styles.chipTextActive : null]}>{student.name}</Text>
+            </AnimatedPressable>
+          );
+        })}
+      </View>
+
+      <Text style={styles.label}>Send to</Text>
+      <View style={styles.routeRow}>
+        <AnimatedPressable haptic="selection" onPress={() => setRoute('Parent')} style={[styles.routeBtn, route === 'Parent' ? styles.routeBtnActive : null]}>
+          <Text style={[styles.routeText, route === 'Parent' ? styles.routeTextActive : null]}>Message Parent</Text>
+        </AnimatedPressable>
+        <AnimatedPressable haptic="selection" onPress={() => setRoute('SchoolAdmin')} style={[styles.routeBtn, route === 'SchoolAdmin' ? styles.routeBtnActive : null]}>
+          <Text style={[styles.routeText, route === 'SchoolAdmin' ? styles.routeTextActive : null]}>Report to School Admin</Text>
+        </AnimatedPressable>
+      </View>
+
+      <Field label="Title" value={title} onChangeText={setTitle} placeholder="e.g. Missed homework" />
+      <Field label="Message" value={body} onChangeText={setBody} placeholder="What should they know?" multiline />
+      <AnimatedPressable haptic="medium" onPress={handleSend} disabled={!canSend} style={[styles.sendBtn, !canSend ? styles.disabled : null]}>
+        <Text style={styles.sendText}>{route === 'Parent' ? 'Message Parent' : 'Report to Admin'}</Text>
+      </AnimatedPressable>
+    </GlassModal>
+  );
+}
+
+function Field({
+  label,
+  value,
+  onChangeText,
+  placeholder,
+  multiline,
+}: {
+  label: string;
+  value: string;
+  onChangeText: (value: string) => void;
+  placeholder: string;
+  multiline?: boolean;
+}) {
+  return (
+    <View style={styles.field}>
+      <Text style={styles.label}>{label}</Text>
+      <TextInput
+        value={value}
+        onChangeText={onChangeText}
+        placeholder={placeholder}
+        placeholderTextColor={colors.textMuted}
+        multiline={multiline}
+        style={[styles.input, multiline ? styles.multiline : null]}
+      />
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
-  label: { fontSize: 13, fontWeight: '700', color: colors.textMuted, textTransform: 'uppercase', marginTop: spacing.xs },
-  optionList: { gap: spacing.sm },
-  option: { minHeight: 44, borderRadius: radius.md, borderWidth: 1.5, borderColor: glass.border, justifyContent: 'center', paddingHorizontal: spacing.md },
-  optionActive: { backgroundColor: statusColors.infoBg, borderColor: statusColors.info },
-  optionText: { fontSize: 14, fontWeight: '600', color: colors.textSecondary },
-  optionTextActive: { color: statusColors.info, fontWeight: '700' },
-  optionRow: { flexDirection: 'row', gap: spacing.sm },
-  pill: { flex: 1, minHeight: 42, borderRadius: radius.md, borderWidth: 1.5, borderColor: glass.border, alignItems: 'center', justifyContent: 'center' },
-  pillActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  pillText: { fontSize: 13, fontWeight: '700', color: colors.textSecondary },
-  pillTextActive: { color: '#fff' },
-  studentRow: { gap: spacing.sm, paddingVertical: 2 },
-  studentChip: { borderRadius: 16, borderWidth: 1.5, borderColor: glass.border, paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
-  studentChipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  studentChipText: { fontSize: 12, fontWeight: '700', color: colors.textSecondary },
-  studentChipTextActive: { color: '#fff' },
+  hint: { fontSize: 13, color: colors.textMuted, lineHeight: 18 },
+  field: { gap: 6 },
+  label: { fontSize: 13, fontWeight: '800', color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.4 },
   input: {
-    minHeight: 100,
+    minHeight: 44,
     borderWidth: 1,
     borderColor: glass.border,
     borderRadius: radius.md,
     backgroundColor: 'rgba(255,255,255,0.6)',
-    padding: spacing.md,
+    paddingHorizontal: spacing.md,
     fontSize: 15,
     color: colors.textPrimary,
-    textAlignVertical: 'top',
   },
+  multiline: { minHeight: 96, paddingTop: spacing.md, textAlignVertical: 'top' },
+  chipWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  chip: { borderRadius: 16, borderWidth: 1.5, borderColor: glass.border, paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
+  chipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  chipText: { fontSize: 12, fontWeight: '700', color: colors.textSecondary },
+  chipTextActive: { color: '#fff' },
+  routeRow: { gap: spacing.sm },
+  routeBtn: { minHeight: 44, borderRadius: radius.md, borderWidth: 1.5, borderColor: glass.border, alignItems: 'center', justifyContent: 'center' },
+  routeBtnActive: { backgroundColor: statusColors.info, borderColor: statusColors.info },
+  routeText: { fontSize: 13, fontWeight: '700', color: colors.textSecondary },
+  routeTextActive: { color: '#fff' },
   sendBtn: { minHeight: 46, borderRadius: radius.md, backgroundColor: statusColors.info, alignItems: 'center', justifyContent: 'center' },
-  sendBtnDisabled: { opacity: 0.5 },
+  disabled: { opacity: 0.5 },
   sendText: { color: '#fff', fontSize: 15, fontWeight: '700' },
 });

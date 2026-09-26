@@ -1,8 +1,13 @@
 import { Tabs } from 'expo-router';
+import { BookOpen, LayoutDashboard, MessageSquare, Settings, Users } from 'lucide-react-native';
 import { colors } from '@/design/teacher-theme';
 import { TabBarIcon } from '@/components/shared/TabBarIcon';
+import { useSelectedClass } from '@/store/teacher.store';
 
 export default function TeacherLayout() {
+  const selected = useSelectedClass();
+  const isHomeroom = selected?.isClassTeacher ?? false;
+
   return (
     <Tabs
       screenOptions={{
@@ -13,23 +18,39 @@ export default function TeacherLayout() {
     >
       <Tabs.Screen
         name="index"
-        options={{ title: 'Dashboard', tabBarIcon: ({ focused }) => <TabBarIcon glyph="🏠" focused={focused} /> }}
+        options={{
+          title: 'Dashboard',
+          tabBarIcon: ({ color, focused }) => <TabBarIcon icon={LayoutDashboard} color={color} focused={focused} />,
+        }}
       />
       <Tabs.Screen
         name="roster"
-        options={{ title: 'Class Roster', tabBarIcon: ({ focused }) => <TabBarIcon glyph="👥" focused={focused} /> }}
+        options={{
+          title: 'Roster',
+          href: isHomeroom ? undefined : null,
+          tabBarIcon: ({ color, focused }) => <TabBarIcon icon={Users} color={color} focused={focused} />,
+        }}
       />
       <Tabs.Screen
         name="academics"
-        options={{ title: 'Academics', tabBarIcon: ({ focused }) => <TabBarIcon glyph="📚" focused={focused} /> }}
+        options={{
+          title: 'Academics',
+          tabBarIcon: ({ color, focused }) => <TabBarIcon icon={BookOpen} color={color} focused={focused} />,
+        }}
       />
       <Tabs.Screen
         name="comms"
-        options={{ title: 'Comms Hub', tabBarIcon: ({ focused }) => <TabBarIcon glyph="💬" focused={focused} /> }}
+        options={{
+          title: 'Comms',
+          tabBarIcon: ({ color, focused }) => <TabBarIcon icon={MessageSquare} color={color} focused={focused} />,
+        }}
       />
       <Tabs.Screen
         name="settings"
-        options={{ title: 'Settings', tabBarIcon: ({ focused }) => <TabBarIcon glyph="⚙️" focused={focused} /> }}
+        options={{
+          title: 'Settings',
+          tabBarIcon: ({ color, focused }) => <TabBarIcon icon={Settings} color={color} focused={focused} />,
+        }}
       />
     </Tabs>
   );

@@ -1,22 +1,39 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
+import { Megaphone, Send } from 'lucide-react-native';
 import { colors, spacing } from '@/design/teacher-theme';
 import { GlassCard } from '@/components/glass/GlassCard';
-import { CommsType } from '@/store/teacher.store';
+import { AnimatedPressable } from '@/components/glass/AnimatedPressable';
+import { CommsChannel } from '@/store/teacher.store';
 
-export function CommsSegment({ value, onChange }: { value: CommsType; onChange: (value: CommsType) => void }) {
-  const options: CommsType[] = ['Broadcast', 'Complaint'];
+const OPTIONS: Array<{ key: CommsChannel; label: string; icon: typeof Megaphone }> = [
+  { key: 'Announcement', label: 'Class Announcements', icon: Megaphone },
+  { key: 'DirectReport', label: 'Direct Reports', icon: Send },
+];
+
+export function CommsSegment({
+  value,
+  onChange,
+  allowAnnouncements,
+}: {
+  value: CommsChannel;
+  onChange: (value: CommsChannel) => void;
+  allowAnnouncements: boolean;
+}) {
+  const options = allowAnnouncements ? OPTIONS : OPTIONS.filter((option) => option.key === 'DirectReport');
   return (
     <GlassCard padded={false}>
       <View style={styles.track}>
         {options.map((option) => {
-          const active = option === value;
+          const active = option.key === value;
+          const Icon = option.icon;
           return (
-            <Pressable key={option} style={styles.segment} onPress={() => onChange(option)}>
-              <Text style={[styles.label, active ? styles.labelActive : null]}>
-                {option === 'Broadcast' ? 'Broadcasts' : 'Complaints / Direct'}
-              </Text>
+            <AnimatedPressable key={option.key} haptic="selection" style={styles.segment} onPress={() => onChange(option.key)}>
+              <View style={styles.labelRow}>
+                <Icon color={active ? colors.primary : colors.textMuted} size={14} strokeWidth={2.4} />
+                <Text style={[styles.label, active ? styles.labelActive : null]}>{option.label}</Text>
+              </View>
               {active ? <View style={styles.indicator} /> : null}
-            </Pressable>
+            </AnimatedPressable>
           );
         })}
       </View>
@@ -27,7 +44,8 @@ export function CommsSegment({ value, onChange }: { value: CommsType; onChange: 
 const styles = StyleSheet.create({
   track: { flexDirection: 'row' },
   segment: { flex: 1, alignItems: 'center', paddingVertical: spacing.md },
-  label: { fontSize: 14, fontWeight: '600', color: colors.textMuted },
+  labelRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  label: { fontSize: 13, fontWeight: '600', color: colors.textMuted },
   labelActive: { color: colors.primary },
-  indicator: { position: 'absolute', bottom: 0, height: 3, width: '60%', borderRadius: 2, backgroundColor: colors.primary },
+  indicator: { position: 'absolute', bottom: 0, height: 3, width: '70%', borderRadius: 2, backgroundColor: colors.primary },
 });

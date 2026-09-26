@@ -1,5 +1,5 @@
 import { ReactNode } from 'react';
-import { Platform, StyleSheet, View, ViewStyle } from 'react-native';
+import { Platform, StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { glass } from '@/design/glass-theme';
 import { radius, spacing } from '@/design/theme';
@@ -16,7 +16,7 @@ export function GlassCard({
   intensity = 40,
 }: {
   children: ReactNode;
-  style?: ViewStyle | ViewStyle[];
+  style?: StyleProp<ViewStyle>;
   padded?: boolean;
   intensity?: number;
 }) {
