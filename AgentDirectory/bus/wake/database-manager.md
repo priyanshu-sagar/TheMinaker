@@ -1,12 +1,12 @@
 ---
 role: database-manager
 status: pending
-updated: 2026-09-25T10:42:22.999Z
+updated: 2026-09-26T08:25:48.498Z
 source: supervisor
 ---
 
 paths:
-- database/schema.sql
+- database/pg_hba.conf
 - database/seeds/001-demo-schools.sql
 
 Follow agents/database-manager.md and AgentDirectory/database-manager/standards.md.

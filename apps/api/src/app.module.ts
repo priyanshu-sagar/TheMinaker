@@ -17,10 +17,19 @@ import { UsersModule } from './modules/users/users.module';
 
 @Module({
   imports: [
-    // Config — loads .env
-    ConfigModule.forRoot({ isGlobal: true, cache: true }),
+    // Config — loads .env from apps/api/ regardless of where nest is invoked from
+    ConfigModule.forRoot({
+      isGlobal: true,
+      cache: true,
+      envFilePath: [
+        `${__dirname}/../../.env`,      // apps/api/dist/../../.env → apps/api/.env (prod)
+        `${process.cwd()}/apps/api/.env`, // monorepo root invocation
+        `${process.cwd()}/.env`,          // apps/api/ direct invocation
+        '.env',                           // fallback
+      ],
+    }),
 
-    // Database — TypeORM with PostgreSQL (via PgBouncer in prod)
+    // Database — TypeORM with PostgreSQL
     TypeOrmModule.forRootAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({

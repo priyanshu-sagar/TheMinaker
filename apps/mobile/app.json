@@ -18,7 +18,11 @@
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "TheMinaker uses your location to track the bus route in real-time.",
         "NSLocationAlwaysAndWhenInUseUsageDescription": "TheMinaker uses your location in the background to continuously track the bus route.",
-        "UIBackgroundModes": ["location", "fetch", "remote-notification"]
+        "UIBackgroundModes": [
+          "location",
+          "fetch",
+          "remote-notification"
+        ]
       }
     },
     "android": {
@@ -34,8 +38,7 @@
         "RECEIVE_BOOT_COMPLETED",
         "VIBRATE",
         "POST_NOTIFICATIONS"
-      ],
-      "googleServicesFile": "./google-services.json"
+      ]
     },
     "web": {
       "bundler": "metro"
@@ -56,7 +59,8 @@
           "color": "#1a73e8",
           "sounds": []
         }
-      ]
+      ],
+      "expo-splash-screen"
     ],
     "experiments": {
       "typedRoutes": true

@@ -1,18 +1,11 @@
 ---
 role: cloud-engineer
 status: pending
-updated: 2026-09-25T10:42:23.034Z
+updated: 2026-09-26T08:25:48.619Z
 source: supervisor
 ---
 
 paths:
-- docker-compose.override.yml
-- infra/docker/mosquitto/mosquitto.conf
-- infra/docker/mosquitto/mosquitto.dev.conf
-- infra/terraform/oracle/outputs.tf
-- infra/terraform/oracle/main.tf
-- .github/workflows/ci.yml
-- infra/terraform/oracle/variables.tf
 - docker-compose.yml
 
 Follow agents/cloud-engineer.md and AgentDirectory/cloud-engineer/standards.md.

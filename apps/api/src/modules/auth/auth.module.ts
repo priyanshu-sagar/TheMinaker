@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Global, Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -7,6 +7,7 @@ import { OtpEntity } from './otp.entity';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 
+@Global()
 @Module({
   imports: [
     TypeOrmModule.forFeature([UserEntity, OtpEntity]),

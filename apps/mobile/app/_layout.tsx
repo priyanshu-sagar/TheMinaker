@@ -12,7 +12,11 @@ SplashScreen.preventAutoHideAsync();
  * This is the single entry point for all 4 user roles.
  */
 export default function RootLayout() {
-  const { isLoaded, isSignedIn, role } = useAuthStore();
+  const { isLoaded, isSignedIn, role, loadFromStorage } = useAuthStore();
+
+  useEffect(() => {
+    loadFromStorage();
+  }, [loadFromStorage]);
 
   useEffect(() => {
     if (isLoaded) {
