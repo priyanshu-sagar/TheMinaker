@@ -1,12 +1,12 @@
 ---
 role: orchestrator
-status: pending
-updated: 2026-09-26T08:25:48.625Z
+status: done
+updated: 2026-09-26T10:42:46.191Z
 source: supervisor
 ---
 
 paths:
-- AgentDirectory/bus/messages/2026-09-26-quality-rater-to-orchestrator-drain.md
+- AgentDirectory/bus/messages/2026-09-26-quality-rater-to-orchestrator-teacher-portal.md
 
 Follow agents/orchestrator.md and AgentDirectory/orchestrator/standards.md.
 Save web research in AgentDirectory/orchestrator/research/ and the chosen approach in AgentDirectory/orchestrator/preview/.

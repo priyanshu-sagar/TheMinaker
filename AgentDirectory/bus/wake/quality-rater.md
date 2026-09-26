@@ -1,12 +1,12 @@
 ---
 role: quality-rater
-status: pending
-updated: 2026-09-26T08:25:48.643Z
+status: done
+updated: 2026-09-26T10:41:58.078Z
 source: supervisor
 ---
 
 paths:
-- AgentDirectory/bus/messages/2026-09-25-backend-to-quality-rater-attendance.md
+- AgentDirectory/bus/messages/2026-09-26-frontend-to-quality-rater-teacher-portal.md
 
 Follow agents/quality-rater.md and AgentDirectory/quality-rater/standards.md.
 Save web research in AgentDirectory/quality-rater/research/ and the chosen approach in AgentDirectory/quality-rater/preview/.

@@ -30,6 +30,8 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(auth)" />
+        <Stack.Screen name="(gateman)" />
+        <Stack.Screen name="(teacher)" />
         <Stack.Screen name="(parent)" />
         <Stack.Screen name="(gatekeeper)" />
         <Stack.Screen name="(conductor)" />
