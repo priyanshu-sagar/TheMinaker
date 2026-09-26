@@ -1,0 +1,121 @@
+version: '3.8'
+
+services:
+  # ─── Caddy Reverse Proxy (Auto SSL) ───
+  caddy:
+    image: caddy:2-alpine
+    container_name: minaker_caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - web
+      - api
+    networks:
+      - minaker_network
+
+  # ─── NestJS Backend API ───
+  api:
+    build: 
+      context: .
+      dockerfile: apps/api/Dockerfile
+    container_name: minaker_api
+    restart: always
+    env_file: .env.prod
+    networks:
+      - minaker_network
+    depends_on:
+      pgbouncer:
+        condition: service_started
+      redis:
+        condition: service_healthy
+
+  # ─── Next.js Frontend Dashboard ───
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    container_name: minaker_web
+    restart: always
+    env_file: .env.prod
+    networks:
+      - minaker_network
+
+  # ─── PostgreSQL 16 + TimescaleDB ───
+  postgres:
+    image: timescale/timescaledb:latest-pg16
+    container_name: minaker_postgres
+    restart: unless-stopped
+    command: ["postgres", "-c", "hba_file=/etc/postgresql/pg_hba.conf"]
+    env_file: .env.prod
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - ./database/pg_hba.conf:/etc/postgresql/pg_hba.conf:ro
+    networks:
+      - minaker_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U minaker -d minaker_prod"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  # ─── PgBouncer (Transaction Pooling) ───
+  pgbouncer:
+    image: pgbouncer/pgbouncer:latest
+    container_name: minaker_pgbouncer
+    restart: unless-stopped
+    env_file: .env.prod
+    networks:
+      - minaker_network
+    depends_on:
+      - postgres
+
+  # ─── Redis (Cache/Queue) ───
+  redis:
+    image: redis:7-alpine
+    container_name: minaker_redis
+    restart: unless-stopped
+    command: >
+      redis-server
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+      --appendonly yes
+    networks:
+      - minaker_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─── Mosquitto MQTT Broker ───
+  mosquitto:
+    image: eclipse-mosquitto:2
+    container_name: minaker_mosquitto
+    restart: unless-stopped
+    ports:
+      - "1883:1883"   # TCP for devices
+    volumes:
+      - ./infra/docker/mosquitto/mosquitto.dev.conf:/mosquitto/config/mosquitto.conf:ro
+      - mosquitto_data:/mosquitto/data
+      - mosquitto_log:/mosquitto/log
+    networks:
+      - minaker_network
+
+volumes:
+  caddy_data:
+  caddy_config:
+  postgres_data:
+  redis_data:
+  mosquitto_data:
+  mosquitto_log:
+
+networks:
+  minaker_network:
+    driver: bridge

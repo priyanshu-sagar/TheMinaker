@@ -1,0 +1,19 @@
+# Global settings
+{
+    email admin@theminaker.in
+}
+
+# Web Dashboard (Next.js)
+app.theminaker.in {
+    reverse_proxy web:3001
+}
+
+# Backend API (NestJS)
+api.theminaker.in {
+    reverse_proxy api:3000
+}
+
+# MQTT WebSockets (EMQX/Mosquitto)
+mqtt.theminaker.in {
+    reverse_proxy mosquitto:9001
+}
