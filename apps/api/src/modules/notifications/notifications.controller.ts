@@ -20,6 +20,12 @@ export class NotificationsController {
     return this.notificationsService.getMyNotifications(user.id, tenantId);
   }
 
+  @Patch('read-all')
+  @ApiOperation({ summary: 'Mark all notifications as read' })
+  markAllAsRead(@CurrentUser() user: AuthUser, @TenantId() tenantId: string) {
+    return this.notificationsService.markAllAsRead(user.id, tenantId);
+  }
+
   @Patch(':id/read')
   @ApiOperation({ summary: 'Mark a single notification as read' })
   markAsRead(
@@ -28,11 +34,5 @@ export class NotificationsController {
     @TenantId() tenantId: string,
   ) {
     return this.notificationsService.markAsRead(id, user.id, tenantId);
-  }
-
-  @Patch('read-all')
-  @ApiOperation({ summary: 'Mark all notifications as read' })
-  markAllAsRead(@CurrentUser() user: AuthUser, @TenantId() tenantId: string) {
-    return this.notificationsService.markAllAsRead(user.id, tenantId);
   }
 }

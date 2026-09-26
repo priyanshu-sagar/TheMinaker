@@ -54,9 +54,9 @@ export default function ConductorManifestScreen() {
   );
 
   return (
-    <View style={styles.container}>
+    <View style={styles.container as any}>
       <TextInput
-        style={styles.search}
+        style={styles.search as any}
         placeholder="🔍  Search student…"
         value={searchQuery}
         onChangeText={setSearchQuery}
@@ -77,9 +77,9 @@ export default function ConductorManifestScreen() {
           )}
           refreshControl={<RefreshControl refreshing={loading} onRefresh={refetch} />}
           ListEmptyComponent={
-            <Text style={styles.empty}>No students found for this route</Text>
+            <Text style={styles.empty as any}>No students found for this route</Text>
           }
-          contentContainerStyle={{ paddingBottom: 80 }}
+          contentContainerStyle={{ paddingBottom: 80 } as any}
         />
       )}
     </View>

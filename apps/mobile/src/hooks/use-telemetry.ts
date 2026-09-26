@@ -1,10 +1,10 @@
 import { useEffect, useRef } from 'react';
 import * as Location from 'expo-location';
-import Paho from 'paho-mqtt';
+import * as Paho from 'paho-mqtt';
 import { useAuthStore } from '../store/auth.store';
 
 export function useTelemetry(busId?: string, isActive: boolean = false) {
-  const { user, token } = useAuthStore();
+  const { accessToken, user } = useAuthStore();
   const mqttClient = useRef<Paho.Client | null>(null);
   const locationSub = useRef<Location.LocationSubscription | null>(null);
 
@@ -14,33 +14,31 @@ export function useTelemetry(busId?: string, isActive: boolean = false) {
       return;
     }
 
-    startTelemetry(user.tenantId, busId, user.id);
+    void startTelemetry(user.tenantId, busId, user.id);
 
     return () => {
       stopTelemetry();
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isActive, busId, user?.tenantId, user?.id]);
 
   const startTelemetry = async (tenantId: string, busId: string, conductorId: string) => {
-    // 1. Request Permissions
+    // 1. Request location permission
     const { status } = await Location.requestForegroundPermissionsAsync();
     if (status !== 'granted') {
       console.warn('Location permission denied');
       return;
     }
 
-    // 2. Connect to MQTT via WebSockets (Mosquitto port 9001)
-    // Adjust host for production vs emulator (10.0.2.2 for Android emulator)
-    const host = '10.0.2.2'; 
-    const clientId = `conductor_${conductorId}_${Math.random().toString(16).slice(2, 8)}`;
-    
-    mqttClient.current = new Paho.Client(host, 9001, '/mqtt', clientId);
+    // 2. Connect to Mosquitto over WebSockets (port 9001)
+    // 10.0.2.2 = localhost for Android emulator; use server IP for physical devices
+    const clientId = `conductor_${conductorId.slice(0, 8)}_${Math.random().toString(16).slice(2, 6)}`;
+    mqttClient.current = new Paho.Client('10.0.2.2', 9001, '/mqtt', clientId);
 
     mqttClient.current.connect({
       onSuccess: async () => {
-        console.log('Connected to MQTT Broker (WebSockets)');
+        console.log('MQTT connected — starting GPS watch');
 
-        // 3. Start GPS tracking
         locationSub.current = await Location.watchPositionAsync(
           {
             accuracy: Location.Accuracy.High,
@@ -50,38 +48,35 @@ export function useTelemetry(busId?: string, isActive: boolean = false) {
           (loc) => {
             if (!mqttClient.current?.isConnected()) return;
 
-            const payload = {
+            const payload = JSON.stringify({
               conductorId,
               lat: loc.coords.latitude,
               lng: loc.coords.longitude,
-              speedKmh: (loc.coords.speed || 0) * 3.6,
+              speedKmh: (loc.coords.speed ?? 0) * 3.6,
               heading: loc.coords.heading,
               accuracyM: loc.coords.accuracy,
               timestamp: new Date(loc.timestamp).toISOString(),
-            };
+            });
 
-            const message = new Paho.Message(JSON.stringify(payload));
+            const message = new Paho.Message(payload);
             message.destinationName = `minaker/${tenantId}/bus/${busId}/location`;
             message.qos = 0;
-            
-            mqttClient.current.send(message);
+            mqttClient.current?.send(message);
           }
         );
       },
-      onFailure: (err) => {
-        console.error('MQTT Connection failed:', err);
+      onFailure: (err: { errorMessage: string }) => {
+        console.error('MQTT connection failed:', err.errorMessage);
       },
     });
   };
 
   const stopTelemetry = () => {
-    if (locationSub.current) {
-      locationSub.current.remove();
-      locationSub.current = null;
-    }
-    if (mqttClient.current && mqttClient.current.isConnected()) {
+    locationSub.current?.remove();
+    locationSub.current = null;
+
+    if (mqttClient.current?.isConnected()) {
       mqttClient.current.disconnect();
-      console.log('MQTT Disconnected');
     }
     mqttClient.current = null;
   };

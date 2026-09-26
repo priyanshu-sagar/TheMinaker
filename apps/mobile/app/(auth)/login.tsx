@@ -129,17 +129,17 @@ export default function LoginScreen() {
       // Navigate to the correct portal
       switch (user.role) {
         case UserRole.PARENT:
-          router.replace('/(parent)/');
+          router.replace('/(parent)');
           break;
         case UserRole.GATEKEEPER:
-          router.replace('/(gatekeeper)/');
+          router.replace('/(gatekeeper)');
           break;
         case UserRole.CONDUCTOR:
-          router.replace('/(conductor)/');
+          router.replace('/(conductor)');
           break;
         case UserRole.SCHOOL_ADMIN:
         case UserRole.TEACHER:
-          router.replace('/(school-admin)/');
+          router.replace('/(school-admin)');
           break;
       }
     } catch (err: unknown) {
@@ -152,20 +152,20 @@ export default function LoginScreen() {
   // ─── Step 1: Role selector ──────────────────────────────────────────────────
   if (!selectedPortal) {
     return (
-      <View style={styles.container}>
-        <View style={styles.header}>
-          <Text style={styles.appName}>🚌 TheMinaker</Text>
-          <Text style={styles.subtitle}>Select your portal to continue</Text>
+      <View style={styles.container as any}>
+        <View style={styles.header as any}>
+          <Text style={styles.appName as any}>🚌 TheMinaker</Text>
+          <Text style={styles.subtitle as any}>Select your portal to continue</Text>
         </View>
-        <View style={styles.portalGrid}>
+        <View style={styles.portalGrid as any}>
           {PORTALS.map((portal) => (
             <Pressable
               key={portal.role}
-              style={styles.portalCard}
+              style={styles.portalCard as any}
               onPress={() => setSelectedPortal(portal)}
             >
-              <Text style={styles.portalEmoji}>{portal.emoji}</Text>
-              <Text style={styles.portalLabel}>{portal.label}</Text>
+              <Text style={styles.portalEmoji as any}>{portal.emoji}</Text>
+              <Text style={styles.portalLabel as any}>{portal.label}</Text>
             </Pressable>
           ))}
         </View>
@@ -179,19 +179,19 @@ export default function LoginScreen() {
       style={{ flex: 1 }}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <ScrollView contentContainerStyle={styles.formContainer}>
+      <ScrollView contentContainerStyle={styles.formContainer as any}>
         <Pressable onPress={() => { setSelectedPortal(null); setOtpSent(false); }}>
-          <Text style={styles.back}>← Back</Text>
+          <Text style={styles.back as any}>← Back</Text>
         </Pressable>
 
-        <Text style={styles.portalTitle}>
+        <Text style={styles.portalTitle as any}>
           {selectedPortal.emoji} {selectedPortal.label} Login
         </Text>
 
         {/* School Slug */}
-        <Text style={styles.label}>School Code</Text>
+        <Text style={styles.label as any}>School Code</Text>
         <TextInput
-          style={styles.input}
+          style={styles.input as any}
           placeholder="e.g. dps-noida"
           value={tenantSlug}
           onChangeText={setTenantSlug}
@@ -200,9 +200,9 @@ export default function LoginScreen() {
         />
 
         {/* Identifier */}
-        <Text style={styles.label}>{selectedPortal.identifierLabel}</Text>
+        <Text style={styles.label as any}>{selectedPortal.identifierLabel}</Text>
         <TextInput
-          style={styles.input}
+          style={styles.input as any}
           placeholder={selectedPortal.identifierPlaceholder}
           value={identifier}
           onChangeText={setIdentifier}
@@ -217,11 +217,11 @@ export default function LoginScreen() {
         {/* OTP send button (only for OTP-based roles) */}
         {selectedPortal.isOtp && !otpSent && (
           <Pressable
-            style={[styles.button, styles.secondaryButton]}
+            style={[styles.button, styles.secondaryButton] as any}
             onPress={handleSendOtp}
             disabled={loading}
           >
-            <Text style={styles.secondaryButtonText}>
+            <Text style={styles.secondaryButtonText as any}>
               {loading ? 'Sending…' : 'Send OTP'}
             </Text>
           </Pressable>
@@ -230,9 +230,9 @@ export default function LoginScreen() {
         {/* Credential (OTP or PIN) */}
         {(!selectedPortal.isOtp || otpSent) && (
           <>
-            <Text style={styles.label}>{selectedPortal.credentialLabel}</Text>
+            <Text style={styles.label as any}>{selectedPortal.credentialLabel}</Text>
             <TextInput
-              style={styles.input}
+              style={styles.input as any}
               placeholder={selectedPortal.credentialPlaceholder}
               value={credential}
               onChangeText={setCredential}
@@ -242,13 +242,13 @@ export default function LoginScreen() {
             />
 
             <Pressable
-              style={[styles.button, loading && styles.buttonDisabled]}
+              style={[styles.button, loading && styles.buttonDisabled] as any}
               onPress={handleLogin}
               disabled={loading}
             >
               {loading
                 ? <ActivityIndicator color="#fff" />
-                : <Text style={styles.buttonText}>Login</Text>
+                : <Text style={styles.buttonText as any}>Login</Text>
               }
             </Pressable>
           </>

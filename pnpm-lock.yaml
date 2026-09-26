@@ -235,6 +235,9 @@ importers:
       '@babel/core':
         specifier: ^7.25.2
         version: 7.29.7(supports-color@8.1.1)
+      '@types/paho-mqtt':
+        specifier: ^1.0.10
+        version: 1.0.10
       '@types/react':
         specifier: ~18.3.12
         version: 18.3.31
@@ -2015,6 +2018,9 @@ packages:
 
   '@types/node@22.20.4':
     resolution: {integrity: sha512-zJRE40jpHtKqE/C4fgHrAKQLJuSpzEnP9ff9Y7YtoR3Wd2pwqzlekDeEuUQXjRd+QCYnVnNwuJYmhdk9XV8gvA==}
+
+  '@types/paho-mqtt@1.0.10':
+    resolution: {integrity: sha512-xOEii1m7jw7mIKjufDkolpz7VlyqptUmm/YFPtLJCybrPCuLhN+WYgNpulQ/CXo7wtEW7x4uGon2v89+6g/pcA==}
 
   '@types/pg@8.23.1':
     resolution: {integrity: sha512-fKVHpikPdg4GKks3JuLEhvwSyvwzF23hnabPy6DD8ljVbC7+6J5dQzdv4arV6jqq57djnMgs1HKBxX4P8aBI3A==}
@@ -8453,6 +8459,8 @@ snapshots:
   '@types/node@22.20.4':
     dependencies:
       undici-types: 6.21.0
+
+  '@types/paho-mqtt@1.0.10': {}
 
   '@types/pg@8.23.1':
     dependencies:

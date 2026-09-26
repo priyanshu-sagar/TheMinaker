@@ -2,6 +2,7 @@ import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/commo
 import { ConfigService } from '@nestjs/config';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
+import { withTenant } from '../../common/tenant-context';
 import { Redis } from 'ioredis';
 import * as mqtt from 'mqtt';
 
@@ -76,23 +77,25 @@ export class TelemetryService implements OnModuleInit, OnModuleDestroy {
     const time = payload.timestamp ? new Date(payload.timestamp) : new Date();
 
     // 1. Insert into TimescaleDB via raw SQL for high throughput (avoids TypeORM overhead)
-    await this.dataSource.query(
-      `INSERT INTO gps_telemetry 
-        (time, tenant_id, bus_id, conductor_id, trip_id, lat, lng, speed_kmh, heading, accuracy_m, battery_pct)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
-      [
-        time,
-        tenantId,
-        busId,
-        payload.conductorId,
-        payload.tripId ?? null,
-        payload.lat,
-        payload.lng,
-        payload.speedKmh ?? null,
-        payload.heading ?? null,
-        payload.accuracyM ?? null,
-        payload.batteryPct ?? null,
-      ]
+    await withTenant(this.dataSource, tenantId, (manager) =>
+      manager.query(
+        `INSERT INTO gps_telemetry
+          (time, tenant_id, bus_id, conductor_id, trip_id, lat, lng, speed_kmh, heading, accuracy_m, battery_pct)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+        [
+          time,
+          tenantId,
+          busId,
+          payload.conductorId,
+          payload.tripId ?? null,
+          payload.lat,
+          payload.lng,
+          payload.speedKmh ?? null,
+          payload.heading ?? null,
+          payload.accuracyM ?? null,
+          payload.batteryPct ?? null,
+        ],
+      ),
     );
 
     // 2. Cache latest position in Redis for instant retrieval by web/mobile apps (TTL 60s)

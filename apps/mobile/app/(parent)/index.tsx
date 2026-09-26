@@ -10,9 +10,9 @@ export default function ParentTrackingScreen() {
   const { buses } = useLiveTracking();
 
   return (
-    <View style={styles.container}>
+    <View style={styles.container as any}>
       <MapView
-        style={styles.map}
+        style={styles.map as any}
         initialRegion={{
           latitude: 19.0760, // Mumbai default
           longitude: 72.8777,
@@ -27,17 +27,17 @@ export default function ParentTrackingScreen() {
             title="School Bus"
             description="Live Location"
           >
-            <Text style={{ fontSize: 30 }}>🚌</Text>
+            <Text style={styles.busEmoji as any}>🚌</Text>
           </Marker>
         ))}
       </MapView>
 
-      <View style={styles.infoCard}>
-        <Text style={styles.infoTitle}>Bus Status</Text>
-        <Text style={styles.infoValue}>
+      <View style={styles.infoCard as any}>
+        <Text style={styles.infoTitle as any}>Bus Status</Text>
+        <Text style={styles.infoValue as any}>
           {Object.keys(buses).length > 0 ? '🟢 On Route' : '⏳ No active trip'}
         </Text>
-        <Text style={styles.infoSub}>Live tracking updates automatically</Text>
+        <Text style={styles.infoSub as any}>Live tracking updates automatically</Text>
       </View>
     </View>
   );
@@ -48,6 +48,7 @@ const styles = StyleSheet.create({
   map: {
     flex: 1,
   },
+  busEmoji: { fontSize: 30 },
   infoCard: {
     backgroundColor: '#fff',
     margin: 16,

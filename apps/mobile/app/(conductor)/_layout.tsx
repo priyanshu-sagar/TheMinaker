@@ -1,4 +1,10 @@
 import { Tabs } from 'expo-router';
+import { Text } from 'react-native';
+
+function TabIcon({ emoji }: { emoji: string }) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return <Text style={{ fontSize: 20 } as any}>{emoji}</Text>;
+}
 
 export default function ConductorLayout() {
   return (
@@ -6,24 +12,19 @@ export default function ConductorLayout() {
       screenOptions={{
         tabBarActiveTintColor: '#1a73e8',
         tabBarInactiveTintColor: '#9ca3af',
-        headerStyle: { backgroundColor: '#1a73e8' },
+        headerStyle: { backgroundColor: '#1a73e8' } as object,
         headerTintColor: '#fff',
-        headerTitleStyle: { fontWeight: '700' },
+        headerTitleStyle: { fontWeight: 'bold' } as object,
       }}
     >
       <Tabs.Screen
         name="index"
-        options={{ title: 'My Trip', tabBarLabel: 'Trip', tabBarIcon: () => tabIcon('🚌') }}
+        options={{ title: 'My Trip', tabBarLabel: 'Trip', tabBarIcon: () => <TabIcon emoji="🚌" /> }}
       />
       <Tabs.Screen
         name="manifest"
-        options={{ title: 'Student Manifest', tabBarLabel: 'Manifest', tabBarIcon: () => tabIcon('👥') }}
+        options={{ title: 'Student Manifest', tabBarLabel: 'Manifest', tabBarIcon: () => <TabIcon emoji="👥" /> }}
       />
     </Tabs>
   );
-}
-
-const { Text } = require('react-native');
-function tabIcon(emoji: string) {
-  return <Text style={{ fontSize: 20 }}>{emoji}</Text>;
 }

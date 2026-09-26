@@ -8,13 +8,13 @@ export default function HomePage() {
         </p>
         <div className="mt-8 flex gap-4 justify-center">
           <a
-            href="/login"
+            href="/login?role=school_admin"
             className="rounded-lg bg-blue-600 px-6 py-3 text-white font-semibold hover:bg-blue-700 transition-colors"
           >
             School Admin Login
           </a>
           <a
-            href="/super-admin/login"
+            href="/login?role=super_admin"
             className="rounded-lg border border-gray-300 px-6 py-3 text-gray-700 font-semibold hover:bg-gray-100 transition-colors"
           >
             Super Admin

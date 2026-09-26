@@ -22,31 +22,31 @@ export default function ConductorTripScreen() {
   useTelemetry(demoBusId, isActive);
 
   return (
-    <View style={styles.container}>
-      <View style={styles.card}>
-        <Text style={styles.greeting}>Good morning, {user?.fullName?.split(' ')[0]} 👋</Text>
-        <Text style={styles.busInfo}>Bus: — · Route: —</Text>
+    <View style={styles.container as any}>
+      <View style={styles.card as any}>
+        <Text style={styles.greeting as any}>Good morning, {user?.fullName?.split(' ')[0]} 👋</Text>
+        <Text style={styles.busInfo as any}>Bus: — · Route: —</Text>
       </View>
 
-      <View style={styles.tripCard}>
-        <Text style={styles.tripStatus}>{isActive ? "🟢 Trip Active" : "⏳ No active trip"}</Text>
-        <Text style={styles.tripHint}>{isActive ? "GPS is broadcasting in the background" : "Press Start Trip when you begin your route"}</Text>
+      <View style={styles.tripCard as any}>
+        <Text style={styles.tripStatus as any}>{isActive ? "🟢 Trip Active" : "⏳ No active trip"}</Text>
+        <Text style={styles.tripHint as any}>{isActive ? "GPS is broadcasting in the background" : "Press Start Trip when you begin your route"}</Text>
 
         <Pressable 
-          style={[styles.startBtn, isActive && { backgroundColor: '#ef4444' }]} 
+          style={[styles.startBtn, isActive && { backgroundColor: '#ef4444' }] as any} 
           onPress={() => setIsActive(!isActive)}
         >
-          <Text style={styles.startBtnText}>{isActive ? "🛑 End Trip" : "🚌 Start Trip"}</Text>
+          <Text style={styles.startBtnText as any}>{isActive ? "🛑 End Trip" : "🚌 Start Trip"}</Text>
         </Pressable>
       </View>
 
-      <View style={styles.statsRow}>
+      <View style={styles.statsRow as any}>
         <StatCard label="Students" value="0" emoji="👥" />
         <StatCard label="GPS" value="—" emoji="📍" />
         <StatCard label="Battery" value="—%" emoji="🔋" />
       </View>
 
-      <Text style={styles.hint}>
+      <Text style={styles.hint as any}>
         📡 GPS tracking will publish your location automatically once the trip starts.
       </Text>
     </View>
@@ -55,10 +55,10 @@ export default function ConductorTripScreen() {
 
 function StatCard({ label, value, emoji }: { label: string; value: string; emoji: string }) {
   return (
-    <View style={styles.statCard}>
-      <Text style={styles.statEmoji}>{emoji}</Text>
-      <Text style={styles.statValue}>{value}</Text>
-      <Text style={styles.statLabel}>{label}</Text>
+    <View style={styles.statCard as any}>
+      <Text style={styles.statEmoji as any}>{emoji}</Text>
+      <Text style={styles.statValue as any}>{value}</Text>
+      <Text style={styles.statLabel as any}>{label}</Text>
     </View>
   );
 }

@@ -1,50 +1,81 @@
 import { useAuthStore } from '@/store/auth.store';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View, ViewStyle } from 'react-native';
 import { useEffect, useState } from 'react';
 import { apiClient } from '@/api/client';
 
+interface AttendanceSummary {
+  total: number;
+  present: number;
+  absent: number;
+  late: number;
+  unmarked: number;
+}
+
 export default function SchoolAdminDashboard() {
   const { user } = useAuthStore();
-  const [stats, setStats] = useState({ total: 0, present: 0, activeBuses: 2, attendancePercent: 0 });
+  const [stats, setStats] = useState<AttendanceSummary>({
+    total: 0,
+    present: 0,
+    absent: 0,
+    late: 0,
+    unmarked: 0,
+  });
 
   useEffect(() => {
-    // Fetch real summary from backend for today
-    apiClient.get('/attendance/summary?attendanceType=school_entry')
-      .then(res => {
-        const { total, present } = res.data;
-        setStats({
-          total,
-          present,
-          activeBuses: 2, // Hardcoded placeholder for buses until fleet endpoint hooked up
-          attendancePercent: total > 0 ? Math.round((present / total) * 100) : 0
-        });
+    // apiClient.get<T> returns T directly (unwrapped by the interceptor)
+    apiClient
+      .get<AttendanceSummary>('/attendance/summary', { attendanceType: 'school_entry' })
+      .then((data) => {
+        setStats(data);
       })
       .catch(console.error);
   }, []);
 
+  const attendancePercent =
+    stats.total > 0 ? Math.round((stats.present / stats.total) * 100) : 0;
+
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.greeting}>Welcome, {user?.fullName} 👋</Text>
-        <Text style={styles.date}>{new Date().toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</Text>
+    <View style={styles.container as any}>
+      <View style={styles.header as any}>
+        <Text style={styles.greeting as any}>Welcome, {user?.fullName} 👋</Text>
+        <Text style={styles.date as any}>
+          {new Date().toLocaleDateString('en-IN', {
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+          })}
+        </Text>
       </View>
 
-      <View style={styles.grid}>
+      <View style={styles.grid as any}>
         <StatCard emoji="👥" label="Total Students" value={stats.total.toString()} color="#dbeafe" />
-        <StatCard emoji="✅" label="Present Today" value={stats.present.toString()} color="#d1fae5" />
-        <StatCard emoji="🚌" label="Active Buses" value={stats.activeBuses.toString()} color="#fef3c7" />
-        <StatCard emoji="📊" label="Attendance %" value={stats.attendancePercent + "%"} color="#ede9fe" />
+        <StatCard emoji="✅" label="Present Today"  value={stats.present.toString()} color="#d1fae5" />
+        <StatCard emoji="❌" label="Absent Today"   value={stats.absent.toString()}  color="#fee2e2" />
+        <StatCard emoji="📊" label="Attendance %"  value={`${attendancePercent}%`}  color="#ede9fe" />
       </View>
     </View>
   );
 }
 
-function StatCard({ emoji, label, value, color }: { emoji: string; label: string; value: string; color: string }) {
+function StatCard({
+  emoji,
+  label,
+  value,
+  color,
+}: {
+  emoji: string;
+  label: string;
+  value: string;
+  color: string;
+}) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const cardStyle: any = { ...StyleSheet.flatten(styles.card), backgroundColor: color };
   return (
-    <View style={[styles.card, { backgroundColor: color }]}>
-      <Text style={styles.cardEmoji}>{emoji}</Text>
-      <Text style={styles.cardValue}>{value}</Text>
-      <Text style={styles.cardLabel}>{label}</Text>
+    <View style={cardStyle}>
+      <Text style={styles.cardEmoji as any}>{emoji}</Text>
+      <Text style={styles.cardValue as any}>{value}</Text>
+      <Text style={styles.cardLabel as any}>{label}</Text>
     </View>
   );
 }
