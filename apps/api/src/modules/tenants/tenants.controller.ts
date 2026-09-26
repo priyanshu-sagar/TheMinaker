@@ -5,6 +5,22 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { CreateTenantDto, TenantsService } from './tenants.service';
+import { IsEnum, IsOptional, IsString, MinLength } from 'class-validator';
+import { TenantPlan } from '@minaker/shared-types';
+
+class CreateTenantRequestDto implements CreateTenantDto {
+  @IsString()
+  @MinLength(2)
+  name!: string;
+
+  @IsString()
+  @MinLength(2)
+  slug!: string;
+
+  @IsOptional()
+  @IsEnum(TenantPlan)
+  plan?: TenantPlan;
+}
 
 @ApiTags('tenants')
 @ApiBearerAuth()
@@ -28,7 +44,7 @@ export class TenantsController {
 
   @Post()
   @ApiOperation({ summary: 'Create new tenant / onboard school' })
-  create(@Body() dto: CreateTenantDto) {
+  create(@Body() dto: CreateTenantRequestDto) {
     return this.tenantsService.create(dto);
   }
 

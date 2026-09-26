@@ -1,6 +1,6 @@
 import { Body, Controller, HttpCode, HttpStatus, Post } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
-import { IsEnum, IsPhoneNumber, IsString, Length, MinLength } from 'class-validator';
+import { IsEnum, IsOptional, IsPhoneNumber, IsString, Length, MinLength } from 'class-validator';
 import { LoginMethod, UserRole } from '@minaker/shared-types';
 import { Public } from '../../common/decorators/public.decorator';
 import { AuthService, LoginDto, SendOtpDto } from './auth.service';
@@ -29,7 +29,12 @@ class SendOtpRequestDto implements SendOtpDto {
   @IsString()
   tenantSlug!: string;
 
+  @IsOptional()
+  @IsString()
   phone?: string;
+
+  @IsOptional()
+  @IsString()
   parentUid?: string;
 }
 
