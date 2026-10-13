@@ -17,7 +17,7 @@ export default function SignedInScreen() {
 
   async function onSignOut() {
     await signOut();
-    router.replace('/(auth)/portal-select');
+    router.replace('/(auth)/onboarding');
   }
 
   return (

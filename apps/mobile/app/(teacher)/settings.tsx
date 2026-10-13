@@ -34,7 +34,7 @@ export default function TeacherSettingsScreen() {
 
   async function onLogout() {
     await signOut();
-    router.replace('/(auth)/portal-select');
+    router.replace('/(auth)/onboarding');
   }
 
   const rows = [

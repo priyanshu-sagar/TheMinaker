@@ -22,7 +22,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { colors, glass, spacing, radius, typography, shadows, palette } from '@/design/tokens';
 import { AnimatedPressable } from '@/components/glass/AnimatedPressable';
-import { hasSeenOnboarding, markOnboardingSeen } from '@/auth/onboarding-flag';
+import { markOnboardingSeen } from '@/auth/onboarding-flag';
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
 const TOP_H = SCREEN_H * 0.70;
@@ -42,13 +42,7 @@ export default function OnboardingScreen() {
   const arrowX = useSharedValue(0);
 
   useEffect(() => {
-    hasSeenOnboarding().then((seen) => {
-      if (seen) {
-        router.replace('/(auth)/portal-showcase' as any);
-      }
-    });
-
-    // Staggered entrance
+    // Staggered entrance animations only
     logoScale.value = withDelay(200, withSpring(1, { damping: 14, stiffness: 180 }));
     logoOpacity.value = withDelay(200, withTiming(1, { duration: 500 }));
     taglineOpacity.value = withDelay(600, withTiming(1, { duration: 600 }));

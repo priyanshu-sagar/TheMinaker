@@ -157,10 +157,11 @@ export default function SettingsDirectoryScreen() {
     [directory],
   );
 
-  async function handleLogout() {
-    await signOut();
-    router.replace('/(auth)/onboarding' as any);
-  }
+  const handleLogout = () => {
+    (useGatemanStore.getState() as any).reset?.();
+    useAuthStore.getState().signOut();
+    router.replace('/(auth)/onboarding');
+  };
 
   return (
     <MeshBackground>

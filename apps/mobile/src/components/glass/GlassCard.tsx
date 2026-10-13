@@ -35,6 +35,7 @@ export function GlassCard({
 
 const styles = StyleSheet.create({
   shadowWrap: {
+    backgroundColor: glass.cardBg,
     borderRadius: radius.lg,
     shadowColor: glass.shadow,
     shadowOpacity: Platform.OS === 'ios' ? 0.12 : 0.18,
@@ -48,6 +49,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: glass.border,
   },
-  tint: { backgroundColor: glass.cardBg },
+  tint: { backgroundColor: 'transparent' },
   padded: { padding: spacing.lg },
 });
