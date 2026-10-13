@@ -1,20 +1,30 @@
 import { Tabs } from 'expo-router';
-import { Text } from 'react-native';
-
-function TabIcon({ emoji }: { emoji: string }) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return <Text style={{ fontSize: 20 } as any}>{emoji}</Text>;
-}
+import { StyleSheet } from 'react-native';
+import { BlurView } from 'expo-blur';
+import { glass, colors, portalAccents } from '@/design/tokens';
+import { TabBarIcon } from '@/components/shared/TabBarIcon';
 
 export default function SchoolAdminLayout() {
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: '#1a73e8',
-        tabBarInactiveTintColor: '#9ca3af',
-        headerStyle: { backgroundColor: '#1a73e8' } as object,
-        headerTintColor: '#fff',
-        headerTitleStyle: { fontWeight: 'bold' } as object,
+        headerShown: false,
+        tabBarActiveTintColor: portalAccents.schoolAdmin.from,
+        tabBarInactiveTintColor: colors.textMuted,
+        tabBarBackground: () => (
+          <BlurView intensity={55} tint="light" style={StyleSheet.absoluteFill} />
+        ),
+        tabBarStyle: {
+          position: 'absolute',
+          backgroundColor: 'transparent',
+          borderTopColor: glass.border,
+          borderTopWidth: 1,
+          elevation: 0,
+        },
+        tabBarLabelStyle: {
+          fontSize: 11,
+          fontWeight: '600',
+        },
       }}
     >
       <Tabs.Screen
@@ -22,7 +32,7 @@ export default function SchoolAdminLayout() {
         options={{
           title: 'Dashboard',
           tabBarLabel: 'Dashboard',
-          tabBarIcon: () => <TabIcon emoji="📊" />,
+          tabBarIcon: ({ focused }) => <TabBarIcon glyph="📊" focused={focused} />,
         }}
       />
       <Tabs.Screen
@@ -30,7 +40,7 @@ export default function SchoolAdminLayout() {
         options={{
           title: 'Attendance',
           tabBarLabel: 'Attendance',
-          tabBarIcon: () => <TabIcon emoji="✅" />,
+          tabBarIcon: ({ focused }) => <TabBarIcon glyph="✅" focused={focused} />,
         }}
       />
       <Tabs.Screen
@@ -38,7 +48,7 @@ export default function SchoolAdminLayout() {
         options={{
           title: 'Students',
           tabBarLabel: 'Students',
-          tabBarIcon: () => <TabIcon emoji="👥" />,
+          tabBarIcon: ({ focused }) => <TabBarIcon glyph="👥" focused={focused} />,
         }}
       />
     </Tabs>

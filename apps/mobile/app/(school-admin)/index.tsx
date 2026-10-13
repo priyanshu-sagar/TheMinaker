@@ -1,7 +1,22 @@
-import { useAuthStore } from '@/store/auth.store';
-import { StyleSheet, Text, View, ViewStyle } from 'react-native';
 import { useEffect, useState } from 'react';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useAuthStore } from '@/store/auth.store';
 import { apiClient } from '@/api/client';
+import { MeshBackground } from '@/components/glass/MeshBackground';
+import { GlassCard } from '@/components/glass/GlassCard';
+import { AnimatedPressable } from '@/components/glass/AnimatedPressable';
+import { FadeInRow } from '@/components/glass/FadeInList';
+import {
+  colors,
+  glass,
+  palette,
+  portalAccents,
+  radius,
+  shadows,
+  spacing,
+  typography,
+} from '@/design/tokens';
 
 interface AttendanceSummary {
   total: number;
@@ -34,60 +49,160 @@ export default function SchoolAdminDashboard() {
   const attendancePercent =
     stats.total > 0 ? Math.round((stats.present / stats.total) * 100) : 0;
 
-  return (
-    <View style={styles.container as any}>
-      <View style={styles.header as any}>
-        <Text style={styles.greeting as any}>Welcome, {user?.fullName} 👋</Text>
-        <Text style={styles.date as any}>
-          {new Date().toLocaleDateString('en-IN', {
-            weekday: 'long',
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric',
-          })}
-        </Text>
-      </View>
+  const statItems = [
+    { emoji: '👥', label: 'Total Students', value: stats.total.toString() },
+    { emoji: '✅', label: 'Present Today', value: stats.present.toString() },
+    { emoji: '❌', label: 'Absent Today', value: stats.absent.toString() },
+    { emoji: '📊', label: 'Attendance %', value: `${attendancePercent}%` },
+  ];
 
-      <View style={styles.grid as any}>
-        <StatCard emoji="👥" label="Total Students" value={stats.total.toString()} color="#dbeafe" />
-        <StatCard emoji="✅" label="Present Today"  value={stats.present.toString()} color="#d1fae5" />
-        <StatCard emoji="❌" label="Absent Today"   value={stats.absent.toString()}  color="#fee2e2" />
-        <StatCard emoji="📊" label="Attendance %"  value={`${attendancePercent}%`}  color="#ede9fe" />
-      </View>
-    </View>
-  );
-}
-
-function StatCard({
-  emoji,
-  label,
-  value,
-  color,
-}: {
-  emoji: string;
-  label: string;
-  value: string;
-  color: string;
-}) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const cardStyle: any = { ...StyleSheet.flatten(styles.card), backgroundColor: color };
   return (
-    <View style={cardStyle}>
-      <Text style={styles.cardEmoji as any}>{emoji}</Text>
-      <Text style={styles.cardValue as any}>{value}</Text>
-      <Text style={styles.cardLabel as any}>{label}</Text>
-    </View>
+    <MeshBackground>
+      {/* Decorative orbs — always behind content */}
+      <View style={styles.orbTopRight} pointerEvents="none" />
+      <View style={styles.orbMidLeft} pointerEvents="none" />
+      <View style={styles.orbBottomRight} pointerEvents="none" />
+
+      <SafeAreaView style={styles.safe} edges={['top']}>
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Greeting header: GlassCard with date and welcome text — NO solid blue background */}
+          <GlassCard style={[styles.headerCard, shadows.md]}>
+            <View style={styles.badgePill}>
+              <Text style={styles.badgeText}>SCHOOL ADMINISTRATION</Text>
+            </View>
+            <Text style={[typography.title, styles.greeting]}>
+              Welcome, {user?.fullName ?? 'Admin'} 👋
+            </Text>
+            <Text style={[typography.caption, styles.date]}>
+              {new Date().toLocaleDateString('en-IN', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+              })}
+            </Text>
+          </GlassCard>
+
+          {/* Stats grid: 4 GlassCard tiles in 2x2 grid */}
+          <View style={styles.grid}>
+            {statItems.map((item, index) => (
+              <View key={item.label} style={styles.gridCol}>
+                <FadeInRow index={index}>
+                  <AnimatedPressable style={styles.pressableCard}>
+                    <GlassCard style={[styles.statCard, shadows.md]}>
+                      <View style={styles.iconCircle}>
+                        <Text style={styles.statEmoji}>{item.emoji}</Text>
+                      </View>
+                      <Text style={[typography.hero, styles.statValue]}>{item.value}</Text>
+                      <Text style={[typography.caption, styles.statLabel]}>{item.label}</Text>
+                    </GlassCard>
+                  </AnimatedPressable>
+                </FadeInRow>
+              </View>
+            ))}
+          </View>
+        </ScrollView>
+      </SafeAreaView>
+    </MeshBackground>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f9fafb', padding: 16 },
-  header: { marginBottom: 20 },
-  greeting: { fontSize: 22, fontWeight: '700', color: '#111827' },
-  date: { fontSize: 13, color: '#6b7280', marginTop: 4 },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
-  card: { width: '47%', borderRadius: 16, padding: 18 },
-  cardEmoji: { fontSize: 28, marginBottom: 8 },
-  cardValue: { fontSize: 28, fontWeight: '800', color: '#111827' },
-  cardLabel: { fontSize: 13, color: '#374151', marginTop: 4 },
+  safe: {
+    flex: 1,
+  },
+  scrollContent: {
+    padding: spacing.lg,
+    paddingBottom: 110,
+    gap: spacing.lg,
+  },
+  orbTopRight: {
+    position: 'absolute',
+    top: -50,
+    right: -40,
+    width: 240,
+    height: 240,
+    borderRadius: radius.full,
+    backgroundColor: glass.orb1,
+  },
+  orbMidLeft: {
+    position: 'absolute',
+    top: 260,
+    left: -80,
+    width: 260,
+    height: 260,
+    borderRadius: radius.full,
+    backgroundColor: glass.orb2,
+  },
+  orbBottomRight: {
+    position: 'absolute',
+    bottom: 90,
+    right: -50,
+    width: 220,
+    height: 220,
+    borderRadius: radius.full,
+    backgroundColor: glass.orb3,
+  },
+  headerCard: {
+    borderRadius: radius.lg,
+  },
+  badgePill: {
+    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(51, 65, 85, 0.12)',
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xxs,
+    borderRadius: radius.full,
+    marginBottom: spacing.xs,
+  },
+  badgeText: {
+    ...typography.overline,
+    color: portalAccents.schoolAdmin.from,
+    letterSpacing: 1,
+  },
+  greeting: {
+    color: colors.textPrimary,
+  },
+  date: {
+    color: colors.textMuted,
+    marginTop: spacing.xxs,
+  },
+  grid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginHorizontal: -spacing.xs,
+  },
+  gridCol: {
+    width: '50%',
+    padding: spacing.xs,
+  },
+  pressableCard: {
+    borderRadius: radius.lg,
+  },
+  statCard: {
+    borderRadius: radius.lg,
+    minHeight: 145,
+    justifyContent: 'space-between',
+  },
+  iconCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: radius.full,
+    backgroundColor: 'rgba(51, 65, 85, 0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.sm,
+  },
+  statEmoji: {
+    fontSize: 22,
+  },
+  statValue: {
+    color: colors.textPrimary,
+  },
+  statLabel: {
+    color: colors.textMuted,
+    marginTop: spacing.xxs,
+  },
 });

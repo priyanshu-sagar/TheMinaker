@@ -1,29 +1,47 @@
 import { Tabs } from 'expo-router';
-import { Text } from 'react-native';
-
-function TabIcon({ emoji }: { emoji: string }) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return <Text style={{ fontSize: 20 } as any}>{emoji}</Text>;
-}
+import { StyleSheet } from 'react-native';
+import { BlurView } from 'expo-blur';
+import { glass, colors, portalAccents } from '@/design/tokens';
+import { TabBarIcon } from '@/components/shared/TabBarIcon';
 
 export default function ConductorLayout() {
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: '#1a73e8',
-        tabBarInactiveTintColor: '#9ca3af',
-        headerStyle: { backgroundColor: '#1a73e8' } as object,
-        headerTintColor: '#fff',
-        headerTitleStyle: { fontWeight: 'bold' } as object,
+        headerShown: false,
+        tabBarActiveTintColor: portalAccents.conductor.from,
+        tabBarInactiveTintColor: colors.textMuted,
+        tabBarBackground: () => (
+          <BlurView intensity={55} tint="light" style={StyleSheet.absoluteFill} />
+        ),
+        tabBarStyle: {
+          position: 'absolute',
+          backgroundColor: 'transparent',
+          borderTopColor: glass.border,
+          borderTopWidth: 1,
+          elevation: 0,
+        },
+        tabBarLabelStyle: {
+          fontSize: 11,
+          fontWeight: '600',
+        },
       }}
     >
       <Tabs.Screen
         name="index"
-        options={{ title: 'My Trip', tabBarLabel: 'Trip', tabBarIcon: () => <TabIcon emoji="🚌" /> }}
+        options={{
+          title: 'My Trip',
+          tabBarLabel: 'Trip',
+          tabBarIcon: ({ focused }) => <TabBarIcon glyph="🚌" focused={focused} />,
+        }}
       />
       <Tabs.Screen
         name="manifest"
-        options={{ title: 'Student Manifest', tabBarLabel: 'Manifest', tabBarIcon: () => <TabIcon emoji="👥" /> }}
+        options={{
+          title: 'Student Manifest',
+          tabBarLabel: 'Manifest',
+          tabBarIcon: ({ focused }) => <TabBarIcon glyph="👥" focused={focused} />,
+        }}
       />
     </Tabs>
   );
