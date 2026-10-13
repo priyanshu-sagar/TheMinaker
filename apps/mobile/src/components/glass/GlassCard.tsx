@@ -22,10 +22,12 @@ export function GlassCard({
   const flatStyle = StyleSheet.flatten(style);
   const cardRadius = flatStyle?.borderRadius ?? radius.lg;
 
+  const isFlex = flatStyle?.flex !== undefined;
+
   return (
     <View style={[styles.shadowWrap, style, { borderRadius: cardRadius }]}>
-      <BlurView intensity={intensity} tint="light" style={[styles.blur, { borderRadius: cardRadius }]}>
-        <View style={[styles.tint, padded ? styles.padded : null]}>{children}</View>
+      <BlurView intensity={intensity} tint="light" style={[styles.blur, { borderRadius: cardRadius }, isFlex && { flex: 1 }]}>
+        <View style={[styles.tint, padded ? styles.padded : null, isFlex && { flex: 1 }]}>{children}</View>
       </BlurView>
     </View>
   );
