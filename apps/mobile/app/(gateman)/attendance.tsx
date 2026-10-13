@@ -88,7 +88,7 @@ function AttendancePillToggle({
 const pilStyles = StyleSheet.create({
   track: {
     flexDirection: 'row',
-    backgroundColor: colors.surfaceStrong,
+    backgroundColor: 'rgba(0,0,0,0.04)',
     borderRadius: radius.full,
     borderWidth: 1,
     borderColor: colors.borderStrong,
@@ -131,6 +131,15 @@ const StudentAttendanceCard = React.memo(function StudentAttendanceCard({
   return (
     <GlassCard style={shadows.md} padded={false}>
       <View style={cardStyles.inner}>
+        <View
+          style={{
+            width: 3,
+            backgroundColor: portalAccents.gateman.from,
+            borderRadius: 2,
+            marginRight: spacing.sm,
+            alignSelf: 'stretch',
+          }}
+        />
         <LinearGradient
           colors={[portalAccents.gateman.from, portalAccents.gateman.to]}
           start={{ x: 0, y: 0 }}
@@ -352,7 +361,7 @@ export default function MasterAttendanceScreen() {
           haptic="light"
           style={styles.routeSelectorWrap}
         >
-          <GlassCard style={shadows.md} padded={false}>
+          <GlassCard style={[shadows.md, { backgroundColor: 'rgba(255,255,255,0.65)' }]} padded={false}>
             <View style={styles.routeCardInner}>
               <View style={styles.busBadgeIcon}>
                 <Text style={styles.busEmoji}>🚌</Text>
@@ -402,17 +411,7 @@ export default function MasterAttendanceScreen() {
                     : 'Tap to choose route'}
                 </Text>
               </View>
-              <View style={styles.chevronBox}>
-                <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
-                  <Path
-                    d="M6 9l6 6 6-6"
-                    stroke={colors.textMuted}
-                    strokeWidth="2.2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </Svg>
-              </View>
+              <Text style={styles.iosChevron}>›</Text>
             </View>
           </GlassCard>
         </AnimatedPressable>
@@ -589,8 +588,10 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.sm,
-    paddingBottom: spacing.xs,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.md,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: glass.border,
   },
   title: {
     ...typography.title,
@@ -641,13 +642,11 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     marginTop: 1,
   },
-  chevronBox: {
-    width: 32,
-    height: 32,
-    borderRadius: radius.full,
-    backgroundColor: colors.surfaceStrong,
-    alignItems: 'center',
-    justifyContent: 'center',
+  iosChevron: {
+    fontSize: 24,
+    fontWeight: '400',
+    color: colors.textMuted,
+    marginLeft: spacing.xs,
   },
   statusBadge: {
     flexDirection: 'row',

@@ -14,12 +14,11 @@ function GlassSegmentedControl({
   segments,
   activeIndex,
   onPress,
-  accentColor,
 }: {
   segments: { label: string; count: number }[];
   activeIndex: number;
   onPress: (i: number) => void;
-  accentColor: string;
+  accentColor?: string;
 }) {
   return (
     <BlurView intensity={30} tint="light" style={styles.segmentTrack}>
@@ -30,7 +29,7 @@ function GlassSegmentedControl({
             key={seg.label}
             onPress={() => onPress(i)}
             haptic="selection"
-            style={[styles.segmentBtn, isActive && { backgroundColor: accentColor }]}
+            style={[styles.segmentBtn, isActive && styles.segmentBtnActive]}
           >
             <Text style={[styles.segmentLabel, isActive && styles.segmentLabelActive]}>
               {seg.label}
@@ -98,13 +97,14 @@ export default function InboxScreen() {
           </Text>
         </View>
 
-        {/* Glass Segmented Control */}
-        <GlassSegmentedControl
-          segments={segments}
-          activeIndex={activeTab}
-          onPress={setActiveTab}
-          accentColor={portalAccents.gateman.from}
-        />
+        {/* Glass Segmented Control with iOS separator */}
+        <View style={styles.segmentedControlWrap}>
+          <GlassSegmentedControl
+            segments={segments}
+            activeIndex={activeTab}
+            onPress={setActiveTab}
+          />
+        </View>
 
         {/* Content */}
         <ScrollView
@@ -132,16 +132,23 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.sm,
     gap: 2,
   },
+  segmentedControlWrap: {
+    paddingBottom: spacing.sm,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: glass.border,
+    marginBottom: spacing.xs,
+  },
   content: {
     flexGrow: 1,
+    paddingTop: spacing.sm,
     paddingBottom: spacing.xl,
   },
   segmentTrack: {
     flexDirection: 'row',
+    backgroundColor: 'rgba(0,0,0,0.06)',
     borderRadius: radius.full,
-    padding: 4,
+    padding: 3,
     marginHorizontal: spacing.lg,
-    marginBottom: spacing.md,
     borderWidth: 1,
     borderColor: glass.border,
     overflow: 'hidden',
@@ -155,16 +162,25 @@ const styles = StyleSheet.create({
     borderRadius: radius.full,
     gap: spacing.xs,
   },
+  segmentBtnActive: {
+    backgroundColor: '#ffffff',
+    shadowColor: '#000000',
+    shadowOpacity: 0.12,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
+  },
   segmentLabel: {
     ...typography.label,
     fontWeight: '600',
     color: colors.textMuted,
   },
   segmentLabelActive: {
-    color: 'white',
+    color: colors.textPrimary,
+    fontWeight: '700',
   },
   segmentBadge: {
-    backgroundColor: 'rgba(0,0,0,0.1)',
+    backgroundColor: 'rgba(0,0,0,0.08)',
     borderRadius: radius.full,
     minWidth: 18,
     height: 18,
@@ -173,7 +189,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
   },
   segmentBadgeActive: {
-    backgroundColor: 'rgba(255,255,255,0.25)',
+    backgroundColor: portalAccents.gateman.from,
   },
   segmentBadgeText: {
     ...typography.caption,
@@ -182,6 +198,6 @@ const styles = StyleSheet.create({
     fontSize: 10,
   },
   segmentBadgeTextActive: {
-    color: 'white',
+    color: '#ffffff',
   },
 });

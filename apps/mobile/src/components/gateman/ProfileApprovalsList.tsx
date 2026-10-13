@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { FlatList, StyleSheet, Text } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { colors, spacing, typography } from '@/design/tokens';
 import { FadeInRow } from '@/components/glass/FadeInList';
 import { ActionCard } from './ActionCard';
@@ -19,12 +19,9 @@ export function ProfileApprovalsList() {
 
   return (
     <>
-      <FlatList
-        data={approvals}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.list}
-        renderItem={({ item, index }: { item: ProfileApproval; index: number }) => (
-          <FadeInRow index={index}>
+      <View style={styles.list}>
+        {approvals.map((item, index) => (
+          <FadeInRow key={item.id} index={index}>
             <ActionCard
               title={item.studentName}
               subtitle={`Parent: ${item.parentName} · ${item.phone}`}
@@ -39,8 +36,8 @@ export function ProfileApprovalsList() {
               <Text style={styles.stop}>Assigned stop: {item.assignedStop}</Text>
             </ActionCard>
           </FadeInRow>
-        )}
-      />
+        ))}
+      </View>
       <ProfileDetailModal profile={detail} onClose={() => setDetail(null)} />
     </>
   );

@@ -30,25 +30,29 @@ export function FormField({
   return (
     <View style={styles.field}>
       <Text style={styles.label}>{label}</Text>
-      <TextInput
-        value={value}
-        onChangeText={onChangeText}
-        placeholder={placeholder}
-        placeholderTextColor={colors.textPlaceholder}
-        secureTextEntry={secureTextEntry}
-        keyboardType={keyboardType}
-        autoCapitalize={autoCapitalize}
-        maxLength={maxLength}
-        editable={editable}
-        onFocus={() => setFocused(true)}
-        onBlur={() => setFocused(false)}
+      <View
         style={[
-          styles.input,
+          styles.inputContainer,
           focused ? styles.inputFocused : null,
           error ? styles.inputError : null,
           !editable ? styles.inputDisabled : null,
         ]}
-      />
+      >
+        <TextInput
+          value={value}
+          onChangeText={onChangeText}
+          placeholder={placeholder}
+          placeholderTextColor={colors.textPlaceholder}
+          secureTextEntry={secureTextEntry}
+          keyboardType={keyboardType}
+          autoCapitalize={autoCapitalize}
+          maxLength={maxLength}
+          editable={editable}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
+          style={styles.input}
+        />
+      </View>
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
     </View>
   );
@@ -62,12 +66,17 @@ const styles = StyleSheet.create({
     ...typography.label,
     color: colors.textPrimary,
   },
-  input: {
+  inputContainer: {
     minHeight: 48,
     borderWidth: 1,
     borderColor: colors.borderStrong,
     borderRadius: radius.md,
-    backgroundColor: 'rgba(255,255,255,0.7)',
+    backgroundColor: 'rgba(255,255,255,0.65)',
+    justifyContent: 'center',
+  },
+  input: {
+    minHeight: 48,
+    backgroundColor: 'transparent',
     paddingHorizontal: spacing.md,
     fontSize: 16,
     color: colors.textPrimary,

@@ -26,16 +26,18 @@ export function GlassCard({
 
   return (
     <View style={[styles.shadowWrap, style, { borderRadius: cardRadius }]}>
-      <BlurView intensity={intensity} tint="light" style={[styles.blur, { borderRadius: cardRadius }, isFlex && { flex: 1 }]}>
-        <View style={[styles.tint, padded ? styles.padded : null, isFlex && { flex: 1 }]}>{children}</View>
-      </BlurView>
+      <View style={[styles.glassBg, { borderRadius: cardRadius }, isFlex && { flex: 1 }]}>
+        <BlurView intensity={intensity} tint="light" style={[styles.blur, { borderRadius: cardRadius }, isFlex && { flex: 1 }]}>
+          <View style={[styles.tint, padded ? styles.padded : null, isFlex && { flex: 1 }]}>{children}</View>
+        </BlurView>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   shadowWrap: {
-    backgroundColor: glass.cardBg,
+    backgroundColor: 'transparent',
     borderRadius: radius.lg,
     shadowColor: glass.shadow,
     shadowOpacity: Platform.OS === 'ios' ? 0.12 : 0.18,
@@ -43,11 +45,17 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 6 },
     elevation: 4,
   },
+  glassBg: {
+    backgroundColor: 'rgba(255,255,255,0.55)',
+    borderRadius: radius.lg,
+    overflow: 'hidden',
+  },
   blur: {
     borderRadius: radius.lg,
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: glass.border,
+    backgroundColor: 'transparent',
   },
   tint: { backgroundColor: 'transparent' },
   padded: { padding: spacing.lg },

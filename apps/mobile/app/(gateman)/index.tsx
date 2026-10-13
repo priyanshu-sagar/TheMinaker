@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { FlatList, StyleSheet, Text, View } from 'react-native';
+import { Dimensions, StyleSheet, Text, View } from 'react-native';
 import MapView, { Marker, UrlTile } from 'react-native-maps';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -17,7 +17,6 @@ import {
 import { MeshBackground } from '@/components/glass/MeshBackground';
 import { GlassCard } from '@/components/glass/GlassCard';
 import { AnimatedPressable } from '@/components/glass/AnimatedPressable';
-import { FadeInRow } from '@/components/glass/FadeInList';
 import { FullScreenMapModal } from '@/components/gateman/FullScreenMapModal';
 import { BusDetailsModal } from '@/components/gateman/BusDetailsModal';
 import { FleetBus, useGatemanStore } from '@/store/gateman.store';
@@ -29,6 +28,19 @@ const INITIAL_REGION = {
   latitudeDelta: 3.1,
   longitudeDelta: 2.3,
 };
+
+// Mock departure times — sorted ascending so earlier-departing buses show first
+const MOCK_DEPARTURE_TIMES: Record<string, string> = {
+  'bus-1': '06:30',
+  'bus-2': '06:45',
+  'bus-3': '07:00',
+  'bus-4': '07:15',
+  'bus-5': '07:30',
+  'bus-6': '07:45',
+};
+
+const { height: SCREEN_H } = Dimensions.get('window');
+const MAP_H = Math.round(SCREEN_H * 0.38);
 
 export default function CommandCenterScreen() {
   const fleet = useGatemanStore((state) => state.fleet);
@@ -45,6 +57,18 @@ export default function CommandCenterScreen() {
     }),
     [fleet],
   );
+
+  // Sort fleet by departure time for display
+  const sortedFleet = useMemo(() => {
+    return [...fleet].sort((a, b) => {
+      const ta = MOCK_DEPARTURE_TIMES[a.id] ?? '99:99';
+      const tb = MOCK_DEPARTURE_TIMES[b.id] ?? '99:99';
+      return ta.localeCompare(tb);
+    });
+  }, [fleet]);
+
+  // Show first 6 in the grid
+  const gridFleet = useMemo(() => sortedFleet.slice(0, 6), [sortedFleet]);
 
   const pendingApprovalsCount = profileApprovals.length + editRequests.length;
   const geofenceAlertsCount = geofenceAlerts.length;
@@ -176,9 +200,16 @@ export default function CommandCenterScreen() {
           </AnimatedPressable>
         </View>
 
-        {/* 3. Map Card (~50% of remaining height) */}
+        {/* 3. Map Card (~38% of screen height) */}
         <View style={styles.mapSection}>
-          <GlassCard padded={false} style={[shadows.lg, styles.mapCard]}>
+          <GlassCard
+            padded={false}
+            style={[
+              shadows.lg,
+              styles.mapCard,
+              { height: MAP_H, marginHorizontal: spacing.lg, marginBottom: spacing.sm },
+            ]}
+          >
             <MapView
               style={styles.map}
               provider={undefined}
@@ -224,67 +255,44 @@ export default function CommandCenterScreen() {
           </GlassCard>
         </View>
 
-        {/* 4. Fleet Status Scroll */}
-        <View style={styles.fleetSection}>
-          <View style={styles.fleetHeader}>
-            <Text style={styles.fleetLabel}>Fleet Status</Text>
-            <Text style={styles.fleetCount}>{fleet.length} total</Text>
-          </View>
+        {/* 4. Fleet Status section header */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.lg, marginBottom: spacing.sm }}>
+          <Text style={[typography.label, { color: colors.textPrimary }]}>Fleet Status</Text>
+          <AnimatedPressable onPress={() => setExpanded(true)} haptic="light">
+            <Text style={{ ...typography.caption, color: portalAccents.gateman.from, fontWeight: '700' }}>View All</Text>
+          </AnimatedPressable>
+        </View>
 
-          <FlatList
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            data={fleet}
-            keyExtractor={(bus) => bus.id}
-            contentContainerStyle={styles.fleetScrollContent}
-            ItemSeparatorComponent={() => <View style={{ width: spacing.sm }} />}
-            renderItem={({ item, index }) => (
-              <FadeInRow index={index}>
-                <AnimatedPressable
-                  haptic="selection"
-                  onPress={() => setSelectedBus(item)}
-                  style={styles.chipPressable}
-                >
-                  <GlassCard padded={false} style={[shadows.sm, styles.busChip]}>
-                    <View style={styles.chipInner}>
-                      <View style={styles.chipTopRow}>
-                        <View
-                          style={[
-                            styles.chipDot,
-                            {
-                              backgroundColor:
-                                item.status === 'Online'
-                                  ? colors.online
-                                  : colors.offline,
-                            },
-                          ]}
-                        />
-                        <Text
-                          style={[
-                            styles.chipStatusText,
-                            {
-                              color:
-                                item.status === 'Online'
-                                  ? colors.online
-                                  : colors.offline,
-                            },
-                          ]}
-                        >
-                          {item.status}
-                        </Text>
-                      </View>
-                      <Text style={styles.chipBusNumber} numberOfLines={1}>
-                        {item.busNumber}
-                      </Text>
-                      <Text style={styles.chipRoute} numberOfLines={1}>
-                        {item.routeName}
-                      </Text>
-                    </View>
-                  </GlassCard>
-                </AnimatedPressable>
-              </FadeInRow>
-            )}
-          />
+        {/* 3x2 Grid */}
+        <View style={styles.fleetGrid}>
+          {gridFleet.map((bus) => (
+            <AnimatedPressable
+              key={bus.id}
+              onPress={() => setSelectedBus(bus)}
+              haptic="selection"
+              style={styles.fleetGridItem}
+            >
+              <GlassCard style={[shadows.sm, { flex: 1 }]} padded={false}>
+                <View style={styles.fleetGridCardInner}>
+                  {/* Status dot */}
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 4 }}>
+                    <View style={[styles.statusDot, { backgroundColor: bus.status === 'Online' ? colors.online : colors.offline }]} />
+                    <Text style={{ ...typography.overline, fontSize: 9, color: bus.status === 'Online' ? colors.online : colors.offline }}>
+                      {bus.status}
+                    </Text>
+                  </View>
+                  {/* Bus number */}
+                  <Text style={{ ...typography.caption, fontWeight: '700', color: colors.textPrimary, fontSize: 10 }} numberOfLines={1}>
+                    {bus.busNumber}
+                  </Text>
+                  {/* Departure time */}
+                  <Text style={{ ...typography.caption, color: colors.textMuted, fontSize: 9, marginTop: 2 }}>
+                    {MOCK_DEPARTURE_TIMES[bus.id] ?? '--:--'}
+                  </Text>
+                </View>
+              </GlassCard>
+            </AnimatedPressable>
+          ))}
         </View>
       </SafeAreaView>
 
@@ -387,12 +395,9 @@ const styles = StyleSheet.create({
     marginTop: spacing.xxs,
   },
   mapSection: {
-    flex: 1,
-    paddingHorizontal: spacing.lg,
     marginTop: spacing.md,
   },
   mapCard: {
-    flex: 1,
     borderRadius: radius.lg,
     overflow: 'hidden',
   },
@@ -414,60 +419,28 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     ...shadows.sm,
   },
-  fleetSection: {
-    marginTop: spacing.md,
-    marginBottom: spacing.md,
-  },
-  fleetHeader: {
+  fleetGrid: {
     flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexWrap: 'wrap',
     paddingHorizontal: spacing.lg,
-    marginBottom: spacing.sm,
-  },
-  fleetLabel: {
-    ...typography.label,
-    color: colors.textPrimary,
-  },
-  fleetCount: {
-    ...typography.caption,
-    color: colors.textMuted,
-  },
-  fleetScrollContent: {
-    paddingHorizontal: spacing.lg,
-  },
-  chipPressable: {
-    width: 140,
-  },
-  busChip: {
-    width: 140,
-    borderRadius: radius.md,
-  },
-  chipInner: {
-    padding: spacing.md,
     gap: spacing.xs,
   },
-  chipTopRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
+  fleetGridItem: {
+    width: '32%', // 3 columns
+    minHeight: 70,
   },
-  chipDot: {
-    width: 7,
-    height: 7,
-    borderRadius: radius.full,
+  fleetGridCardInner: {
+    padding: spacing.sm,
+    flex: 1,
   },
-  chipStatusText: {
-    ...typography.caption,
-    fontSize: 11,
-    fontWeight: '600',
+  statusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
   },
-  chipBusNumber: {
-    ...typography.bodyBold,
-    color: colors.textPrimary,
-  },
-  chipRoute: {
-    ...typography.caption,
-    color: colors.textMuted,
+  statusFleetDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
   },
 });

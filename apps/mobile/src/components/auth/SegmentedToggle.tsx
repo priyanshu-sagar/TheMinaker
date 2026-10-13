@@ -46,7 +46,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     borderWidth: 1,
     borderColor: glass.border,
-    backgroundColor: 'rgba(235, 240, 250, 0.6)',
+    backgroundColor: 'rgba(255, 255, 255, 0.6)',
   },
   track: {
     flexDirection: 'row',
