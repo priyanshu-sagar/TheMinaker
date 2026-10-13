@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { colors, spacing } from '@/design/gateman-theme';
+import { colors, spacing, radius, glass, typography } from '@/design/tokens';
 import { MeshBackground } from '@/components/glass/MeshBackground';
 import { TopTabBar, InboxTabKey } from '@/components/gateman/TopTabBar';
 import { ProfileApprovalsList } from '@/components/gateman/ProfileApprovalsList';
@@ -25,6 +25,34 @@ export default function ActionInboxScreen() {
 
   return (
     <MeshBackground>
+      {/* Decorative orbs */}
+      <View
+        style={{
+          position: 'absolute',
+          top: -60,
+          right: -40,
+          width: 200,
+          height: 200,
+          borderRadius: radius.full,
+          backgroundColor: glass.orb1,
+          opacity: 0.6,
+        }}
+        pointerEvents="none"
+      />
+      <View
+        style={{
+          position: 'absolute',
+          bottom: 100,
+          left: -80,
+          width: 280,
+          height: 280,
+          borderRadius: radius.full,
+          backgroundColor: glass.orb2,
+          opacity: 0.5,
+        }}
+        pointerEvents="none"
+      />
+
       <SafeAreaView style={styles.safe} edges={['top']}>
         <View style={styles.header}>
           <Text style={styles.title}>Action Inbox</Text>
@@ -43,6 +71,6 @@ export default function ActionInboxScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1 },
   header: { paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.sm },
-  title: { fontSize: 20, fontWeight: '700', color: colors.textPrimary },
+  title: { ...typography.title, color: colors.textPrimary },
   body: { flex: 1, marginTop: spacing.md },
 });

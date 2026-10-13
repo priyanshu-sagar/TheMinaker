@@ -1,5 +1,5 @@
 import { StyleSheet, Text, View } from 'react-native';
-import { colors, spacing } from '@/design/gateman-theme';
+import { colors, typography } from '@/design/tokens';
 import { GlassModal } from '@/components/glass/GlassModal';
 import { ProfileApproval } from '@/store/gateman.store';
 
@@ -38,6 +38,6 @@ function Row({ label, value }: { label: string; value: string }) {
 
 const styles = StyleSheet.create({
   row: { gap: 2 },
-  label: { fontSize: 12, fontWeight: '700', color: colors.textMuted, textTransform: 'uppercase' },
-  value: { fontSize: 15, fontWeight: '600', color: colors.textPrimary },
+  label: { ...typography.overline, color: colors.textMuted },
+  value: { ...typography.bodyBold, color: colors.textPrimary },
 });

@@ -1,7 +1,8 @@
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Modal, StyleSheet, Text, View } from 'react-native';
 import MapView, { Marker, UrlTile } from 'react-native-maps';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { colors, spacing } from '@/design/gateman-theme';
+import { colors, spacing, radius, typography, shadows } from '@/design/tokens';
+import { AnimatedPressable } from '@/components/glass/AnimatedPressable';
 import { FleetBus } from '@/store/gateman.store';
 
 const REGION = { latitude: 27.95, longitude: 77.55, latitudeDelta: 3.1, longitudeDelta: 2.3 };
@@ -20,9 +21,9 @@ export function FullScreenMapModal({
       <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
         <View style={styles.header}>
           <Text style={styles.title}>Live Fleet — Full Map</Text>
-          <Pressable style={styles.closeBtn} onPress={onClose}>
+          <AnimatedPressable style={[styles.closeBtn, shadows.sm]} onPress={onClose}>
             <Text style={styles.closeText}>Close</Text>
-          </Pressable>
+          </AnimatedPressable>
         </View>
         <MapView style={styles.map} provider={undefined} initialRegion={REGION}>
           <UrlTile urlTemplate="https://tile.openstreetmap.org/{z}/{x}/{y}.png" maximumZ={19} />
@@ -32,7 +33,7 @@ export function FullScreenMapModal({
               coordinate={{ latitude: bus.coordinates.lat, longitude: bus.coordinates.lng }}
               title={bus.busNumber}
               description={`${bus.routeName} · ${bus.conductorName}`}
-              pinColor={bus.status === 'Online' ? '#10B981' : '#EF4444'}
+              pinColor={bus.status === 'Online' ? colors.online : colors.offline}
             />
           ))}
         </MapView>
@@ -50,8 +51,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
   },
-  title: { fontSize: 17, fontWeight: '700', color: colors.textPrimary },
-  closeBtn: { paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: 8, backgroundColor: '#eef1f4' },
-  closeText: { fontSize: 14, fontWeight: '700', color: colors.textPrimary },
+  title: { ...typography.heading, color: colors.textPrimary },
+  closeBtn: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.sm,
+    backgroundColor: colors.surfaceStrong,
+  },
+  closeText: { ...typography.label, color: colors.textPrimary },
   map: { flex: 1 },
 });

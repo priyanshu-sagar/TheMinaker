@@ -2,11 +2,11 @@ import { useMemo, useState } from 'react';
 import { FlatList, StyleSheet, Text, View } from 'react-native';
 import { ChevronDown, GraduationCap, Check, Users } from 'lucide-react-native';
 import { BlurView } from 'expo-blur';
-import { glass } from '@/design/glass-theme';
-import { colors, radius, spacing, statusColors } from '@/design/teacher-theme';
+import { glass, colors, radius, spacing, shadows, portalAccents, typography } from '@/design/tokens';
 import { GlassCard } from '@/components/glass/GlassCard';
 import { GlassModal } from '@/components/glass/GlassModal';
 import { AnimatedPressable } from '@/components/glass/AnimatedPressable';
+import { FadeInRow } from '@/components/glass/FadeInList';
 import { useTeacherStore, useSelectedClass } from '@/store/teacher.store';
 
 /**
@@ -25,10 +25,10 @@ export function ClassSelector({ subtitle }: { subtitle?: string }) {
 
     return (
         <View style={styles.wrap}>
-            <GlassCard padded={false} style={styles.card}>
+            <GlassCard padded={false} style={[styles.card, shadows.sm]}>
                 <AnimatedPressable onPress={() => setOpen(true)} style={styles.row}>
                     <View style={styles.iconWrap}>
-                        <GraduationCap color={statusColors.academics} size={22} strokeWidth={2.4} />
+                        <GraduationCap color={portalAccents.teacher.from} size={22} strokeWidth={2.4} />
                     </View>
                     <View style={styles.info}>
                         <Text style={styles.label}>Class Context</Text>
@@ -37,7 +37,7 @@ export function ClassSelector({ subtitle }: { subtitle?: string }) {
                     </View>
                     {isHomeroom ? (
                         <View style={styles.homeroomBadge}>
-                            <Users color={statusColors.present} size={12} strokeWidth={2.6} />
+                            <Users color={colors.success} size={12} strokeWidth={2.6} />
                             <Text style={styles.homeroomText}>Homeroom</Text>
                         </View>
                     ) : null}
@@ -51,31 +51,33 @@ export function ClassSelector({ subtitle }: { subtitle?: string }) {
                     keyExtractor={(cls) => cls.id}
                     scrollEnabled={false}
                     ItemSeparatorComponent={() => <View style={{ height: spacing.sm }} />}
-                    renderItem={({ item }) => {
+                    renderItem={({ item, index }) => {
                         const active = item.id === selectedClass?.id;
                         return (
-                            <AnimatedPressable
-                                haptic="selection"
-                                onPress={() => {
-                                    setSelectedClassId(item.id);
-                                    setOpen(false);
-                                }}
-                                style={[styles.option, active ? styles.optionActive : null]}
-                            >
-                                <BlurView intensity={active ? 40 : 20} tint="light" style={styles.optionBlur}>
-                                    <View style={styles.optionInner}>
-                                        <View style={styles.optionInfo}>
-                                            <Text style={styles.optionName}>{item.name}</Text>
-                                            {item.isClassTeacher ? (
-                                                <Text style={styles.optionMeta}>You are the class teacher</Text>
-                                            ) : (
-                                                <Text style={styles.optionMeta}>Subject teacher only</Text>
-                                            )}
+                            <FadeInRow index={index}>
+                                <AnimatedPressable
+                                    haptic="selection"
+                                    onPress={() => {
+                                        setSelectedClassId(item.id);
+                                        setOpen(false);
+                                    }}
+                                    style={[styles.option, active ? styles.optionActive : null]}
+                                >
+                                    <BlurView intensity={active ? 40 : 20} tint="light" style={styles.optionBlur}>
+                                        <View style={styles.optionInner}>
+                                            <View style={styles.optionInfo}>
+                                                <Text style={styles.optionName}>{item.name}</Text>
+                                                {item.isClassTeacher ? (
+                                                    <Text style={styles.optionMeta}>You are the class teacher</Text>
+                                                ) : (
+                                                    <Text style={styles.optionMeta}>Subject teacher only</Text>
+                                                )}
+                                            </View>
+                                            {active ? <Check color={colors.success} size={20} strokeWidth={2.6} /> : null}
                                         </View>
-                                        {active ? <Check color={statusColors.present} size={20} strokeWidth={2.6} /> : null}
-                                    </View>
-                                </BlurView>
-                            </AnimatedPressable>
+                                    </BlurView>
+                                </AnimatedPressable>
+                            </FadeInRow>
                         );
                     }}
                 />
@@ -89,30 +91,30 @@ const styles = StyleSheet.create({
     card: {},
     row: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingVertical: spacing.md, paddingHorizontal: spacing.md },
     iconWrap: {
-        width: 40, height: 40, borderRadius: 20,
-        backgroundColor: statusColors.academicsBg,
+        width: 40, height: 40, borderRadius: radius.full,
+        backgroundColor: colors.checkedOutBg,
         alignItems: 'center', justifyContent: 'center',
     },
     info: { flex: 1 },
-    label: { fontSize: 11, fontWeight: '700', color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.5 },
-    name: { fontSize: 16, fontWeight: '700', color: colors.textPrimary, marginTop: 1 },
-    subtitle: { fontSize: 12, color: colors.textMuted, marginTop: 2 },
+    label: { ...typography.overline, color: colors.textMuted },
+    name: { ...typography.heading, color: colors.textPrimary, marginTop: 1 },
+    subtitle: { ...typography.caption, color: colors.textMuted, marginTop: 2 },
     homeroomBadge: {
         flexDirection: 'row', alignItems: 'center', gap: 4,
-        backgroundColor: statusColors.presentBg,
-        borderRadius: 10, paddingHorizontal: 8, paddingVertical: 4,
+        backgroundColor: colors.successBg,
+        borderRadius: radius.sm, paddingHorizontal: 8, paddingVertical: 4,
     },
-    homeroomText: { fontSize: 10, fontWeight: '700', color: statusColors.present, textTransform: 'uppercase' },
+    homeroomText: { fontSize: 10, fontWeight: '700', color: colors.success, textTransform: 'uppercase' },
     option: {
         borderRadius: radius.md,
         overflow: 'hidden',
         borderWidth: 1.5,
         borderColor: glass.border,
     },
-    optionActive: { borderColor: statusColors.present },
+    optionActive: { borderColor: colors.success },
     optionBlur: { borderRadius: radius.md },
     optionInner: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, padding: spacing.md, backgroundColor: glass.cardBg },
     optionInfo: { flex: 1 },
-    optionName: { fontSize: 15, fontWeight: '700', color: colors.textPrimary },
-    optionMeta: { fontSize: 12, color: colors.textMuted, marginTop: 2 },
+    optionName: { ...typography.bodyBold, color: colors.textPrimary },
+    optionMeta: { ...typography.caption, color: colors.textMuted, marginTop: 2 },
 });

@@ -1,8 +1,7 @@
 import { useMemo, useState } from 'react';
 import { StyleSheet, Text, TextInput, View } from 'react-native';
 import { Check, Users } from 'lucide-react-native';
-import { glass } from '@/design/glass-theme';
-import { colors, radius, spacing, statusColors } from '@/design/teacher-theme';
+import { glass, colors, radius, spacing, palette, portalAccents, shadows, typography } from '@/design/tokens';
 import { GlassModal } from '@/components/glass/GlassModal';
 import { AnimatedPressable } from '@/components/glass/AnimatedPressable';
 import { RosterStudent } from '@/store/teacher.store';
@@ -83,7 +82,7 @@ export function CreateTestModal({
                     onPress={() => { setTargeted(false); setSelectedIds([]); }}
                     style={[styles.scopeBtn, !targeted ? styles.scopeBtnActive : null]}
                 >
-                    <Users color={!targeted ? '#fff' : colors.textSecondary} size={16} strokeWidth={2.4} />
+                    <Users color={!targeted ? palette.white : colors.textSecondary} size={16} strokeWidth={2.4} />
                     <Text style={[styles.scopeText, !targeted ? styles.scopeTextActive : null]}>Entire Class</Text>
                 </AnimatedPressable>
                 <AnimatedPressable
@@ -91,7 +90,7 @@ export function CreateTestModal({
                     onPress={() => setTargeted(true)}
                     style={[styles.scopeBtn, targeted ? styles.scopeBtnActive : null]}
                 >
-                    <Check color={targeted ? '#fff' : colors.textSecondary} size={16} strokeWidth={2.4} />
+                    <Check color={targeted ? palette.white : colors.textSecondary} size={16} strokeWidth={2.4} />
                     <Text style={[styles.scopeText, targeted ? styles.scopeTextActive : null]}>
                         Selected Students ({selectedIds.length})
                     </Text>
@@ -112,7 +111,7 @@ export function CreateTestModal({
                                     style={[styles.pickerRow, active ? styles.pickerRowActive : null]}
                                 >
                                     <View style={[styles.checkbox, active ? styles.checkboxActive : null]}>
-                                        {active ? <Check color="#fff" size={12} strokeWidth={3} /> : null}
+                                        {active ? <Check color={palette.white} size={12} strokeWidth={3} /> : null}
                                     </View>
                                     <Text style={styles.pickerName}>{student.name}</Text>
                                     <Text style={styles.pickerRoll}>Roll {student.rollNumber}</Text>
@@ -127,7 +126,7 @@ export function CreateTestModal({
                 haptic="medium"
                 onPress={handleCreate}
                 disabled={!valid}
-                style={[styles.createBtn, !valid ? styles.disabled : null]}
+                style={[styles.createBtn, shadows.sm, !valid ? styles.disabled : null]}
             >
                 <Text style={styles.createText}>Create Test</Text>
             </AnimatedPressable>
@@ -165,39 +164,39 @@ function Field({
 
 const styles = StyleSheet.create({
     field: { gap: 6 },
-    label: { fontSize: 13, fontWeight: '800', color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.4 },
+    label: { ...typography.overline, color: colors.textMuted },
     input: {
         minHeight: 44,
         borderWidth: 1,
         borderColor: glass.border,
         borderRadius: radius.md,
-        backgroundColor: 'rgba(255,255,255,0.6)',
+        backgroundColor: colors.surfaceStrong,
         paddingHorizontal: spacing.md,
         fontSize: 15,
         color: colors.textPrimary,
     },
     scopeRow: { flexDirection: 'row', gap: spacing.sm },
     scopeBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, minHeight: 44, borderRadius: radius.md, borderWidth: 1.5, borderColor: glass.border },
-    scopeBtnActive: { backgroundColor: statusColors.academics, borderColor: statusColors.academics },
+    scopeBtnActive: { backgroundColor: portalAccents.teacher.from, borderColor: portalAccents.teacher.from },
     scopeText: { fontSize: 12, fontWeight: '700', color: colors.textSecondary },
-    scopeTextActive: { color: '#fff' },
-    pickerCard: { backgroundColor: 'rgba(255,255,255,0.5)', borderRadius: radius.md, borderWidth: 1, borderColor: glass.border, padding: spacing.md, gap: spacing.sm },
-    pickerHint: { fontSize: 12, color: colors.textMuted, lineHeight: 17 },
+    scopeTextActive: { color: palette.white },
+    pickerCard: { backgroundColor: glass.cardBg, borderRadius: radius.md, borderWidth: 1, borderColor: glass.border, padding: spacing.md, gap: spacing.sm },
+    pickerHint: { ...typography.caption, color: colors.textMuted },
     pickerList: { gap: 6 },
-    pickerRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: 8, paddingHorizontal: 8, borderRadius: 8 },
-    pickerRowActive: { backgroundColor: statusColors.academicsBg },
-    checkbox: { width: 20, height: 20, borderRadius: 5, borderWidth: 1.5, borderColor: colors.textMuted, alignItems: 'center', justifyContent: 'center' },
-    checkboxActive: { backgroundColor: statusColors.academics, borderColor: statusColors.academics },
-    pickerName: { flex: 1, fontSize: 13, fontWeight: '700', color: colors.textPrimary },
-    pickerRoll: { fontSize: 11, color: colors.textMuted },
+    pickerRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: 8, paddingHorizontal: 8, borderRadius: radius.sm },
+    pickerRowActive: { backgroundColor: colors.checkedOutBg },
+    checkbox: { width: 20, height: 20, borderRadius: radius.xs, borderWidth: 1.5, borderColor: colors.textMuted, alignItems: 'center', justifyContent: 'center' },
+    checkboxActive: { backgroundColor: portalAccents.teacher.from, borderColor: portalAccents.teacher.from },
+    pickerName: { flex: 1, ...typography.caption, fontWeight: '700', color: colors.textPrimary },
+    pickerRoll: { ...typography.caption, color: colors.textMuted },
     createBtn: {
         minHeight: 46,
         borderRadius: radius.md,
-        backgroundColor: statusColors.academics,
+        backgroundColor: portalAccents.teacher.from,
         alignItems: 'center',
         justifyContent: 'center',
         marginTop: spacing.xs,
     },
     disabled: { opacity: 0.5 },
-    createText: { color: '#fff', fontSize: 15, fontWeight: '700' },
+    createText: { color: palette.white, fontSize: 15, fontWeight: '700' },
 });

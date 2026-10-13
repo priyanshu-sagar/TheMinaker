@@ -1,6 +1,6 @@
 import { Linking, StyleSheet, Text, View } from 'react-native';
 import { Phone, Mail, TrendingUp, ClipboardList, MessageCircle } from 'lucide-react-native';
-import { colors, radius, spacing, statusColors } from '@/design/teacher-theme';
+import { colors, radius, spacing, palette, portalAccents, shadows, typography } from '@/design/tokens';
 import { GlassModal } from '@/components/glass/GlassModal';
 import { AnimatedPressable } from '@/components/glass/AnimatedPressable';
 import { RosterStudent } from '@/store/teacher.store';
@@ -24,8 +24,8 @@ export function StudentDetailsModal({
     }
 
     const progressColor =
-        student.progressPercent >= 80 ? statusColors.present :
-        student.progressPercent >= 60 ? statusColors.info : statusColors.late;
+        student.progressPercent >= 80 ? colors.success :
+        student.progressPercent >= 60 ? colors.info : colors.warning;
 
     return (
         <GlassModal visible={true} title={student.name} onClose={onClose}>
@@ -40,20 +40,20 @@ export function StudentDetailsModal({
                         <AnimatedPressable
                             haptic="medium"
                             onPress={() => Linking.openURL(`tel:${student.parentPhone}`).catch(() => undefined)}
-                            style={[styles.contactBtn, { backgroundColor: statusColors.presentBg }]}
+                            style={[styles.contactBtn, { backgroundColor: colors.successBg }]}
                         >
-                            <Phone color={statusColors.present} size={16} strokeWidth={2.4} />
-                            <Text style={[styles.contactBtnText, { color: statusColors.present }]}>{student.parentPhone}</Text>
+                            <Phone color={colors.success} size={16} strokeWidth={2.4} />
+                            <Text style={[styles.contactBtnText, { color: colors.success }]}>{student.parentPhone}</Text>
                         </AnimatedPressable>
                     </View>
                     <View style={styles.contactRow}>
                         <AnimatedPressable
                             haptic="medium"
                             onPress={() => Linking.openURL(`mailto:${student.parentEmail}`).catch(() => undefined)}
-                            style={[styles.contactBtn, { backgroundColor: statusColors.infoBg }]}
+                            style={[styles.contactBtn, { backgroundColor: colors.infoBg }]}
                         >
-                            <Mail color={statusColors.info} size={16} strokeWidth={2.4} />
-                            <Text style={[styles.contactBtnText, { color: statusColors.info }]}>{student.parentEmail}</Text>
+                            <Mail color={colors.info} size={16} strokeWidth={2.4} />
+                            <Text style={[styles.contactBtnText, { color: colors.info }]}>{student.parentEmail}</Text>
                         </AnimatedPressable>
                     </View>
                 </View>
@@ -76,7 +76,7 @@ export function StudentDetailsModal({
             {/* Past scores */}
             <View style={styles.section}>
                 <View style={styles.sectionHeaderRow}>
-                    <ClipboardList color={statusColors.academics} size={16} strokeWidth={2.4} />
+                    <ClipboardList color={portalAccents.teacher.from} size={16} strokeWidth={2.4} />
                     <Text style={styles.sectionTitle}>Past Test Scores</Text>
                 </View>
                 {student.pastScores.length === 0 ? (
@@ -103,9 +103,9 @@ export function StudentDetailsModal({
             <AnimatedPressable
                 haptic="medium"
                 onPress={() => { onMessageParent(student.id); onClose(); }}
-                style={styles.messageBtn}
+                style={[styles.messageBtn, shadows.sm]}
             >
-                <MessageCircle color="#fff" size={16} strokeWidth={2.4} />
+                <MessageCircle color={palette.white} size={16} strokeWidth={2.4} />
                 <Text style={styles.messageText}>Message Parent</Text>
             </AnimatedPressable>
         </GlassModal>
@@ -113,26 +113,26 @@ export function StudentDetailsModal({
 }
 
 const styles = StyleSheet.create({
-    subtitle: { fontSize: 13, color: colors.textMuted, marginTop: -spacing.xs },
+    subtitle: { ...typography.caption, color: colors.textMuted, marginTop: -spacing.xs },
     section: { gap: spacing.sm },
     sectionHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-    sectionTitle: { fontSize: 13, fontWeight: '800', color: colors.textPrimary, textTransform: 'uppercase', letterSpacing: 0.4 },
+    sectionTitle: { ...typography.overline, color: colors.textPrimary },
     contactCard: { gap: spacing.sm },
-    parentName: { fontSize: 15, fontWeight: '700', color: colors.textPrimary },
+    parentName: { ...typography.bodyBold, color: colors.textPrimary },
     contactRow: {},
     contactBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, borderRadius: radius.md, paddingHorizontal: 12, paddingVertical: 10 },
     contactBtnText: { fontSize: 13, fontWeight: '700' },
     progressCard: { gap: 6 },
-    progressBarWrap: { height: 10, borderRadius: 5, backgroundColor: 'rgba(148,163,184,0.2)', overflow: 'hidden' },
-    progressBar: { height: '100%', borderRadius: 5 },
+    progressBarWrap: { height: 10, borderRadius: radius.full, backgroundColor: colors.divider, overflow: 'hidden' },
+    progressBar: { height: '100%', borderRadius: radius.full },
     progressText: { fontSize: 12, fontWeight: '700' },
-    empty: { fontSize: 13, color: colors.textMuted, fontStyle: 'italic' },
-    scoreRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 6, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: 'rgba(148,163,184,0.25)' },
+    empty: { ...typography.body, fontSize: 13, color: colors.textMuted, fontStyle: 'italic' },
+    scoreRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 6, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.divider },
     scoreInfo: { flex: 1 },
-    scoreTitle: { fontSize: 13, fontWeight: '700', color: colors.textPrimary },
-    scoreMeta: { fontSize: 11, color: colors.textMuted, marginTop: 2 },
+    scoreTitle: { ...typography.caption, fontWeight: '700', color: colors.textPrimary },
+    scoreMeta: { ...typography.caption, color: colors.textMuted, marginTop: 2 },
     scoreValue: { fontSize: 14, fontWeight: '800', color: colors.textPrimary },
     scorePct: { fontSize: 11, fontWeight: '600', color: colors.textMuted },
-    messageBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, minHeight: 46, borderRadius: radius.md, backgroundColor: statusColors.info, marginTop: spacing.sm },
-    messageText: { color: '#fff', fontSize: 15, fontWeight: '700' },
+    messageBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, minHeight: 46, borderRadius: radius.md, backgroundColor: portalAccents.teacher.from, marginTop: spacing.sm },
+    messageText: { color: palette.white, fontSize: 15, fontWeight: '700' },
 });

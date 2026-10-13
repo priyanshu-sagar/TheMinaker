@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { FlatList, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Plus } from 'lucide-react-native';
-import { colors, spacing, statusColors } from '@/design/teacher-theme';
+import { colors, spacing, radius, shadows, glass, palette, portalAccents, typography } from '@/design/tokens';
 import { MeshBackground } from '@/components/glass/MeshBackground';
 import { AnimatedPressable } from '@/components/glass/AnimatedPressable';
 import { FadeInRow } from '@/components/glass/FadeInList';
@@ -26,6 +26,34 @@ export default function AcademicsScreen() {
 
   return (
     <MeshBackground>
+      {/* Decorative orbs */}
+      <View
+        style={{
+          position: 'absolute',
+          top: -60,
+          right: -40,
+          width: 200,
+          height: 200,
+          borderRadius: radius.full,
+          backgroundColor: glass.orb2,
+          opacity: 0.6,
+        }}
+        pointerEvents="none"
+      />
+      <View
+        style={{
+          position: 'absolute',
+          bottom: 120,
+          left: -80,
+          width: 280,
+          height: 280,
+          borderRadius: radius.full,
+          backgroundColor: glass.orb1,
+          opacity: 0.5,
+        }}
+        pointerEvents="none"
+      />
+
       <SafeAreaView style={styles.safe} edges={['top']}>
         <ClassSelector subtitle="Tests and marks for this class" />
         <FlatList
@@ -40,8 +68,8 @@ export default function AcademicsScreen() {
             </FadeInRow>
           )}
         />
-        <AnimatedPressable haptic="medium" onPress={() => setCreating(true)} style={styles.fab}>
-          <Plus color="#fff" size={26} strokeWidth={2.6} />
+        <AnimatedPressable haptic="medium" onPress={() => setCreating(true)} style={[styles.fab, shadows.lg]}>
+          <Plus color={palette.white} size={26} strokeWidth={2.6} />
         </AnimatedPressable>
       </SafeAreaView>
 
@@ -60,15 +88,15 @@ export default function AcademicsScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1 },
   list: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xl * 3, paddingTop: spacing.sm },
-  empty: { textAlign: 'center', color: colors.textMuted, paddingTop: spacing.xl },
+  empty: { ...typography.body, textAlign: 'center', color: colors.textMuted, paddingTop: spacing.xl },
   fab: {
     position: 'absolute',
     right: 20,
     bottom: 20,
     width: 56,
     height: 56,
-    borderRadius: 28,
-    backgroundColor: statusColors.academics,
+    borderRadius: radius.full,
+    backgroundColor: portalAccents.teacher.from,
     alignItems: 'center',
     justifyContent: 'center',
   },

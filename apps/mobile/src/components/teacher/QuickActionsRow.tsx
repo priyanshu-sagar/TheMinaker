@@ -1,6 +1,7 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { colors, spacing } from '@/design/teacher-theme';
+import { StyleSheet, Text, View } from 'react-native';
+import { colors, spacing, shadows, typography } from '@/design/tokens';
 import { GlassCard } from '@/components/glass/GlassCard';
+import { AnimatedPressable } from '@/components/glass/AnimatedPressable';
 
 const ACTIONS = [
   { key: 'attendance', icon: '✅', label: 'Take Attendance' },
@@ -12,11 +13,11 @@ export function QuickActionsRow({ onAction }: { onAction: (key: 'attendance' | '
   return (
     <View style={styles.row}>
       {ACTIONS.map((action) => (
-        <GlassCard key={action.key} padded={false} style={styles.item}>
-          <Pressable style={styles.button} onPress={() => onAction(action.key)}>
+        <GlassCard key={action.key} padded={false} style={[styles.item, shadows.sm]}>
+          <AnimatedPressable style={styles.button} onPress={() => onAction(action.key)}>
             <Text style={styles.icon}>{action.icon}</Text>
             <Text style={styles.label}>{action.label}</Text>
-          </Pressable>
+          </AnimatedPressable>
         </GlassCard>
       ))}
     </View>
@@ -28,5 +29,5 @@ const styles = StyleSheet.create({
   item: { flex: 1 },
   button: { alignItems: 'center', justifyContent: 'center', paddingVertical: spacing.md, paddingHorizontal: spacing.xs, gap: 4 },
   icon: { fontSize: 20 },
-  label: { fontSize: 11, fontWeight: '700', color: colors.textPrimary, textAlign: 'center' },
+  label: { ...typography.overline, fontSize: 11, color: colors.textPrimary, textAlign: 'center' },
 });

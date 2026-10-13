@@ -1,10 +1,11 @@
 import { useMemo, useState } from 'react';
-import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { FlatList, StyleSheet, Text, View } from 'react-native';
 import MapView, { Marker, UrlTile } from 'react-native-maps';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { glass } from '@/design/glass-theme';
-import { colors, spacing } from '@/design/gateman-theme';
+import { colors, spacing, radius, shadows, glass, typography } from '@/design/tokens';
 import { MeshBackground } from '@/components/glass/MeshBackground';
+import { AnimatedPressable } from '@/components/glass/AnimatedPressable';
+import { FadeInRow } from '@/components/glass/FadeInList';
 import { MetricChip } from '@/components/gateman/MetricChip';
 import { BusRouteListItem } from '@/components/gateman/BusRouteListItem';
 import { SearchBar } from '@/components/glass/SearchBar';
@@ -47,6 +48,34 @@ export default function LiveFleetScreen() {
 
   return (
     <MeshBackground>
+      {/* Decorative orbs */}
+      <View
+        style={{
+          position: 'absolute',
+          top: -60,
+          right: -40,
+          width: 200,
+          height: 200,
+          borderRadius: radius.full,
+          backgroundColor: glass.orb1,
+          opacity: 0.6,
+        }}
+        pointerEvents="none"
+      />
+      <View
+        style={{
+          position: 'absolute',
+          bottom: 120,
+          left: -80,
+          width: 280,
+          height: 280,
+          borderRadius: radius.full,
+          backgroundColor: glass.orb2,
+          opacity: 0.5,
+        }}
+        pointerEvents="none"
+      />
+
       <SafeAreaView style={styles.safe} edges={['top']}>
         <View style={styles.header}>
           <Text style={styles.title}>Live Fleet</Text>
@@ -66,13 +95,13 @@ export default function LiveFleetScreen() {
                   coordinate={{ latitude: bus.coordinates.lat, longitude: bus.coordinates.lng }}
                   title={bus.busNumber}
                   description={`${bus.routeName} · ${bus.conductorName}`}
-                  pinColor={bus.status === 'Online' ? '#10B981' : '#EF4444'}
+                  pinColor={bus.status === 'Online' ? colors.online : colors.offline}
                 />
               ))}
             </MapView>
-            <Pressable style={styles.expandBtn} onPress={() => setExpanded(true)}>
+            <AnimatedPressable style={styles.expandBtn} onPress={() => setExpanded(true)}>
               <Text style={styles.expandIcon}>⤢</Text>
-            </Pressable>
+            </AnimatedPressable>
           </View>
         </View>
 
@@ -87,7 +116,11 @@ export default function LiveFleetScreen() {
           contentContainerStyle={styles.listContent}
           ItemSeparatorComponent={() => <View style={{ height: spacing.sm }} />}
           ListEmptyComponent={<Text style={styles.empty}>No buses match your search.</Text>}
-          renderItem={({ item }) => <BusRouteListItem bus={item} onPress={() => setSelectedBus(item)} />}
+          renderItem={({ item, index }) => (
+            <FadeInRow index={index}>
+              <BusRouteListItem bus={item} onPress={() => setSelectedBus(item)} />
+            </FadeInRow>
+          )}
         />
       </SafeAreaView>
 
@@ -100,35 +133,34 @@ export default function LiveFleetScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1 },
   header: { paddingHorizontal: spacing.lg, paddingTop: spacing.md, gap: spacing.md },
-  title: { fontSize: 20, fontWeight: '700', color: colors.textPrimary },
+  title: { ...typography.title, color: colors.textPrimary },
   metrics: { flexDirection: 'row', gap: spacing.md },
   mapShadow: {
     height: 220,
     marginTop: spacing.md,
     marginHorizontal: spacing.lg,
-    borderRadius: 16,
-    shadowColor: glass.shadow,
-    shadowOpacity: 0.12,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 5 },
-    elevation: 4,
+    borderRadius: radius.lg,
+    ...shadows.md,
   },
-  mapWrap: { flex: 1, borderRadius: 16, overflow: 'hidden', borderWidth: 1, borderColor: glass.border },
+  mapWrap: { flex: 1, borderRadius: radius.lg, overflow: 'hidden', borderWidth: 1, borderColor: glass.border },
   map: { flex: 1 },
   expandBtn: {
     position: 'absolute',
     top: spacing.sm,
     right: spacing.sm,
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: 'rgba(255,255,255,0.85)',
+    width: 36,
+    height: 36,
+    borderRadius: radius.full,
+    backgroundColor: colors.surfaceStrong,
+    borderWidth: 1,
+    borderColor: glass.border,
     alignItems: 'center',
     justifyContent: 'center',
+    ...shadows.sm,
   },
   expandIcon: { fontSize: 16, color: colors.textPrimary },
   searchWrap: { marginTop: spacing.md, marginHorizontal: spacing.lg },
   list: { flex: 1, marginTop: spacing.md },
   listContent: { paddingHorizontal: spacing.lg, paddingBottom: spacing.lg },
-  empty: { textAlign: 'center', color: colors.textMuted, paddingTop: spacing.xl },
+  empty: { ...typography.body, textAlign: 'center', color: colors.textMuted, paddingTop: spacing.xl },
 });

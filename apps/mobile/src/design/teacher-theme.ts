@@ -1,20 +1,21 @@
-import { colors as baseColors, radius, spacing } from '@/design/theme';
-import { actionColors } from '@/design/glass-theme';
+// Re-export from unified token system for backwards compatibility
+import { colors, palette } from './tokens';
 
-/** Teacher portal action palette — same hex values as the shared V2 palette, renamed to their teacher-facing meaning. */
+export { colors, spacing, radius, shadows, glass, typography, portalAccents } from './tokens';
+
+// Keep statusColors as a semantic alias for teacher portal
 export const statusColors = {
-  present: actionColors.success,
-  presentBg: actionColors.successBg,
-  absent: actionColors.error,
-  absentBg: actionColors.errorBg,
-  late: actionColors.warning,
-  lateBg: actionColors.warningBg,
-  info: actionColors.boarded,
-  infoBg: actionColors.boardedBg,
-  academics: actionColors.checkedOut,
-  academicsBg: actionColors.checkedOutBg,
-  neutral: baseColors.textMuted,
-  neutralBg: actionColors.neutralBg,
+  ...colors,
+  present: colors.success,
+  presentBg: colors.successBg,
+  absent: colors.error,
+  absentBg: colors.errorBg,
+  late: colors.warning,
+  lateBg: colors.warningBg,
+  info: colors.info,
+  infoBg: colors.infoBg,
+  academics: palette.violet,
+  academicsBg: colors.checkedOutBg,
+  neutral: colors.textMuted,
+  neutralBg: colors.primarySurface,
 } as const;
-
-export { baseColors as colors, radius, spacing };

@@ -1,6 +1,6 @@
-import { Pressable, ScrollView, StyleSheet, Text } from 'react-native';
-import { glass } from '@/design/glass-theme';
-import { colors, radius, spacing } from '@/design/gateman-theme';
+import { ScrollView, StyleSheet, Text } from 'react-native';
+import { glass, colors, radius, spacing, palette, shadows } from '@/design/tokens';
+import { AnimatedPressable } from '@/components/glass/AnimatedPressable';
 import { FleetBus } from '@/store/gateman.store';
 
 export function BusSelectorPills({
@@ -11,15 +11,19 @@ export function BusSelectorPills({
   buses: FleetBus[];
   selectedId: string;
   onSelect: (id: string) => void;
-}) {
+  }) {
   return (
     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
       {buses.map((bus) => {
         const active = bus.id === selectedId;
         return (
-          <Pressable key={bus.id} style={[styles.pill, active ? styles.pillActive : null]} onPress={() => onSelect(bus.id)}>
+          <AnimatedPressable
+            key={bus.id}
+            style={[styles.pill, active ? styles.pillActive : null, shadows.sm]}
+            onPress={() => onSelect(bus.id)}
+          >
             <Text style={[styles.text, active ? styles.textActive : null]}>{bus.busNumber}</Text>
-          </Pressable>
+          </AnimatedPressable>
         );
       })}
     </ScrollView>
@@ -32,11 +36,11 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: glass.border,
-    backgroundColor: 'rgba(255,255,255,0.55)',
+    backgroundColor: glass.cardBg,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm,
   },
   pillActive: { backgroundColor: colors.primary, borderColor: colors.primary },
   text: { fontSize: 13, fontWeight: '700', color: colors.textSecondary },
-  textActive: { color: '#fff' },
+  textActive: { color: palette.white },
 });

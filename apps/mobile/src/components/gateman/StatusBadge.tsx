@@ -1,16 +1,16 @@
 import { StyleSheet, Text, View } from 'react-native';
-import { radius, spacing, statusColors } from '@/design/gateman-theme';
+import { radius, spacing, colors } from '@/design/tokens';
 
 export type BadgeTone = 'online' | 'offline' | 'amber' | 'boarded' | 'dropped' | 'checkedOut' | 'neutral';
 
 const TONE_MAP: Record<BadgeTone, { fg: string; bg: string }> = {
-  online: { fg: statusColors.online, bg: statusColors.onlineBg },
-  offline: { fg: statusColors.offline, bg: statusColors.offlineBg },
-  amber: { fg: statusColors.amber, bg: statusColors.amberBg },
-  boarded: { fg: statusColors.boarded, bg: statusColors.boardedBg },
-  dropped: { fg: statusColors.dropped, bg: statusColors.droppedBg },
-  checkedOut: { fg: statusColors.checkedOut, bg: statusColors.checkedOutBg },
-  neutral: { fg: statusColors.neutral, bg: statusColors.neutralBg },
+  online: { fg: colors.online, bg: colors.onlineBg },
+  offline: { fg: colors.offline, bg: colors.offlineBg },
+  amber: { fg: colors.warning, bg: colors.warningBg },
+  boarded: { fg: colors.boarded, bg: colors.boardedBg },
+  dropped: { fg: colors.dropped, bg: colors.droppedBg },
+  checkedOut: { fg: colors.checkedOut, bg: colors.checkedOutBg },
+  neutral: { fg: colors.textMuted, bg: colors.primarySurface },
 };
 
 export function StatusBadge({ label, tone }: { label: string; tone: BadgeTone }) {
@@ -33,6 +33,6 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     alignSelf: 'flex-start',
   },
-  dot: { width: 7, height: 7, borderRadius: 4 },
+  dot: { width: 7, height: 7, borderRadius: radius.full },
   text: { fontSize: 12, fontWeight: '700' },
 });

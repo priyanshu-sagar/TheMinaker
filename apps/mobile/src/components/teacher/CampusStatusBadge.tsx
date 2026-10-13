@@ -1,24 +1,24 @@
 import { StyleSheet, Text, View } from 'react-native';
-import { statusColors } from '@/design/teacher-theme';
+import { colors, radius, spacing } from '@/design/tokens';
 import { CampusStatus } from '@/store/teacher.store';
 
 const CONFIG: Record<CampusStatus, { dot: string; fg: string; bg: string; label: (at?: string) => string }> = {
   'At Gate': {
-    dot: statusColors.present,
-    fg: statusColors.present,
-    bg: statusColors.presentBg,
+    dot: colors.success,
+    fg: colors.success,
+    bg: colors.successBg,
     label: (at) => (at ? `At the gate ${at}` : 'At the gate'),
   },
   'Not Arrived': {
-    dot: statusColors.neutral,
-    fg: statusColors.neutral,
-    bg: statusColors.neutralBg,
+    dot: colors.textMuted,
+    fg: colors.textMuted,
+    bg: colors.primarySurface,
     label: () => 'Not arrived yet',
   },
   'Parent Excused': {
-    dot: statusColors.absent,
-    fg: statusColors.absent,
-    bg: statusColors.absentBg,
+    dot: colors.error,
+    fg: colors.error,
+    bg: colors.errorBg,
     label: () => 'Parent marked absent',
   },
 };
@@ -34,7 +34,15 @@ export function CampusStatusBadge({ status, at }: { status: CampusStatus; at?: s
 }
 
 const styles = StyleSheet.create({
-  badge: { flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4, alignSelf: 'flex-start' },
-  dot: { width: 8, height: 8, borderRadius: 4 },
+  badge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    borderRadius: radius.sm,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
+    alignSelf: 'flex-start',
+  },
+  dot: { width: 8, height: 8, borderRadius: radius.full },
   text: { fontSize: 11, fontWeight: '700' },
 });

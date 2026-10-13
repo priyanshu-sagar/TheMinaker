@@ -1,12 +1,12 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { glass } from '@/design/glass-theme';
-import { colors, radius, spacing, statusColors } from '@/design/gateman-theme';
+import { StyleSheet, Text, View } from 'react-native';
+import { glass, colors, radius, spacing, palette, shadows, typography } from '@/design/tokens';
+import { AnimatedPressable } from '@/components/glass/AnimatedPressable';
 import { AttendanceStatus } from '@/store/gateman.store';
 
 const STAGES: Array<{ stage: AttendanceStatus; fg: string; bg: string }> = [
-  { stage: 'Boarded', fg: statusColors.boarded, bg: statusColors.boardedBg },
-  { stage: 'Dropped', fg: statusColors.dropped, bg: statusColors.droppedBg },
-  { stage: 'Checked Out', fg: statusColors.checkedOut, bg: statusColors.checkedOutBg },
+  { stage: 'Boarded', fg: colors.boarded, bg: colors.boardedBg },
+  { stage: 'Dropped', fg: colors.dropped, bg: colors.droppedBg },
+  { stage: 'Checked Out', fg: colors.checkedOut, bg: colors.checkedOutBg },
 ];
 
 function formatTime(iso?: string): string {
@@ -28,7 +28,7 @@ export function StudentRosterRow({
   const activeStage = STAGES.find((item) => item.stage === attendanceStatus);
 
   return (
-    <View style={styles.row}>
+    <View style={[styles.row, shadows.sm]}>
       <View style={styles.nameRow}>
         <Text style={styles.name}>{studentName}</Text>
         {attendanceStatus === 'Absent' ? <Text style={styles.absentTag}>Absent</Text> : null}
@@ -37,13 +37,13 @@ export function StudentRosterRow({
         {STAGES.map(({ stage, fg, bg }) => {
           const active = attendanceStatus === stage;
           return (
-            <Pressable
+            <AnimatedPressable
               key={stage}
               style={[styles.toggle, active ? { backgroundColor: fg, borderColor: fg } : { borderColor: bg }]}
               onPress={() => onChange(stage)}
             >
               <Text style={[styles.toggleText, active ? styles.toggleTextActive : { color: fg }]}>{stage}</Text>
-            </Pressable>
+            </AnimatedPressable>
           );
         })}
       </View>
@@ -58,7 +58,7 @@ export function StudentRosterRow({
 
 const styles = StyleSheet.create({
   row: {
-    backgroundColor: 'rgba(255,255,255,0.6)',
+    backgroundColor: glass.cardBg,
     borderRadius: radius.md,
     borderWidth: 1,
     borderColor: glass.border,
@@ -66,8 +66,16 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   nameRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  name: { fontSize: 15, fontWeight: '700', color: colors.textPrimary },
-  absentTag: { fontSize: 11, fontWeight: '700', color: statusColors.offline, backgroundColor: statusColors.offlineBg, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 },
+  name: { ...typography.bodyBold, color: colors.textPrimary },
+  absentTag: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: colors.offline,
+    backgroundColor: colors.offlineBg,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: radius.xs,
+  },
   toggles: { flexDirection: 'row', gap: spacing.sm },
   toggle: {
     flex: 1,
@@ -78,6 +86,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   toggleText: { fontSize: 12, fontWeight: '700' },
-  toggleTextActive: { color: '#fff' },
+  toggleTextActive: { color: palette.white },
   timestamp: { fontSize: 12, fontWeight: '600' },
 });

@@ -1,7 +1,7 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { glass } from '@/design/glass-theme';
-import { colors, spacing, statusColors } from '@/design/gateman-theme';
+import { StyleSheet, Text, View } from 'react-native';
+import { colors, spacing, radius, palette, shadows, typography } from '@/design/tokens';
 import { GlassCard } from '@/components/glass/GlassCard';
+import { AnimatedPressable } from '@/components/glass/AnimatedPressable';
 
 export type InboxTabKey = 'profiles' | 'edits' | 'alerts';
 
@@ -21,13 +21,13 @@ export function TopTabBar({
   ];
 
   return (
-    <GlassCard padded={false} style={styles.wrap}>
+    <GlassCard padded={false} style={[styles.wrap, shadows.sm]}>
       <View style={styles.track}>
         {tabs.map((tab) => {
           const isActive = tab.key === active;
           const count = counts[tab.key];
           return (
-            <Pressable key={tab.key} style={styles.tab} onPress={() => onChange(tab.key)}>
+            <AnimatedPressable key={tab.key} style={styles.tab} onPress={() => onChange(tab.key)}>
               <Text style={[styles.label, isActive ? styles.labelActive : null]}>{tab.label}</Text>
               {count > 0 ? (
                 <View style={[styles.badge, tab.key === 'alerts' ? styles.badgeAmber : null]}>
@@ -35,7 +35,7 @@ export function TopTabBar({
                 </View>
               ) : null}
               {isActive ? <View style={styles.indicator} /> : null}
-            </Pressable>
+            </AnimatedPressable>
           );
         })}
       </View>
@@ -47,21 +47,28 @@ const styles = StyleSheet.create({
   wrap: { marginHorizontal: spacing.lg },
   track: { flexDirection: 'row' },
   tab: { flex: 1, alignItems: 'center', paddingVertical: spacing.md, gap: 4 },
-  label: { fontSize: 14, fontWeight: '600', color: colors.textMuted },
+  label: { ...typography.label, color: colors.textMuted },
   labelActive: { color: colors.primary },
-  indicator: { position: 'absolute', bottom: 0, height: 3, width: '60%', borderRadius: 2, backgroundColor: colors.primary },
+  indicator: {
+    position: 'absolute',
+    bottom: 0,
+    height: 3,
+    width: '60%',
+    borderRadius: radius.full,
+    backgroundColor: colors.primary,
+  },
   badge: {
     position: 'absolute',
     top: 4,
     right: '22%',
     minWidth: 18,
     height: 18,
-    borderRadius: 9,
-    backgroundColor: statusColors.offline,
+    borderRadius: radius.full,
+    backgroundColor: colors.offline,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 3,
   },
-  badgeAmber: { backgroundColor: statusColors.amber },
-  badgeText: { color: '#fff', fontSize: 10, fontWeight: '700' },
+  badgeAmber: { backgroundColor: colors.warning },
+  badgeText: { color: palette.white, fontSize: 10, fontWeight: '700' },
 });

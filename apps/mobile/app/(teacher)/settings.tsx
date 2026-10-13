@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { BookOpen, ChevronRight, Contact, LogOut, Pencil, School, Users } from 'lucide-react-native';
-import { colors, radius, spacing, statusColors } from '@/design/teacher-theme';
+import { colors, radius, spacing, shadows, glass, palette, typography } from '@/design/tokens';
 import { MeshBackground } from '@/components/glass/MeshBackground';
 import { GlassCard } from '@/components/glass/GlassCard';
 import { AnimatedPressable } from '@/components/glass/AnimatedPressable';
@@ -46,10 +46,38 @@ export default function TeacherSettingsScreen() {
 
   return (
     <MeshBackground>
+      {/* Decorative orbs */}
+      <View
+        style={{
+          position: 'absolute',
+          top: -60,
+          right: -40,
+          width: 200,
+          height: 200,
+          borderRadius: radius.full,
+          backgroundColor: glass.orb1,
+          opacity: 0.6,
+        }}
+        pointerEvents="none"
+      />
+      <View
+        style={{
+          position: 'absolute',
+          bottom: 120,
+          left: -80,
+          width: 280,
+          height: 280,
+          borderRadius: radius.full,
+          backgroundColor: glass.orb2,
+          opacity: 0.5,
+        }}
+        pointerEvents="none"
+      />
+
       <SafeAreaView style={styles.safe} edges={['top']}>
         <ScrollView contentContainerStyle={styles.scroll}>
           <ClassSelector />
-          <GlassCard style={styles.profileCard}>
+          <GlassCard style={[styles.profileCard, shadows.sm]}>
             <View style={styles.profileRow}>
               <View style={styles.avatar}>
                 <Text style={styles.avatarText}>{(user?.fullName ?? 'T').charAt(0)}</Text>
@@ -66,7 +94,7 @@ export default function TeacherSettingsScreen() {
           </GlassCard>
 
           <Text style={styles.section}>Management</Text>
-          <GlassCard padded={false}>
+          <GlassCard padded={false} style={shadows.sm}>
             {rows.map((row, index) => {
               const Icon = row.icon;
               return (
@@ -89,13 +117,13 @@ export default function TeacherSettingsScreen() {
             })}
           </GlassCard>
 
-          <AnimatedPressable haptic="light" onPress={() => setModifyOpen(true)} style={styles.modifyBtn}>
-            <Pencil color="#fff" size={16} strokeWidth={2.4} />
+          <AnimatedPressable haptic="light" onPress={() => setModifyOpen(true)} style={[styles.modifyBtn, shadows.sm]}>
+            <Pencil color={palette.white} size={16} strokeWidth={2.4} />
             <Text style={styles.modifyText}>Request Details Modification</Text>
           </AnimatedPressable>
 
-          <AnimatedPressable haptic="medium" onPress={onLogout} style={styles.logout}>
-            <LogOut color="#fff" size={16} strokeWidth={2.4} />
+          <AnimatedPressable haptic="medium" onPress={onLogout} style={[styles.logout, shadows.sm]}>
+            <LogOut color={palette.white} size={16} strokeWidth={2.4} />
             <Text style={styles.logoutText}>Log Out</Text>
           </AnimatedPressable>
         </ScrollView>
@@ -115,21 +143,41 @@ const styles = StyleSheet.create({
   scroll: { paddingBottom: spacing.xl, gap: spacing.md },
   profileCard: { marginHorizontal: spacing.lg, gap: spacing.md },
   profileRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  avatar: { width: 48, height: 48, borderRadius: 24, backgroundColor: '#e4edf6', alignItems: 'center', justifyContent: 'center' },
+  avatar: {
+    width: 48,
+    height: 48,
+    borderRadius: radius.full,
+    backgroundColor: colors.primarySurface,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   avatarText: { fontSize: 20, fontWeight: '700', color: colors.primary },
   profileInfo: { flex: 1, gap: 2 },
-  name: { fontSize: 16, fontWeight: '700', color: colors.textPrimary },
-  id: { fontSize: 13, color: colors.textMuted },
+  name: { ...typography.heading, color: colors.textPrimary },
+  id: { ...typography.caption, color: colors.textMuted },
   classInfo: { fontSize: 13, color: colors.textSecondary, fontWeight: '600' },
-  verifiedBadge: { backgroundColor: statusColors.presentBg, borderRadius: radius.sm, paddingHorizontal: spacing.sm, paddingVertical: 4, alignSelf: 'flex-start' },
-  verifiedText: { fontSize: 11, fontWeight: '700', color: statusColors.present },
-  section: { fontSize: 13, fontWeight: '800', color: colors.textMuted, textTransform: 'uppercase', paddingHorizontal: spacing.lg, letterSpacing: 0.4 },
+  verifiedBadge: {
+    backgroundColor: colors.successBg,
+    borderRadius: radius.sm,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
+    alignSelf: 'flex-start',
+  },
+  verifiedText: { fontSize: 11, fontWeight: '700', color: colors.success },
+  section: { ...typography.overline, color: colors.textMuted, paddingHorizontal: spacing.lg },
   hubRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, padding: spacing.md },
-  hubDivider: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: 'rgba(148,163,184,0.3)' },
-  hubIcon: { width: 36, height: 36, borderRadius: 10, backgroundColor: 'rgba(26,79,139,0.1)', alignItems: 'center', justifyContent: 'center' },
+  hubDivider: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.borderStrong },
+  hubIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: radius.sm,
+    backgroundColor: colors.primarySurface,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   hubInfo: { flex: 1 },
-  hubLabel: { fontSize: 14, fontWeight: '700', color: colors.textPrimary },
-  hubHint: { fontSize: 12, color: colors.textMuted, marginTop: 2 },
+  hubLabel: { ...typography.label, color: colors.textPrimary },
+  hubHint: { ...typography.caption, color: colors.textMuted, marginTop: 2 },
   modifyBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -140,16 +188,16 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     backgroundColor: colors.primary,
   },
-  modifyText: { color: '#fff', fontSize: 15, fontWeight: '700' },
+  modifyText: { color: palette.white, fontSize: 15, fontWeight: '700' },
   logout: {
     marginHorizontal: spacing.lg,
     minHeight: 48,
     borderRadius: radius.md,
-    backgroundColor: statusColors.absent,
+    backgroundColor: colors.error,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
   },
-  logoutText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  logoutText: { color: palette.white, fontSize: 16, fontWeight: '700' },
 });

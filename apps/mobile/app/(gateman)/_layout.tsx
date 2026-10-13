@@ -1,5 +1,7 @@
+import { StyleSheet } from 'react-native';
 import { Tabs } from 'expo-router';
-import { colors } from '@/design/gateman-theme';
+import { BlurView } from 'expo-blur';
+import { glass, portalAccents, colors } from '@/design/tokens';
 import { TabBarIcon } from '@/components/shared/TabBarIcon';
 import { useGatemanStore } from '@/store/gateman.store';
 
@@ -12,8 +14,17 @@ export default function GatemanLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: colors.primary,
+        tabBarActiveTintColor: portalAccents.gateman.from,
         tabBarInactiveTintColor: colors.textMuted,
+        tabBarBackground: () => (
+          <BlurView intensity={55} tint="light" style={StyleSheet.absoluteFill} />
+        ),
+        tabBarStyle: {
+          backgroundColor: 'transparent',
+          borderTopColor: glass.border,
+          borderTopWidth: 1,
+          elevation: 0,
+        },
       }}
     >
       <Tabs.Screen

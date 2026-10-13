@@ -1,6 +1,8 @@
+import { StyleSheet } from 'react-native';
 import { Tabs } from 'expo-router';
+import { BlurView } from 'expo-blur';
 import { BookOpen, LayoutDashboard, MessageSquare, Settings, Users } from 'lucide-react-native';
-import { colors } from '@/design/teacher-theme';
+import { colors, glass, portalAccents } from '@/design/tokens';
 import { TabBarIcon } from '@/components/shared/TabBarIcon';
 import { useSelectedClass } from '@/store/teacher.store';
 
@@ -12,8 +14,17 @@ export default function TeacherLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: colors.primary,
+        tabBarActiveTintColor: portalAccents.teacher.from,
         tabBarInactiveTintColor: colors.textMuted,
+        tabBarBackground: () => (
+          <BlurView intensity={55} tint="light" style={StyleSheet.absoluteFill} />
+        ),
+        tabBarStyle: {
+          backgroundColor: 'transparent',
+          borderTopColor: glass.border,
+          borderTopWidth: 1,
+          elevation: 0,
+        },
       }}
     >
       <Tabs.Screen

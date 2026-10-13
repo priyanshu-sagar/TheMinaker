@@ -1,8 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Linking, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Phone, Trash2 } from 'lucide-react-native';
-import { glass } from '@/design/glass-theme';
-import { colors, radius, spacing, statusColors } from '@/design/teacher-theme';
+import { glass, colors, radius, spacing, palette, shadows, typography } from '@/design/tokens';
 import { GlassModal } from '@/components/glass/GlassModal';
 import { AnimatedPressable } from '@/components/glass/AnimatedPressable';
 import { SearchBar } from '@/components/glass/SearchBar';
@@ -33,7 +32,7 @@ export function ManageClassesModal({ visible, onClose }: { visible: boolean; onC
       <AnimatedPressable haptic="selection" onPress={() => setHomeroom((value) => !value)} style={[styles.toggle, homeroom ? styles.toggleOn : null]}>
         <Text style={[styles.toggleText, homeroom ? styles.toggleTextOn : null]}>{homeroom ? 'Homeroom class' : 'Subject class only'}</Text>
       </AnimatedPressable>
-      <AnimatedPressable haptic="medium" onPress={handleAdd} disabled={!name.trim()} style={[styles.primary, !name.trim() ? styles.disabled : null]}>
+      <AnimatedPressable haptic="medium" onPress={handleAdd} disabled={!name.trim()} style={[styles.primary, shadows.sm, !name.trim() ? styles.disabled : null]}>
         <Text style={styles.primaryText}>Add Class</Text>
       </AnimatedPressable>
     </GlassModal>
@@ -49,7 +48,7 @@ function ClassRow({ cls, canRemove, onRemove }: { cls: TeacherClass; canRemove: 
       </View>
       {canRemove ? (
         <AnimatedPressable haptic="medium" onPress={onRemove} style={styles.iconBtn}>
-          <Trash2 color={statusColors.absent} size={16} strokeWidth={2.2} />
+          <Trash2 color={colors.error} size={16} strokeWidth={2.2} />
         </AnimatedPressable>
       ) : null}
     </View>
@@ -89,7 +88,7 @@ export function EditTimetableModal({ visible, classId, onClose }: { visible: boo
       <TextInput value={time} onChangeText={setTime} placeholder="Start, e.g. 2:05 PM" placeholderTextColor={colors.textMuted} style={styles.input} />
       <TextInput value={endTime} onChangeText={setEndTime} placeholder="End, e.g. 2:50 PM" placeholderTextColor={colors.textMuted} style={styles.input} />
       <TextInput value={room} onChangeText={setRoom} placeholder="Room" placeholderTextColor={colors.textMuted} style={styles.input} />
-      <AnimatedPressable haptic="medium" onPress={handleAdd} disabled={!canAdd} style={[styles.primary, !canAdd ? styles.disabled : null]}>
+      <AnimatedPressable haptic="medium" onPress={handleAdd} disabled={!canAdd} style={[styles.primary, shadows.sm, !canAdd ? styles.disabled : null]}>
         <Text style={styles.primaryText}>Add Period</Text>
       </AnimatedPressable>
     </GlassModal>
@@ -104,7 +103,7 @@ function PeriodRow({ period, onRemove }: { period: SchedulePeriod; onRemove: () 
         <Text style={styles.rowMeta}>{period.time} – {period.endTime} · {period.room}</Text>
       </View>
       <AnimatedPressable haptic="medium" onPress={onRemove} style={styles.iconBtn}>
-        <Trash2 color={statusColors.absent} size={16} strokeWidth={2.2} />
+        <Trash2 color={colors.error} size={16} strokeWidth={2.2} />
       </AnimatedPressable>
     </View>
   );
@@ -146,7 +145,7 @@ export function RosterManagementModal({ visible, classId, onClose }: { visible: 
             <Text style={styles.rowMeta}>Roll {student.rollNumber}</Text>
           </View>
           <AnimatedPressable haptic="medium" onPress={() => removeStudent(student.id)} style={styles.iconBtn}>
-            <Trash2 color={statusColors.absent} size={16} strokeWidth={2.2} />
+            <Trash2 color={colors.error} size={16} strokeWidth={2.2} />
           </AnimatedPressable>
         </View>
       ))}
@@ -156,7 +155,7 @@ export function RosterManagementModal({ visible, classId, onClose }: { visible: 
       <TextInput value={parentName} onChangeText={setParentName} placeholder="Parent name" placeholderTextColor={colors.textMuted} style={styles.input} />
       <TextInput value={parentPhone} onChangeText={setParentPhone} placeholder="Parent phone" placeholderTextColor={colors.textMuted} keyboardType="phone-pad" style={styles.input} />
       <TextInput value={parentEmail} onChangeText={setParentEmail} placeholder="Parent email" placeholderTextColor={colors.textMuted} keyboardType="email-address" autoCapitalize="none" style={styles.input} />
-      <AnimatedPressable haptic="medium" onPress={handleAdd} disabled={!name.trim() || !roll.trim()} style={[styles.primary, !name.trim() || !roll.trim() ? styles.disabled : null]}>
+      <AnimatedPressable haptic="medium" onPress={handleAdd} disabled={!name.trim() || !roll.trim()} style={[styles.primary, shadows.sm, !name.trim() || !roll.trim() ? styles.disabled : null]}>
         <Text style={styles.primaryText}>Add Student</Text>
       </AnimatedPressable>
     </GlassModal>
@@ -194,7 +193,7 @@ export function ParentDirectoryModal({
             <Text style={styles.rowMeta}>{student.name} · {student.parentPhone}</Text>
           </View>
           <AnimatedPressable haptic="medium" onPress={() => Linking.openURL(`tel:${student.parentPhone}`).catch(() => undefined)} style={styles.iconBtn}>
-            <Phone color={statusColors.present} size={16} strokeWidth={2.2} />
+            <Phone color={colors.success} size={16} strokeWidth={2.2} />
           </AnimatedPressable>
         </View>
       ))}
@@ -203,28 +202,28 @@ export function ParentDirectoryModal({
 }
 
 const styles = StyleSheet.create({
-  hint: { fontSize: 13, color: colors.textMuted, lineHeight: 18 },
-  label: { fontSize: 13, fontWeight: '800', color: colors.textMuted, textTransform: 'uppercase', marginTop: spacing.sm },
+  hint: { ...typography.caption, color: colors.textMuted, lineHeight: 18 },
+  label: { ...typography.overline, color: colors.textMuted, marginTop: spacing.sm },
   input: {
     minHeight: 44,
     borderWidth: 1,
     borderColor: glass.border,
     borderRadius: radius.md,
-    backgroundColor: 'rgba(255,255,255,0.6)',
+    backgroundColor: colors.surfaceStrong,
     paddingHorizontal: spacing.md,
     fontSize: 15,
     color: colors.textPrimary,
   },
-  row: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: 8, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: 'rgba(148,163,184,0.25)' },
+  row: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: 8, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.divider },
   rowInfo: { flex: 1 },
-  rowTitle: { fontSize: 14, fontWeight: '700', color: colors.textPrimary },
-  rowMeta: { fontSize: 12, color: colors.textMuted, marginTop: 2 },
-  iconBtn: { width: 34, height: 34, borderRadius: 17, backgroundColor: 'rgba(148,163,184,0.15)', alignItems: 'center', justifyContent: 'center' },
+  rowTitle: { ...typography.bodyBold, color: colors.textPrimary },
+  rowMeta: { ...typography.caption, color: colors.textMuted, marginTop: 2 },
+  iconBtn: { width: 34, height: 34, borderRadius: radius.full, backgroundColor: colors.primarySurface, alignItems: 'center', justifyContent: 'center' },
   toggle: { minHeight: 42, borderRadius: radius.md, borderWidth: 1.5, borderColor: glass.border, alignItems: 'center', justifyContent: 'center' },
-  toggleOn: { backgroundColor: statusColors.presentBg, borderColor: statusColors.present },
+  toggleOn: { backgroundColor: colors.successBg, borderColor: colors.success },
   toggleText: { fontSize: 13, fontWeight: '700', color: colors.textSecondary },
-  toggleTextOn: { color: statusColors.present },
+  toggleTextOn: { color: colors.success },
   primary: { minHeight: 46, borderRadius: radius.md, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
   disabled: { opacity: 0.5 },
-  primaryText: { color: '#fff', fontSize: 15, fontWeight: '700' },
+  primaryText: { color: palette.white, fontSize: 15, fontWeight: '700' },
 });

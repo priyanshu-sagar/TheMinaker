@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { StyleSheet, Text, TextInput, View } from 'react-native';
-import { glass } from '@/design/glass-theme';
-import { colors, radius, spacing, statusColors } from '@/design/teacher-theme';
+import { glass, colors, radius, spacing, palette, portalAccents, shadows, typography } from '@/design/tokens';
 import { GlassModal } from '@/components/glass/GlassModal';
 import { AnimatedPressable } from '@/components/glass/AnimatedPressable';
 import { MaterialType } from '@/store/teacher.store';
@@ -59,7 +58,7 @@ export function UploadMaterialModal({
           );
         })}
       </View>
-      <AnimatedPressable haptic="medium" onPress={handleUpload} disabled={!title.trim()} style={[styles.uploadBtn, !title.trim() ? styles.disabled : null]}>
+      <AnimatedPressable haptic="medium" onPress={handleUpload} disabled={!title.trim()} style={[styles.uploadBtn, shadows.sm, !title.trim() ? styles.disabled : null]}>
         <Text style={styles.uploadText}>Add to Class</Text>
       </AnimatedPressable>
     </GlassModal>
@@ -67,24 +66,24 @@ export function UploadMaterialModal({
 }
 
 const styles = StyleSheet.create({
-  hint: { fontSize: 13, color: colors.textMuted, lineHeight: 18 },
-  label: { fontSize: 13, fontWeight: '800', color: colors.textMuted, textTransform: 'uppercase' },
+  hint: { ...typography.caption, color: colors.textMuted, lineHeight: 18 },
+  label: { ...typography.overline, color: colors.textMuted },
   input: {
     minHeight: 44,
     borderWidth: 1,
     borderColor: glass.border,
     borderRadius: radius.md,
-    backgroundColor: 'rgba(255,255,255,0.6)',
+    backgroundColor: colors.surfaceStrong,
     paddingHorizontal: spacing.md,
     fontSize: 15,
     color: colors.textPrimary,
   },
   typeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-  typeChip: { borderRadius: 16, borderWidth: 1.5, borderColor: glass.border, paddingHorizontal: 14, paddingVertical: 8 },
-  typeChipActive: { backgroundColor: statusColors.academics, borderColor: statusColors.academics },
+  typeChip: { borderRadius: radius.full, borderWidth: 1.5, borderColor: glass.border, paddingHorizontal: 14, paddingVertical: 8 },
+  typeChipActive: { backgroundColor: portalAccents.teacher.from, borderColor: portalAccents.teacher.from },
   typeText: { fontSize: 13, fontWeight: '700', color: colors.textSecondary },
-  typeTextActive: { color: '#fff' },
-  uploadBtn: { minHeight: 46, borderRadius: radius.md, backgroundColor: statusColors.academics, alignItems: 'center', justifyContent: 'center' },
+  typeTextActive: { color: palette.white },
+  uploadBtn: { minHeight: 46, borderRadius: radius.md, backgroundColor: portalAccents.teacher.from, alignItems: 'center', justifyContent: 'center' },
   disabled: { opacity: 0.5 },
-  uploadText: { color: '#fff', fontSize: 15, fontWeight: '700' },
+  uploadText: { color: palette.white, fontSize: 15, fontWeight: '700' },
 });

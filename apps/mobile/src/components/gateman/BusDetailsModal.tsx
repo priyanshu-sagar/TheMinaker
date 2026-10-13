@@ -1,5 +1,5 @@
 import { StyleSheet, Text, View } from 'react-native';
-import { colors, spacing, statusColors } from '@/design/gateman-theme';
+import { colors, spacing, radius, typography } from '@/design/tokens';
 import { GlassModal } from '@/components/glass/GlassModal';
 import { StatusBadge } from './StatusBadge';
 import { FleetBus, getBusStats, useGatemanStore } from '@/store/gateman.store';
@@ -19,10 +19,10 @@ export function BusDetailsModal({ bus, onClose }: { bus: FleetBus | null; onClos
           <Text style={styles.conductor}>Conductor: {bus.conductorName}</Text>
 
           <View style={styles.statsGrid}>
-            <StatTile label="Total Students" value={stats.totalStudents} fg={colors.textPrimary} bg="rgba(148,163,184,0.15)" />
-            <StatTile label="Boarded (In)" value={stats.boardedIn} fg={statusColors.boarded} bg={statusColors.boardedBg} />
-            <StatTile label="Dropped (Out)" value={stats.droppedOut} fg={statusColors.dropped} bg={statusColors.droppedBg} />
-            <StatTile label="Absent (Not coming)" value={stats.absent} fg={statusColors.offline} bg={statusColors.offlineBg} />
+            <StatTile label="Total Students" value={stats.totalStudents} fg={colors.textPrimary} bg={colors.divider} />
+            <StatTile label="Boarded (In)" value={stats.boardedIn} fg={colors.boarded} bg={colors.boardedBg} />
+            <StatTile label="Dropped (Out)" value={stats.droppedOut} fg={colors.dropped} bg={colors.droppedBg} />
+            <StatTile label="Absent (Not coming)" value={stats.absent} fg={colors.offline} bg={colors.offlineBg} />
           </View>
         </>
       ) : null}
@@ -41,10 +41,10 @@ function StatTile({ label, value, fg, bg }: { label: string; value: number; fg: 
 
 const styles = StyleSheet.create({
   headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  route: { fontSize: 16, fontWeight: '700', color: colors.textPrimary, flex: 1, marginRight: spacing.sm },
-  conductor: { fontSize: 13, color: colors.textMuted },
+  route: { ...typography.heading, color: colors.textPrimary, flex: 1, marginRight: spacing.sm },
+  conductor: { ...typography.caption, color: colors.textMuted },
   statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginTop: spacing.sm },
-  tile: { width: '47%', borderRadius: 12, padding: spacing.md, alignItems: 'center' },
+  tile: { width: '47%', borderRadius: radius.md, padding: spacing.md, alignItems: 'center' },
   tileValue: { fontSize: 22, fontWeight: '800' },
   tileLabel: { fontSize: 12, fontWeight: '600', color: colors.textSecondary, marginTop: 2, textAlign: 'center' },
 });

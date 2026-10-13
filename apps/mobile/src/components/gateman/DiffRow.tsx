@@ -1,5 +1,5 @@
 import { StyleSheet, Text, View } from 'react-native';
-import { colors, radius, spacing, statusColors } from '@/design/gateman-theme';
+import { colors, radius, spacing, typography } from '@/design/tokens';
 
 /** Renders an "old vs new" diff for an edit request, one row per changed field. */
 export function DiffRows({ oldData, newData }: { oldData: Record<string, string>; newData: Record<string, string> }) {
@@ -23,9 +23,9 @@ export function DiffRows({ oldData, newData }: { oldData: Record<string, string>
 const styles = StyleSheet.create({
   wrap: { gap: spacing.sm, backgroundColor: colors.background, borderRadius: radius.md, padding: spacing.md },
   row: { gap: 2 },
-  field: { fontSize: 12, fontWeight: '700', color: colors.textMuted, textTransform: 'uppercase' },
+  field: { ...typography.overline, color: colors.textMuted },
   valueRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  oldValue: { flex: 1, fontSize: 14, color: statusColors.offline, textDecorationLine: 'line-through' },
+  oldValue: { flex: 1, fontSize: 14, color: colors.offline, textDecorationLine: 'line-through' },
   arrow: { color: colors.textMuted },
-  newValue: { flex: 1, fontSize: 14, fontWeight: '600', color: statusColors.online },
+  newValue: { flex: 1, fontSize: 14, fontWeight: '600', color: colors.online },
 });

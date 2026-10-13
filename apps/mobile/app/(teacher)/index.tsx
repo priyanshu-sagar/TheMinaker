@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { colors, spacing, statusColors } from '@/design/teacher-theme';
+import { colors, spacing, radius, shadows, glass, typography } from '@/design/tokens';
 import { MeshBackground } from '@/components/glass/MeshBackground';
 import { GlassCard } from '@/components/glass/GlassCard';
 import { ClassSelector } from '@/components/teacher/ClassSelector';
@@ -65,12 +65,40 @@ export default function TeacherDashboardScreen() {
 
   return (
     <MeshBackground>
+      {/* Decorative orbs */}
+      <View
+        style={{
+          position: 'absolute',
+          top: -60,
+          right: -40,
+          width: 200,
+          height: 200,
+          borderRadius: radius.full,
+          backgroundColor: glass.orb1,
+          opacity: 0.6,
+        }}
+        pointerEvents="none"
+      />
+      <View
+        style={{
+          position: 'absolute',
+          bottom: 120,
+          left: -80,
+          width: 280,
+          height: 280,
+          borderRadius: radius.full,
+          backgroundColor: glass.orb2,
+          opacity: 0.5,
+        }}
+        pointerEvents="none"
+      />
+
       <SafeAreaView style={styles.safe} edges={['top']}>
         <ScrollView contentContainerStyle={styles.scroll}>
           <Text style={styles.greeting}>Good morning, {user?.fullName?.split(' ')[0] ?? 'Teacher'}</Text>
           <ClassSelector subtitle={summary} />
 
-          <GlassCard style={styles.summaryCard} padded={false}>
+          <GlassCard style={[styles.summaryCard, shadows.sm]} padded={false}>
             <View style={styles.summaryInner}>
               <Text style={styles.summaryText}>{summary}</Text>
             </View>
@@ -117,10 +145,10 @@ export default function TeacherDashboardScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1 },
   scroll: { paddingBottom: spacing.xl, gap: spacing.md },
-  greeting: { fontSize: 22, fontWeight: '800', color: colors.textPrimary, paddingHorizontal: spacing.lg, paddingTop: spacing.md },
+  greeting: { ...typography.hero, fontSize: 24, color: colors.textPrimary, paddingHorizontal: spacing.lg, paddingTop: spacing.md },
   summaryCard: { marginHorizontal: spacing.lg },
   summaryInner: { paddingVertical: spacing.md, paddingHorizontal: spacing.lg },
-  summaryText: { fontSize: 13, fontWeight: '700', color: statusColors.info },
-  sectionTitle: { fontSize: 15, fontWeight: '700', color: colors.textPrimary, paddingHorizontal: spacing.lg },
+  summaryText: { ...typography.caption, fontWeight: '700', color: colors.info },
+  sectionTitle: { ...typography.heading, color: colors.textPrimary, paddingHorizontal: spacing.lg },
   scheduleRow: { paddingHorizontal: spacing.lg, gap: spacing.sm },
 });

@@ -3,7 +3,7 @@ import { Alert, FlatList, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Save } from 'lucide-react-native';
-import { colors, radius, spacing, statusColors } from '@/design/teacher-theme';
+import { colors, radius, spacing, shadows, glass, palette, typography } from '@/design/tokens';
 import { MeshBackground } from '@/components/glass/MeshBackground';
 import { SearchBar } from '@/components/glass/SearchBar';
 import { AnimatedPressable } from '@/components/glass/AnimatedPressable';
@@ -40,6 +40,34 @@ export default function ClassRosterScreen() {
 
   return (
     <MeshBackground>
+      {/* Decorative orbs */}
+      <View
+        style={{
+          position: 'absolute',
+          top: -60,
+          right: -40,
+          width: 200,
+          height: 200,
+          borderRadius: radius.full,
+          backgroundColor: glass.orb1,
+          opacity: 0.6,
+        }}
+        pointerEvents="none"
+      />
+      <View
+        style={{
+          position: 'absolute',
+          bottom: 120,
+          left: -80,
+          width: 280,
+          height: 280,
+          borderRadius: radius.full,
+          backgroundColor: glass.orb2,
+          opacity: 0.5,
+        }}
+        pointerEvents="none"
+      />
+
       <SafeAreaView style={styles.safe} edges={['top']}>
         <ClassSelector />
         {!isHomeroom ? (
@@ -51,9 +79,9 @@ export default function ClassRosterScreen() {
           <>
             <View style={styles.header}>
               <Text style={styles.summary}>
-                <Text style={{ color: statusColors.present, fontWeight: '700' }}>Present {presentCount}</Text>
+                <Text style={{ color: colors.success, fontWeight: '700' }}>Present {presentCount}</Text>
                 {'  ·  '}
-                <Text style={{ color: statusColors.absent, fontWeight: '700' }}>Absent {absentCount}</Text>
+                <Text style={{ color: colors.error, fontWeight: '700' }}>Absent {absentCount}</Text>
               </Text>
             </View>
             <View style={styles.searchWrap}>
@@ -75,8 +103,8 @@ export default function ClassRosterScreen() {
                 </FadeInRow>
               )}
             />
-            <AnimatedPressable haptic="medium" onPress={onSave} style={styles.saveBtn}>
-              <Save color="#fff" size={16} strokeWidth={2.4} />
+            <AnimatedPressable haptic="medium" onPress={onSave} style={[styles.saveBtn, shadows.md]}>
+              <Save color={palette.white} size={16} strokeWidth={2.4} />
               <Text style={styles.saveText}>Save Attendance</Text>
             </AnimatedPressable>
           </>
@@ -97,13 +125,13 @@ export default function ClassRosterScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1 },
   header: { paddingHorizontal: spacing.lg, paddingBottom: spacing.sm },
-  summary: { fontSize: 13 },
+  summary: { ...typography.caption, fontSize: 13 },
   searchWrap: { marginHorizontal: spacing.lg, marginBottom: spacing.sm },
   list: { paddingHorizontal: spacing.lg, paddingBottom: 96 },
-  empty: { textAlign: 'center', color: colors.textMuted, paddingTop: spacing.xl },
+  empty: { ...typography.body, textAlign: 'center', color: colors.textMuted, paddingTop: spacing.xl },
   locked: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.xl, gap: spacing.sm },
-  lockedTitle: { fontSize: 18, fontWeight: '800', color: colors.textPrimary, textAlign: 'center' },
-  lockedBody: { fontSize: 14, color: colors.textMuted, textAlign: 'center', lineHeight: 20 },
+  lockedTitle: { ...typography.heading, color: colors.textPrimary, textAlign: 'center' },
+  lockedBody: { ...typography.body, color: colors.textMuted, textAlign: 'center' },
   saveBtn: {
     position: 'absolute',
     left: spacing.lg,
@@ -111,11 +139,11 @@ const styles = StyleSheet.create({
     bottom: spacing.lg,
     minHeight: 48,
     borderRadius: radius.md,
-    backgroundColor: statusColors.present,
+    backgroundColor: colors.success,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
   },
-  saveText: { color: '#fff', fontSize: 15, fontWeight: '800' },
+  saveText: { color: palette.white, fontSize: 15, fontWeight: '800' },
 });

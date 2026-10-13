@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { FlatList, StyleSheet, Text } from 'react-native';
-import { spacing } from '@/design/gateman-theme';
+import { colors, spacing, typography } from '@/design/tokens';
+import { FadeInRow } from '@/components/glass/FadeInList';
 import { ActionCard } from './ActionCard';
 import { ProfileDetailModal } from './ProfileDetailModal';
 import { ProfileApproval, useGatemanStore } from '@/store/gateman.store';
@@ -22,20 +23,22 @@ export function ProfileApprovalsList() {
         data={approvals}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.list}
-        renderItem={({ item }: { item: ProfileApproval }) => (
-          <ActionCard
-            title={item.studentName}
-            subtitle={`Parent: ${item.parentName} · ${item.phone}`}
-            onPress={() => setDetail(item)}
-            primaryLabel="Approve"
-            secondaryLabel="Reject"
-            onPrimary={() => approveProfile(item.id)}
-            onSecondary={() => rejectProfile(item.id)}
-            tertiaryLabel="Resubmit Query"
-            onTertiary={() => resubmitProfile(item.id)}
-          >
-            <Text style={styles.stop}>Assigned stop: {item.assignedStop}</Text>
-          </ActionCard>
+        renderItem={({ item, index }: { item: ProfileApproval; index: number }) => (
+          <FadeInRow index={index}>
+            <ActionCard
+              title={item.studentName}
+              subtitle={`Parent: ${item.parentName} · ${item.phone}`}
+              onPress={() => setDetail(item)}
+              primaryLabel="Approve"
+              secondaryLabel="Reject"
+              onPrimary={() => approveProfile(item.id)}
+              onSecondary={() => rejectProfile(item.id)}
+              tertiaryLabel="Resubmit Query"
+              onTertiary={() => resubmitProfile(item.id)}
+            >
+              <Text style={styles.stop}>Assigned stop: {item.assignedStop}</Text>
+            </ActionCard>
+          </FadeInRow>
         )}
       />
       <ProfileDetailModal profile={detail} onClose={() => setDetail(null)} />
@@ -45,6 +48,6 @@ export function ProfileApprovalsList() {
 
 const styles = StyleSheet.create({
   list: { padding: spacing.lg, gap: spacing.md },
-  empty: { padding: spacing.xl, textAlign: 'center', color: '#8a939e' },
-  stop: { fontSize: 13, color: '#5b6572' },
+  empty: { ...typography.body, padding: spacing.xl, textAlign: 'center', color: colors.textMuted },
+  stop: { ...typography.caption, color: colors.textSecondary },
 });

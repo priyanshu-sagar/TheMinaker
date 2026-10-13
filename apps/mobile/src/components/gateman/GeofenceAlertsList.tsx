@@ -1,5 +1,6 @@
 import { FlatList, StyleSheet, Text } from 'react-native';
-import { spacing, statusColors } from '@/design/gateman-theme';
+import { colors, spacing, typography } from '@/design/tokens';
+import { FadeInRow } from '@/components/glass/FadeInList';
 import { ActionCard } from './ActionCard';
 import { MiniMapSnippet } from './MiniMapSnippet';
 import { GeofenceAlert, useGatemanStore } from '@/store/gateman.store';
@@ -21,22 +22,24 @@ export function GeofenceAlertsList() {
       data={alerts}
       keyExtractor={(item) => item.id}
       contentContainerStyle={styles.list}
-      renderItem={({ item }: { item: GeofenceAlert }) => (
-        <ActionCard
-          title={`${item.studentName} marked ${item.distanceAwayM} m from the stop`}
-          subtitle={`${item.conductorName} · ${formatTime(item.timestamp)} — outside the 500 m boarding radius`}
-          tone="amber"
-          primaryLabel="Verify"
-          secondaryLabel="Deny"
-          onPrimary={() => resolveGeofenceAlert(item.id)}
-          onSecondary={() => resolveGeofenceAlert(item.id)}
-        >
-          <Text style={styles.mapCaption}>Green = actual stop (500 m) · Red = conductor's pinged location</Text>
-          <MiniMapSnippet
-            center={item.stopCoordinates}
-            secondaryPin={{ ...item.pingedCoordinates, color: statusColors.offline }}
-          />
-        </ActionCard>
+      renderItem={({ item, index }: { item: GeofenceAlert; index: number }) => (
+        <FadeInRow index={index}>
+          <ActionCard
+            title={`${item.studentName} marked ${item.distanceAwayM} m from the stop`}
+            subtitle={`${item.conductorName} · ${formatTime(item.timestamp)} — outside the 500 m boarding radius`}
+            tone="amber"
+            primaryLabel="Verify"
+            secondaryLabel="Deny"
+            onPrimary={() => resolveGeofenceAlert(item.id)}
+            onSecondary={() => resolveGeofenceAlert(item.id)}
+          >
+            <Text style={styles.mapCaption}>Green = actual stop (500 m) · Red = conductor's pinged location</Text>
+            <MiniMapSnippet
+              center={item.stopCoordinates}
+              secondaryPin={{ ...item.pingedCoordinates, color: colors.offline }}
+            />
+          </ActionCard>
+        </FadeInRow>
       )}
     />
   );
@@ -44,6 +47,6 @@ export function GeofenceAlertsList() {
 
 const styles = StyleSheet.create({
   list: { padding: spacing.lg, gap: spacing.md },
-  empty: { padding: spacing.xl, textAlign: 'center', color: '#8a939e' },
-  mapCaption: { fontSize: 12, fontWeight: '600', color: '#5b6572', marginTop: 4 },
+  empty: { ...typography.body, padding: spacing.xl, textAlign: 'center', color: colors.textMuted },
+  mapCaption: { ...typography.caption, fontWeight: '600', color: colors.textSecondary, marginTop: 4 },
 });

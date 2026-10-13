@@ -1,7 +1,8 @@
 import { ReactNode } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { colors, spacing, statusColors } from '@/design/gateman-theme';
+import { StyleSheet, Text, View } from 'react-native';
+import { colors, spacing, radius, palette, shadows, typography } from '@/design/tokens';
 import { GlassCard } from '@/components/glass/GlassCard';
+import { AnimatedPressable } from '@/components/glass/AnimatedPressable';
 
 export function ActionCard({
   title,
@@ -34,60 +35,60 @@ export function ActionCard({
       {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
       {children}
       <View style={styles.actions}>
-        <Pressable style={styles.reject} onPress={onSecondary}>
+        <AnimatedPressable style={[styles.reject, shadows.sm]} onPress={onSecondary}>
           <Text style={styles.rejectText}>{secondaryLabel}</Text>
-        </Pressable>
-        <Pressable style={styles.approve} onPress={onPrimary}>
+        </AnimatedPressable>
+        <AnimatedPressable style={[styles.approve, shadows.sm]} onPress={onPrimary}>
           <Text style={styles.approveText}>{primaryLabel}</Text>
-        </Pressable>
+        </AnimatedPressable>
       </View>
       {tertiaryLabel && onTertiary ? (
-        <Pressable style={styles.tertiary} onPress={onTertiary}>
+        <AnimatedPressable style={[styles.tertiary, shadows.sm]} onPress={onTertiary}>
           <Text style={styles.tertiaryText}>{tertiaryLabel}</Text>
-        </Pressable>
+        </AnimatedPressable>
       ) : null}
     </View>
   );
 
   return (
-    <GlassCard padded={false}>
-      {onPress ? <Pressable onPress={onPress}>{content}</Pressable> : content}
+    <GlassCard padded={false} style={shadows.sm}>
+      {onPress ? <AnimatedPressable onPress={onPress}>{content}</AnimatedPressable> : content}
     </GlassCard>
   );
 }
 
 const styles = StyleSheet.create({
   body: { padding: spacing.lg, gap: spacing.sm },
-  bodyAmber: { backgroundColor: 'rgba(245, 158, 11, 0.08)' },
-  title: { fontSize: 16, fontWeight: '700', color: colors.textPrimary },
-  subtitle: { fontSize: 13, color: colors.textMuted },
+  bodyAmber: { backgroundColor: colors.warningBg },
+  title: { ...typography.heading, color: colors.textPrimary },
+  subtitle: { ...typography.caption, color: colors.textMuted },
   actions: { flexDirection: 'row', gap: spacing.md, marginTop: spacing.sm },
   reject: {
     flex: 1,
     minHeight: 46,
-    borderRadius: 10,
+    borderRadius: radius.sm,
     borderWidth: 1.5,
-    borderColor: statusColors.offline,
+    borderColor: colors.offline,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  rejectText: { color: statusColors.offline, fontWeight: '700', fontSize: 15 },
+  rejectText: { color: colors.offline, fontWeight: '700', fontSize: 15 },
   approve: {
     flex: 1,
     minHeight: 46,
-    borderRadius: 10,
-    backgroundColor: statusColors.online,
+    borderRadius: radius.sm,
+    backgroundColor: colors.online,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  approveText: { color: '#fff', fontWeight: '700', fontSize: 15 },
+  approveText: { color: palette.white, fontWeight: '700', fontSize: 15 },
   tertiary: {
     minHeight: 42,
-    borderRadius: 10,
+    borderRadius: radius.sm,
     borderWidth: 1.5,
-    borderColor: statusColors.boarded,
+    borderColor: colors.boarded,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  tertiaryText: { color: statusColors.boarded, fontWeight: '700', fontSize: 14 },
+  tertiaryText: { color: colors.boarded, fontWeight: '700', fontSize: 14 },
 });

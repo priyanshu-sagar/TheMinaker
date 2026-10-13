@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { StyleSheet, Text, TextInput, View } from 'react-native';
-import { glass } from '@/design/glass-theme';
-import { colors, radius, spacing, statusColors } from '@/design/teacher-theme';
+import { glass, colors, radius, spacing, palette, portalAccents, shadows, typography } from '@/design/tokens';
 import { GlassModal } from '@/components/glass/GlassModal';
 import { AnimatedPressable } from '@/components/glass/AnimatedPressable';
 import { MarkedTest, RosterStudent, useTeacherStore } from '@/store/teacher.store';
@@ -85,7 +84,7 @@ export function TestDetailModal({
                         ))}
                     </View>
 
-                    <AnimatedPressable haptic="medium" onPress={handleSave} style={styles.saveBtn}>
+                    <AnimatedPressable haptic="medium" onPress={handleSave} style={[styles.saveBtn, shadows.sm]}>
                         <Text style={styles.saveText}>Save Marks</Text>
                     </AnimatedPressable>
                 </>
@@ -95,19 +94,19 @@ export function TestDetailModal({
 }
 
 const styles = StyleSheet.create({
-    subtitle: { fontSize: 13, color: colors.textMuted },
+    subtitle: { ...typography.caption, color: colors.textMuted },
     list: { gap: spacing.sm },
     row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md },
     nameCol: { flex: 1 },
-    name: { fontSize: 14, fontWeight: '700', color: colors.textPrimary },
-    roll: { fontSize: 11, color: colors.textMuted, marginTop: 2 },
+    name: { ...typography.bodyBold, color: colors.textPrimary },
+    roll: { ...typography.caption, color: colors.textMuted, marginTop: 2 },
     input: {
         width: 68,
         minHeight: 40,
         borderWidth: 1,
         borderColor: glass.border,
         borderRadius: radius.sm,
-        backgroundColor: 'rgba(255,255,255,0.6)',
+        backgroundColor: colors.surfaceStrong,
         textAlign: 'center',
         fontSize: 15,
         color: colors.textPrimary,
@@ -115,10 +114,10 @@ const styles = StyleSheet.create({
     saveBtn: {
         minHeight: 46,
         borderRadius: radius.md,
-        backgroundColor: statusColors.academics,
+        backgroundColor: portalAccents.teacher.from,
         alignItems: 'center',
         justifyContent: 'center',
         marginTop: spacing.sm,
     },
-    saveText: { color: '#fff', fontSize: 15, fontWeight: '700' },
+    saveText: { color: palette.white, fontSize: 15, fontWeight: '700' },
 });

@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react';
 import { FlatList, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { colors, spacing } from '@/design/gateman-theme';
+import { colors, spacing, radius, glass, typography } from '@/design/tokens';
 import { MeshBackground } from '@/components/glass/MeshBackground';
+import { FadeInRow } from '@/components/glass/FadeInList';
 import { BusSelectorPills } from '@/components/gateman/BusSelectorPills';
 import { SearchBar } from '@/components/glass/SearchBar';
 import { StudentRosterRow } from '@/components/gateman/StudentRosterRow';
@@ -24,6 +25,34 @@ export default function MasterAttendanceScreen() {
 
   return (
     <MeshBackground>
+      {/* Decorative orbs */}
+      <View
+        style={{
+          position: 'absolute',
+          top: -50,
+          right: -30,
+          width: 220,
+          height: 220,
+          borderRadius: radius.full,
+          backgroundColor: glass.orb1,
+          opacity: 0.6,
+        }}
+        pointerEvents="none"
+      />
+      <View
+        style={{
+          position: 'absolute',
+          bottom: 140,
+          left: -70,
+          width: 260,
+          height: 260,
+          borderRadius: radius.full,
+          backgroundColor: glass.orb2,
+          opacity: 0.5,
+        }}
+        pointerEvents="none"
+      />
+
       <SafeAreaView style={styles.safe} edges={['top']}>
         <View style={styles.header}>
           <Text style={styles.title}>Master Attendance</Text>
@@ -44,13 +73,15 @@ export default function MasterAttendanceScreen() {
           contentContainerStyle={styles.list}
           ItemSeparatorComponent={() => <View style={{ height: spacing.sm }} />}
           ListEmptyComponent={<Text style={styles.empty}>No students match this route or search.</Text>}
-          renderItem={({ item }) => (
-            <StudentRosterRow
-              studentName={item.studentName}
-              attendanceStatus={item.attendanceStatus}
-              statusUpdatedAt={item.statusUpdatedAt}
-              onChange={(status) => updateAttendanceStatus(item.id, status)}
-            />
+          renderItem={({ item, index }) => (
+            <FadeInRow index={index}>
+              <StudentRosterRow
+                studentName={item.studentName}
+                attendanceStatus={item.attendanceStatus}
+                statusUpdatedAt={item.statusUpdatedAt}
+                onChange={(status) => updateAttendanceStatus(item.id, status)}
+              />
+            </FadeInRow>
           )}
         />
       </SafeAreaView>
@@ -60,11 +91,11 @@ export default function MasterAttendanceScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1 },
-  header: { paddingHorizontal: spacing.lg, paddingTop: spacing.md, gap: 4 },
-  title: { fontSize: 20, fontWeight: '700', color: colors.textPrimary },
-  subtitle: { fontSize: 13, color: colors.textMuted },
+  header: { paddingHorizontal: spacing.lg, paddingTop: spacing.md, gap: spacing.xs },
+  title: { ...typography.title, color: colors.textPrimary },
+  subtitle: { ...typography.caption, color: colors.textMuted },
   selector: { paddingHorizontal: spacing.lg, marginTop: spacing.md },
   searchWrap: { marginTop: spacing.md, marginHorizontal: spacing.lg },
   list: { padding: spacing.lg },
-  empty: { textAlign: 'center', color: colors.textMuted, paddingTop: spacing.xl },
+  empty: { ...typography.body, textAlign: 'center', color: colors.textMuted, paddingTop: spacing.xl },
 });

@@ -1,6 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native';
 import { Megaphone, Send } from 'lucide-react-native';
-import { colors, spacing } from '@/design/teacher-theme';
+import { colors, spacing, radius, shadows, typography } from '@/design/tokens';
 import { GlassCard } from '@/components/glass/GlassCard';
 import { AnimatedPressable } from '@/components/glass/AnimatedPressable';
 import { CommsChannel } from '@/store/teacher.store';
@@ -21,7 +21,7 @@ export function CommsSegment({
 }) {
   const options = allowAnnouncements ? OPTIONS : OPTIONS.filter((option) => option.key === 'DirectReport');
   return (
-    <GlassCard padded={false}>
+    <GlassCard padded={false} style={shadows.sm}>
       <View style={styles.track}>
         {options.map((option) => {
           const active = option.key === value;
@@ -45,7 +45,14 @@ const styles = StyleSheet.create({
   track: { flexDirection: 'row' },
   segment: { flex: 1, alignItems: 'center', paddingVertical: spacing.md },
   labelRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  label: { fontSize: 13, fontWeight: '600', color: colors.textMuted },
+  label: { ...typography.caption, fontWeight: '600', color: colors.textMuted },
   labelActive: { color: colors.primary },
-  indicator: { position: 'absolute', bottom: 0, height: 3, width: '70%', borderRadius: 2, backgroundColor: colors.primary },
+  indicator: {
+    position: 'absolute',
+    bottom: 0,
+    height: 3,
+    width: '70%',
+    borderRadius: radius.full,
+    backgroundColor: colors.primary,
+  },
 });

@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Alert, StyleSheet, Text, TextInput, View } from 'react-native';
-import { glass } from '@/design/glass-theme';
-import { colors, radius, spacing, statusColors } from '@/design/teacher-theme';
+import { glass, colors, radius, spacing, palette, shadows, typography, portalAccents } from '@/design/tokens';
 import { GlassModal } from '@/components/glass/GlassModal';
 import { AnimatedPressable } from '@/components/glass/AnimatedPressable';
 import { DirectReportRoute, RosterStudent } from '@/store/teacher.store';
@@ -40,7 +39,7 @@ export function AnnouncementModal({
       <Text style={styles.hint}>Goes to the whole of {className}. Subject teachers cannot post class announcements.</Text>
       <Field label="Title" value={title} onChangeText={setTitle} placeholder="e.g. Homework for Monday" />
       <Field label="Message" value={body} onChangeText={setBody} placeholder="Write the announcement…" multiline />
-      <AnimatedPressable haptic="medium" onPress={handleSend} disabled={!canSend} style={[styles.sendBtn, !canSend ? styles.disabled : null]}>
+      <AnimatedPressable haptic="medium" onPress={handleSend} disabled={!canSend} style={[styles.sendBtn, shadows.sm, !canSend ? styles.disabled : null]}>
         <Text style={styles.sendText}>Send to Class</Text>
       </AnimatedPressable>
     </GlassModal>
@@ -119,7 +118,7 @@ export function DirectReportModal({
 
       <Field label="Title" value={title} onChangeText={setTitle} placeholder="e.g. Missed homework" />
       <Field label="Message" value={body} onChangeText={setBody} placeholder="What should they know?" multiline />
-      <AnimatedPressable haptic="medium" onPress={handleSend} disabled={!canSend} style={[styles.sendBtn, !canSend ? styles.disabled : null]}>
+      <AnimatedPressable haptic="medium" onPress={handleSend} disabled={!canSend} style={[styles.sendBtn, shadows.sm, !canSend ? styles.disabled : null]}>
         <Text style={styles.sendText}>{route === 'Parent' ? 'Message Parent' : 'Report to Admin'}</Text>
       </AnimatedPressable>
     </GlassModal>
@@ -155,31 +154,31 @@ function Field({
 }
 
 const styles = StyleSheet.create({
-  hint: { fontSize: 13, color: colors.textMuted, lineHeight: 18 },
+  hint: { ...typography.caption, color: colors.textMuted, lineHeight: 18 },
   field: { gap: 6 },
-  label: { fontSize: 13, fontWeight: '800', color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.4 },
+  label: { ...typography.overline, color: colors.textMuted },
   input: {
     minHeight: 44,
     borderWidth: 1,
     borderColor: glass.border,
     borderRadius: radius.md,
-    backgroundColor: 'rgba(255,255,255,0.6)',
+    backgroundColor: colors.surfaceStrong,
     paddingHorizontal: spacing.md,
     fontSize: 15,
     color: colors.textPrimary,
   },
   multiline: { minHeight: 96, paddingTop: spacing.md, textAlignVertical: 'top' },
   chipWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-  chip: { borderRadius: 16, borderWidth: 1.5, borderColor: glass.border, paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
-  chipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  chip: { borderRadius: radius.full, borderWidth: 1.5, borderColor: glass.border, paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
+  chipActive: { backgroundColor: portalAccents.teacher.from, borderColor: portalAccents.teacher.from },
   chipText: { fontSize: 12, fontWeight: '700', color: colors.textSecondary },
-  chipTextActive: { color: '#fff' },
+  chipTextActive: { color: palette.white },
   routeRow: { gap: spacing.sm },
   routeBtn: { minHeight: 44, borderRadius: radius.md, borderWidth: 1.5, borderColor: glass.border, alignItems: 'center', justifyContent: 'center' },
-  routeBtnActive: { backgroundColor: statusColors.info, borderColor: statusColors.info },
+  routeBtnActive: { backgroundColor: colors.info, borderColor: colors.info },
   routeText: { fontSize: 13, fontWeight: '700', color: colors.textSecondary },
-  routeTextActive: { color: '#fff' },
-  sendBtn: { minHeight: 46, borderRadius: radius.md, backgroundColor: statusColors.info, alignItems: 'center', justifyContent: 'center' },
+  routeTextActive: { color: palette.white },
+  sendBtn: { minHeight: 46, borderRadius: radius.md, backgroundColor: portalAccents.teacher.from, alignItems: 'center', justifyContent: 'center' },
   disabled: { opacity: 0.5 },
-  sendText: { color: '#fff', fontSize: 15, fontWeight: '700' },
+  sendText: { color: palette.white, fontSize: 15, fontWeight: '700' },
 });

@@ -1,5 +1,6 @@
 import { FlatList, StyleSheet, Text } from 'react-native';
-import { spacing } from '@/design/gateman-theme';
+import { colors, spacing, typography } from '@/design/tokens';
+import { FadeInRow } from '@/components/glass/FadeInList';
 import { ActionCard } from './ActionCard';
 import { DiffRows } from './DiffRow';
 import { MiniMapSnippet } from './MiniMapSnippet';
@@ -19,18 +20,20 @@ export function EditRequestsList() {
       data={editRequests}
       keyExtractor={(item) => item.id}
       contentContainerStyle={styles.list}
-      renderItem={({ item }: { item: EditRequest }) => (
-        <ActionCard
-          title={item.target}
-          primaryLabel="Approve"
-          secondaryLabel="Reject"
-          onPrimary={() => approveEdit(item.id)}
-          onSecondary={() => rejectEdit(item.id)}
-        >
-          <DiffRows oldData={item.oldData} newData={item.newData} />
-          <Text style={styles.mapCaption}>Proposed location — 500 m radius</Text>
-          <MiniMapSnippet center={item.newCoordinates} />
-        </ActionCard>
+      renderItem={({ item, index }: { item: EditRequest; index: number }) => (
+        <FadeInRow index={index}>
+          <ActionCard
+            title={item.target}
+            primaryLabel="Approve"
+            secondaryLabel="Reject"
+            onPrimary={() => approveEdit(item.id)}
+            onSecondary={() => rejectEdit(item.id)}
+          >
+            <DiffRows oldData={item.oldData} newData={item.newData} />
+            <Text style={styles.mapCaption}>Proposed location — 500 m radius</Text>
+            <MiniMapSnippet center={item.newCoordinates} />
+          </ActionCard>
+        </FadeInRow>
       )}
     />
   );
@@ -38,6 +41,6 @@ export function EditRequestsList() {
 
 const styles = StyleSheet.create({
   list: { padding: spacing.lg, gap: spacing.md },
-  empty: { padding: spacing.xl, textAlign: 'center', color: '#8a939e' },
-  mapCaption: { fontSize: 12, fontWeight: '600', color: '#5b6572', marginTop: 4 },
+  empty: { ...typography.body, padding: spacing.xl, textAlign: 'center', color: colors.textMuted },
+  mapCaption: { ...typography.caption, fontWeight: '600', color: colors.textSecondary, marginTop: 4 },
 });
