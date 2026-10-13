@@ -116,21 +116,23 @@ const PORTALS: Portal[] = [
 ];
 
 export default function PortalShowcaseScreen() {
-  const [activeIndex, setActiveIndex] = useState(0);
+  const [activePortalIndex, setActivePortalIndex] = useState(0);
+  const [carouselIndex, setCarouselIndex] = useState(0);
   const [modalPortal, setModalPortal] = useState<Portal | null>(null);
   const scrollRef = useRef<ScrollView>(null);
 
   function snapTo(index: number) {
-    setActiveIndex(index);
+    setActivePortalIndex(index);
+    setCarouselIndex(index);
     scrollRef.current?.scrollTo({ x: index * SCREEN_W, animated: true });
   }
 
   function handleContinue() {
-    const portal = PORTALS[activeIndex];
+    const portal = PORTALS[activePortalIndex];
     if (portal) router.push(portal.href as never);
   }
 
-  const active = PORTALS[activeIndex]!;
+  const active = PORTALS[activePortalIndex]!;
 
   return (
     <MeshBackground>
@@ -172,7 +174,7 @@ export default function PortalShowcaseScreen() {
         {/* ── TOP: Navigation Tiles ── */}
         <Animated.View entering={FadeInDown.delay(200).duration(400)} style={styles.tilesGrid}>
           {PORTALS.map((portal, i) => {
-            const isActive = i === activeIndex;
+            const isActive = i === activePortalIndex;
             return (
               <AnimatedPressable
                 key={portal.key}
@@ -194,7 +196,7 @@ export default function PortalShowcaseScreen() {
                     styles.tileIconCircle,
                     { backgroundColor: isActive ? 'rgba(255,255,255,0.25)' : portal.from + '18' }
                   ]}>
-                    <Svg width={26} height={26} viewBox="0 0 24 24" fill="none">
+                    <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
                       <Path d={portal.icon} fill={isActive ? 'white' : portal.from} />
                     </Svg>
                   </View>
@@ -223,7 +225,7 @@ export default function PortalShowcaseScreen() {
           scrollEventThrottle={16}
           onScroll={(e) => {
             const index = Math.round(e.nativeEvent.contentOffset.x / SCREEN_W);
-            if (index !== activeIndex) setActiveIndex(index);
+            if (index !== carouselIndex) setCarouselIndex(index);
           }}
           style={styles.carousel}
           contentContainerStyle={styles.carouselContent}
@@ -275,7 +277,7 @@ export default function PortalShowcaseScreen() {
               key={i}
               style={[
                 styles.dot,
-                i === activeIndex && [styles.dotActive, { backgroundColor: active.from }],
+                i === carouselIndex && [styles.dotActive, { backgroundColor: PORTALS[carouselIndex]!.from }],
               ]}
             />
           ))}
@@ -398,38 +400,31 @@ const styles = StyleSheet.create({
   tilesGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'space-between',
     paddingHorizontal: spacing.lg,
-    gap: spacing.sm,
+    gap: spacing.xs,
     marginBottom: spacing.sm,
   },
   tile: {
-    width: '48%',
-    aspectRatio: 1.2,
-    borderRadius: radius.lg,
+    width: '48.5%',
+    borderRadius: radius.md,
     overflow: 'hidden',
-    // shadow
     shadowColor: '#000',
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 4,
-  },
-  tileActive: {
-    shadowOpacity: 0.25,
-    elevation: 8,
+    shadowOpacity: 0.07,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 3,
   },
   tileGradient: {
-    flex: 1,
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.md,
     gap: spacing.sm,
-    padding: spacing.md,
   },
   tileIconCircle: {
-    width: 52,
-    height: 52,
-    borderRadius: 16,
+    width: 36,
+    height: 36,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -437,21 +432,24 @@ const styles = StyleSheet.create({
     ...typography.label,
     fontWeight: '700',
     color: colors.textSecondary,
-    textAlign: 'center',
+    flex: 1,
   },
   tileLabelActive: {
     color: 'white',
-    fontSize: 13,
   },
   tileActiveDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
     backgroundColor: 'rgba(255,255,255,0.8)',
   },
   tileBorder: {
-    borderRadius: radius.lg,
-    borderWidth: 1.5,
+    borderRadius: radius.md,
+    borderWidth: 1,
+  },
+  tileActive: {
+    shadowOpacity: 0.2,
+    elevation: 6,
   },
   carousel: { flex: 1 },
   carouselContent: {},
