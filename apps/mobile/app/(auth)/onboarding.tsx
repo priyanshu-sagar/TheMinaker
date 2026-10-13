@@ -10,9 +10,12 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { PrimaryButton } from '@/components/auth/Buttons';
+import { LinearGradient } from 'expo-linear-gradient';
+import { MeshBackground } from '@/components/glass/MeshBackground';
+import { GlassCard } from '@/components/glass/GlassCard';
+import { AnimatedPressable } from '@/components/glass/AnimatedPressable';
 import { ProgressDots } from '@/components/auth/ProgressDots';
-import { colors, spacing, typography } from '@/design/theme';
+import { colors, glass, radius, shadows, spacing, typography } from '@/design/tokens';
 import { hasSeenOnboarding, markOnboardingSeen } from '@/auth/onboarding-flag';
 
 const { width } = Dimensions.get('window');
@@ -94,48 +97,107 @@ export default function OnboardingScreen() {
   if (!ready) return null;
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
-      <ScrollView
-        ref={scrollRef}
-        horizontal
-        pagingEnabled
-        showsHorizontalScrollIndicator={false}
-        onScrollBeginDrag={stopTimer}
-        onMomentumScrollEnd={onMomentumEnd}
-      >
-        {SLIDES.map((slide) => (
-          <View key={slide.title} style={[styles.slide, { width }]}>
-            <View style={styles.illustration}>
-              <Text style={styles.illustrationIcon}>{slide.icon}</Text>
-            </View>
-            <Text style={styles.slideTitle}>{slide.title}</Text>
-            <Text style={styles.slideBody}>{slide.body}</Text>
-          </View>
-        ))}
-      </ScrollView>
+    <MeshBackground>
+      {/* Decorative ambient orbs */}
+      <View style={[styles.orb, styles.orb1]} pointerEvents="none" />
+      <View style={[styles.orb, styles.orb2]} pointerEvents="none" />
 
-      <View style={styles.footer}>
-        <ProgressDots count={SLIDES.length} activeIndex={index} />
-        <PrimaryButton label="Continue to App" onPress={onContinue} />
-      </View>
-    </SafeAreaView>
+      <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+        <ScrollView
+          ref={scrollRef}
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          onScrollBeginDrag={stopTimer}
+          onMomentumScrollEnd={onMomentumEnd}
+        >
+          {SLIDES.map((slide) => (
+            <View key={slide.title} style={[styles.slide, { width }]}>
+              <GlassCard padded={false} style={[styles.illustrationCard, shadows.md]}>
+                <View style={styles.illustrationContent}>
+                  <Text style={styles.illustrationIcon}>{slide.icon}</Text>
+                </View>
+              </GlassCard>
+              <Text style={styles.slideTitle}>{slide.title}</Text>
+              <Text style={styles.slideBody}>{slide.body}</Text>
+            </View>
+          ))}
+        </ScrollView>
+
+        <View style={styles.footer}>
+          <ProgressDots count={SLIDES.length} activeIndex={index} />
+          <AnimatedPressable onPress={onContinue} style={[styles.btn, shadows.md]}>
+            <LinearGradient
+              colors={[colors.primary, '#6366F1']}
+              style={styles.btnInner}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+            >
+              <Text style={styles.btnText}>Continue to App</Text>
+            </LinearGradient>
+          </AnimatedPressable>
+        </View>
+      </SafeAreaView>
+    </MeshBackground>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.background },
+  safe: { flex: 1 },
   slide: { alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing.xxl },
-  illustration: {
+  illustrationCard: {
     width: 140,
     height: 140,
-    borderRadius: 70,
-    backgroundColor: '#e4edf6',
+    borderRadius: radius.full,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: spacing.xl,
+  },
+  illustrationContent: {
+    width: 140,
+    height: 140,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   illustrationIcon: { fontSize: 56 },
   slideTitle: { ...typography.title, textAlign: 'center' },
   slideBody: { ...typography.subtitle, textAlign: 'center', marginTop: spacing.sm },
   footer: { paddingHorizontal: spacing.xl, paddingBottom: spacing.lg, gap: spacing.lg },
+  btn: {
+    borderRadius: radius.md,
+    overflow: 'hidden',
+  },
+  btnInner: {
+    minHeight: 50,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.lg,
+  },
+  btnText: {
+    ...typography.label,
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  orb: {
+    position: 'absolute',
+    borderRadius: radius.full,
+  },
+  orb1: {
+    width: 220,
+    height: 220,
+    top: 60,
+    left: -60,
+    backgroundColor: glass.orb1,
+    opacity: 0.6,
+  },
+  orb2: {
+    width: 260,
+    height: 260,
+    bottom: 120,
+    right: -80,
+    backgroundColor: glass.orb2,
+    opacity: 0.5,
+  },
 });

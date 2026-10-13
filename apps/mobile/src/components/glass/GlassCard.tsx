@@ -1,28 +1,30 @@
 import { ReactNode } from 'react';
 import { Platform, StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
 import { BlurView } from 'expo-blur';
-import { glass } from '@/design/glass-theme';
-import { radius, spacing } from '@/design/theme';
+import { glass, radius, spacing } from '@/design/tokens';
 
 /**
  * Glassmorphism card: blurred, semi-transparent fill, a thin light border,
  * and a soft layered shadow for a floating, tactile feel. Shared by every
- * glassmorphism portal (Gateman, Teacher, and the portal selector).
+ * glassmorphism portal.
  */
 export function GlassCard({
   children,
   style,
   padded = true,
-  intensity = 40,
+  intensity = glass.blurCard,
 }: {
   children: ReactNode;
   style?: StyleProp<ViewStyle>;
   padded?: boolean;
   intensity?: number;
 }) {
+  const flatStyle = StyleSheet.flatten(style);
+  const cardRadius = flatStyle?.borderRadius ?? radius.lg;
+
   return (
-    <View style={[styles.shadowWrap, style]}>
-      <BlurView intensity={intensity} tint="light" style={styles.blur}>
+    <View style={[styles.shadowWrap, style, { borderRadius: cardRadius }]}>
+      <BlurView intensity={intensity} tint="light" style={[styles.blur, { borderRadius: cardRadius }]}>
         <View style={[styles.tint, padded ? styles.padded : null]}>{children}</View>
       </BlurView>
     </View>
