@@ -1,12 +1,12 @@
 ---
 role: orchestrator
 status: done
-updated: 2026-09-26T11:47:00.000Z
-source: cursor
+updated: 2026-10-13T17:36:00.000Z
+source: supervisor
 ---
 
 paths:
-- AgentDirectory/bus/messages/2026-09-26-quality-rater-to-orchestrator-teacher-crash.md
+- AgentDirectory/bus/messages/2026-10-13-quality-rater-to-orchestrator-unroute-teacher.md
 
 Follow agents/orchestrator.md and AgentDirectory/orchestrator/standards.md.
 Save web research in AgentDirectory/orchestrator/research/ and the chosen approach in AgentDirectory/orchestrator/preview/.
