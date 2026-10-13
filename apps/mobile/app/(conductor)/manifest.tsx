@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   ActionSheetIOS,
   ActivityIndicator,
@@ -67,7 +67,7 @@ export default function ConductorManifestScreen() {
         markedBy: user!.id,
       });
     },
-    [markStudent, user],
+    [],
   );
 
   return (
@@ -104,13 +104,29 @@ export default function ConductorManifestScreen() {
             data={filtered}
             keyExtractor={(s) => s.id}
             renderItem={({ item, index }) => (
-              <FadeInRow index={index}>
+              index < 12 ? (
+                <FadeInRow index={index}>
+                  <StudentManifestRow
+                    student={item}
+                    onMark={(status) => handleMark(item, status)}
+                  />
+                </FadeInRow>
+              ) : (
                 <StudentManifestRow
                   student={item}
                   onMark={(status) => handleMark(item, status)}
                 />
-              </FadeInRow>
+              )
             )}
+            getItemLayout={(_data, index) => ({
+              length: 80,
+              offset: 80 * index,
+              index,
+            })}
+            removeClippedSubviews={true}
+            maxToRenderPerBatch={10}
+            windowSize={10}
+            initialNumToRender={12}
             ItemSeparatorComponent={() => <View style={styles.separator} />}
             refreshControl={
               <RefreshControl
@@ -144,7 +160,7 @@ interface RowProps {
   onMark: (status: AttendanceStatus) => void;
 }
 
-function StudentManifestRow({ student, onMark }: RowProps) {
+const StudentManifestRow = React.memo(function StudentManifestRow({ student, onMark }: RowProps) {
   const [status, setStatus] = useState<AttendanceStatus | undefined>(student.todayStatus);
 
   const handleTap = () => {
@@ -263,7 +279,7 @@ function StudentManifestRow({ student, onMark }: RowProps) {
       </GlassCard>
     </AnimatedPressable>
   );
-}
+});
 
 const styles = StyleSheet.create({
   safe: {

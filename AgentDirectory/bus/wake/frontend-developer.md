@@ -1,7 +1,7 @@
 ---
 role: frontend-developer
 status: pending
-updated: 2026-10-13T17:57:55.392Z
+updated: 2026-10-13T21:34:07.021Z
 source: supervisor
 ---
 
@@ -92,6 +92,9 @@ paths:
 - apps/mobile/src/components/teacher/TestListItem.tsx
 - apps/mobile/src/components/teacher/UpcomingTasksCard.tsx
 - apps/mobile/src/components/teacher/UploadMaterialModal.tsx
+- apps/mobile/expo-env.d.ts
+- apps/mobile/app/(auth)/portal-showcase.tsx
+- apps/mobile/app/(auth)/_layout.tsx
 
 Follow agents/frontend-developer.md and AgentDirectory/frontend-developer/standards.md.
 Save web research in AgentDirectory/frontend-developer/research/ and the chosen approach in AgentDirectory/frontend-developer/preview/.

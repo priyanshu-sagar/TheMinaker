@@ -1,13 +1,13 @@
 ---
 role: backend-developer
-status: done
-updated: 2026-09-26T09:02:48.883Z
+status: pending
+updated: 2026-10-13T21:25:47.900Z
 source: supervisor
 ---
 
 paths:
-- apps/api/src/modules/auth/auth.controller.ts
-- apps/api/src/modules/tenants/tenants.controller.ts
+- packages/shared-types/.turbo/turbo-build.log
+- apps/api/.turbo/turbo-test.log
 
 Follow agents/backend-developer.md and AgentDirectory/backend-developer/standards.md.
 Save web research in AgentDirectory/backend-developer/research/ and the chosen approach in AgentDirectory/backend-developer/preview/.
