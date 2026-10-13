@@ -1,11 +1,14 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
+import { StyleSheet, View } from 'react-native';
 import { Banner } from '@/components/auth/Banner';
 import { PrimaryButton } from '@/components/auth/Buttons';
 import { FormField } from '@/components/auth/FormField';
 import { ProgressDots } from '@/components/auth/ProgressDots';
 import { AuthScreen } from '@/components/auth/Screen';
 import { StepHeader } from '@/components/auth/StepHeader';
+import { GlassCard } from '@/components/glass/GlassCard';
+import { shadows, spacing } from '@/design/tokens';
 import { useAuthFlowStore } from '@/auth/auth-flow.store';
 
 export default function ParentSignupStep1() {
@@ -26,38 +29,58 @@ export default function ParentSignupStep1() {
 
   return (
     <AuthScreen title="Create Your Account" subtitle="Step 1 — your details">
-      <StepHeader step={1} total={3} />
-      <ProgressDots count={3} activeIndex={0} />
-      <FormField
-        label="Full Name"
-        value={draft.fullName}
-        onChangeText={(fullName) => setParentDraft({ fullName })}
-        placeholder="Your full name"
-        autoCapitalize="words"
-      />
-      <FormField
-        label="Email"
-        value={draft.email}
-        onChangeText={(email) => setParentDraft({ email })}
-        placeholder="you@example.com"
-        keyboardType="email-address"
-      />
-      <FormField
-        label="Password"
-        value={draft.password}
-        onChangeText={(password) => setParentDraft({ password })}
-        placeholder="At least 8 characters"
-        secureTextEntry
-      />
-      <FormField
-        label="Confirm Password"
-        value={draft.confirmPassword}
-        onChangeText={(confirmPassword) => setParentDraft({ confirmPassword })}
-        placeholder="Re-enter your password"
-        secureTextEntry
-      />
-      {error ? <Banner tone="error">{error}</Banner> : null}
-      <PrimaryButton label="Continue" onPress={onContinue} />
+      <View style={styles.stepProgressRow}>
+        <StepHeader step={1} total={3} />
+        <ProgressDots count={3} activeIndex={0} />
+      </View>
+
+      <GlassCard style={shadows.lg}>
+        <View style={styles.formContent}>
+          <FormField
+            label="Full Name"
+            value={draft.fullName}
+            onChangeText={(fullName) => setParentDraft({ fullName })}
+            placeholder="Your full name"
+            autoCapitalize="words"
+          />
+          <FormField
+            label="Email"
+            value={draft.email}
+            onChangeText={(email) => setParentDraft({ email })}
+            placeholder="you@example.com"
+            keyboardType="email-address"
+          />
+          <FormField
+            label="Password"
+            value={draft.password}
+            onChangeText={(password) => setParentDraft({ password })}
+            placeholder="At least 8 characters"
+            secureTextEntry
+          />
+          <FormField
+            label="Confirm Password"
+            value={draft.confirmPassword}
+            onChangeText={(confirmPassword) => setParentDraft({ confirmPassword })}
+            placeholder="Re-enter your password"
+            secureTextEntry
+          />
+          {error ? <Banner tone="error">{error}</Banner> : null}
+          <PrimaryButton label="Continue" onPress={onContinue} />
+        </View>
+      </GlassCard>
     </AuthScreen>
   );
 }
+
+const styles = StyleSheet.create({
+  stepProgressRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: spacing.xs,
+    paddingHorizontal: spacing.xs,
+  },
+  formContent: {
+    gap: spacing.md,
+  },
+});

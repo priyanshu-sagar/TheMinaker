@@ -1,10 +1,12 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Alert } from 'react-native';
+import { Alert, StyleSheet, View } from 'react-native';
 import { Banner } from './Banner';
 import { LinkButton, PrimaryButton, SecondaryButton } from './Buttons';
 import { FormField } from './FormField';
 import { AuthScreen } from './Screen';
+import { GlassCard } from '@/components/glass/GlassCard';
+import { shadows, spacing } from '@/design/tokens';
 import { AuthMockError, setNewPassword, staffRequestPasswordResetOtp } from '@/auth/mock-auth-api';
 
 type Mode = 'choose' | 'otp';
@@ -56,27 +58,41 @@ export function ProvisionedForgotPasswordScreen({ loginHref }: { loginHref: stri
   if (mode === 'otp') {
     return (
       <AuthScreen title="Reset Password" subtitle="Enter the code we sent and choose a new password.">
-        <Banner tone="warning">{`Development OTP: ${otp}`}</Banner>
-        <FormField label="6-digit code" value={enteredOtp} onChangeText={setEnteredOtp} placeholder="000000" keyboardType="number-pad" maxLength={6} />
-        <FormField label="New Password" value={newPassword} onChangeText={setNewPasswordValue} placeholder="At least 8 characters" secureTextEntry />
-        <FormField label="Confirm Password" value={confirmPassword} onChangeText={setConfirmPassword} placeholder="Re-enter new password" secureTextEntry />
-        {error ? <Banner tone="error">{error}</Banner> : null}
-        <PrimaryButton label="Update Password" onPress={onReset} loading={loading} />
+        <GlassCard style={shadows.lg}>
+          <View style={styles.formContent}>
+            <Banner tone="warning">{`Development OTP: ${otp}`}</Banner>
+            <FormField label="6-digit code" value={enteredOtp} onChangeText={setEnteredOtp} placeholder="000000" keyboardType="number-pad" maxLength={6} />
+            <FormField label="New Password" value={newPassword} onChangeText={setNewPasswordValue} placeholder="At least 8 characters" secureTextEntry />
+            <FormField label="Confirm Password" value={confirmPassword} onChangeText={setConfirmPassword} placeholder="Re-enter new password" secureTextEntry />
+            {error ? <Banner tone="error">{error}</Banner> : null}
+            <PrimaryButton label="Update Password" onPress={onReset} loading={loading} />
+          </View>
+        </GlassCard>
       </AuthScreen>
     );
   }
 
   return (
     <AuthScreen title="Forgot Password" subtitle="Choose how you'd like to reset your password.">
-      <PrimaryButton label="Send a reset code to my registered contact" onPress={onSendCode} loading={loading} />
-      <SecondaryButton label="Contact your school admin instead" onPress={() => setShowContact(true)} />
-      {showContact ? (
-        <Banner tone="info">
-          Please contact your school's admin office. They can reset your password and confirm your
-          identity for you.
-        </Banner>
-      ) : null}
-      <LinkButton label="Back to login" onPress={() => router.replace(loginHref as never)} />
+      <GlassCard style={shadows.lg}>
+        <View style={styles.formContent}>
+          <PrimaryButton label="Send a reset code to my registered contact" onPress={onSendCode} loading={loading} />
+          <SecondaryButton label="Contact your school admin instead" onPress={() => setShowContact(true)} />
+          {showContact ? (
+            <Banner tone="info">
+              Please contact your school's admin office. They can reset your password and confirm your
+              identity for you.
+            </Banner>
+          ) : null}
+          <LinkButton label="Back to login" onPress={() => router.replace(loginHref as never)} />
+        </View>
+      </GlassCard>
     </AuthScreen>
   );
 }
+
+const styles = StyleSheet.create({
+  formContent: {
+    gap: spacing.md,
+  },
+});

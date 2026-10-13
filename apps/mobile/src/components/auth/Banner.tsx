@@ -1,37 +1,74 @@
 import { StyleSheet, Text, View } from 'react-native';
-import { colors, radius, spacing } from '@/design/theme';
+import { BlurView } from 'expo-blur';
+import { colors, glass, radius, shadows, spacing, typography } from '@/design/tokens';
 
 type Tone = 'error' | 'info' | 'warning';
 
+const TONE_CONFIG = {
+  error: {
+    stripColor: colors.error,
+    bgColor: colors.errorBg,
+    textColor: colors.error,
+  },
+  info: {
+    stripColor: colors.info,
+    bgColor: colors.infoBg,
+    textColor: colors.info,
+  },
+  warning: {
+    stripColor: colors.warning,
+    bgColor: colors.warningBg,
+    textColor: colors.warning,
+  },
+} as const;
+
 export function Banner({ tone, children }: { tone: Tone; children: string }) {
+  const config = TONE_CONFIG[tone];
+
   return (
-    <View style={[styles.base, TONE_STYLES[tone].box]}>
-      <Text style={[styles.text, TONE_STYLES[tone].text]}>{children}</Text>
+    <View style={[styles.wrap, shadows.sm]}>
+      <BlurView intensity={glass.blurCard} tint="light" style={styles.blur}>
+        <View style={[styles.inner, { backgroundColor: config.bgColor }]}>
+          <View style={[styles.strip, { backgroundColor: config.stripColor }]} />
+          <View style={styles.content}>
+            <Text style={[styles.text, { color: config.textColor }]}>{children}</Text>
+          </View>
+        </View>
+      </BlurView>
     </View>
   );
 }
 
-const TONE_STYLES = {
-  error: {
-    box: { backgroundColor: colors.dangerBg, borderColor: colors.dangerBorder },
-    text: { color: colors.danger },
-  },
-  info: {
-    box: { backgroundColor: colors.infoBg, borderColor: colors.infoBorder },
-    text: { color: colors.info },
-  },
-  warning: {
-    box: { backgroundColor: colors.warningBg, borderColor: colors.warningBorder },
-    text: { color: colors.warning },
-  },
-} as const;
-
 const styles = StyleSheet.create({
-  base: {
-    borderWidth: 1,
+  wrap: {
     borderRadius: radius.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.md,
+    overflow: 'hidden',
   },
-  text: { fontSize: 14, lineHeight: 20 },
+  blur: {
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: glass.border,
+    overflow: 'hidden',
+  },
+  inner: {
+    flexDirection: 'row',
+    minHeight: 44,
+    alignItems: 'stretch',
+  },
+  strip: {
+    width: 4,
+    borderRadius: radius.xs,
+  },
+  content: {
+    flex: 1,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm + 2,
+    justifyContent: 'center',
+  },
+  text: {
+    ...typography.body,
+    fontSize: 14,
+    lineHeight: 20,
+    fontWeight: '500',
+  },
 });

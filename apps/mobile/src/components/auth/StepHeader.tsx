@@ -1,10 +1,34 @@
-import { StyleSheet, Text } from 'react-native';
-import { colors, spacing } from '@/design/theme';
+import { StyleSheet, Text, View } from 'react-native';
+import { colors, radius, spacing, typography } from '@/design/tokens';
 
 export function StepHeader({ step, total }: { step: number; total: number }) {
-  return <Text style={styles.text}>Step {step} of {total}</Text>;
+  return (
+    <View style={styles.container}>
+      <View style={styles.badge}>
+        <Text style={styles.badgeText}>STEP {step} OF {total}</Text>
+      </View>
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({
-  text: { fontSize: 13, fontWeight: '600', color: colors.textMuted, marginBottom: spacing.xs },
+  container: {
+    alignItems: 'flex-start',
+    marginBottom: spacing.xs,
+  },
+  badge: {
+    backgroundColor: colors.primarySurface,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xxs + 1,
+    borderRadius: radius.full,
+    borderWidth: 1,
+    borderColor: 'rgba(79, 70, 229, 0.2)',
+  },
+  badgeText: {
+    ...typography.overline,
+    color: colors.primary,
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.8,
+  },
 });

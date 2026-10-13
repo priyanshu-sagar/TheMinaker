@@ -1,5 +1,6 @@
+import { useState } from 'react';
 import { StyleSheet, Text, TextInput, View } from 'react-native';
-import { colors, radius, spacing, typography } from '@/design/theme';
+import { colors, radius, spacing, typography } from '@/design/tokens';
 
 export function FormField({
   label,
@@ -24,20 +25,29 @@ export function FormField({
   error?: string | null;
   editable?: boolean;
 }) {
+  const [focused, setFocused] = useState(false);
+
   return (
     <View style={styles.field}>
-      <Text style={typography.label}>{label}</Text>
+      <Text style={styles.label}>{label}</Text>
       <TextInput
         value={value}
         onChangeText={onChangeText}
         placeholder={placeholder}
-        placeholderTextColor={colors.textMuted}
+        placeholderTextColor={colors.textPlaceholder}
         secureTextEntry={secureTextEntry}
         keyboardType={keyboardType}
         autoCapitalize={autoCapitalize}
         maxLength={maxLength}
         editable={editable}
-        style={[styles.input, error ? styles.inputError : null, !editable ? styles.inputDisabled : null]}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
+        style={[
+          styles.input,
+          focused ? styles.inputFocused : null,
+          error ? styles.inputError : null,
+          !editable ? styles.inputDisabled : null,
+        ]}
       />
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
     </View>
@@ -45,18 +55,42 @@ export function FormField({
 }
 
 const styles = StyleSheet.create({
-  field: { gap: spacing.xs },
+  field: {
+    gap: spacing.xs,
+  },
+  label: {
+    ...typography.label,
+    color: colors.textPrimary,
+  },
   input: {
-    minHeight: 44,
+    minHeight: 48,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.borderStrong,
     borderRadius: radius.md,
-    backgroundColor: colors.surface,
+    backgroundColor: colors.surfaceStrong,
     paddingHorizontal: spacing.md,
     fontSize: 16,
     color: colors.textPrimary,
   },
-  inputError: { borderColor: colors.danger },
-  inputDisabled: { backgroundColor: '#eef1f4', color: colors.textMuted },
-  errorText: { color: colors.danger, fontSize: 13 },
+  inputFocused: {
+    borderColor: colors.primary,
+    shadowColor: colors.primary,
+    shadowOpacity: 0.18,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
+  },
+  inputError: {
+    borderColor: colors.error,
+  },
+  inputDisabled: {
+    backgroundColor: colors.surface,
+    color: colors.textPlaceholder,
+    opacity: 0.7,
+  },
+  errorText: {
+    ...typography.caption,
+    color: colors.error,
+    marginTop: 2,
+  },
 });

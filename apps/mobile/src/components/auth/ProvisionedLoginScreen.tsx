@@ -1,25 +1,34 @@
 import { UserRole } from '@minaker/shared-types';
 import { router } from 'expo-router';
 import { useState } from 'react';
+import { StyleSheet, Text, View } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Banner } from './Banner';
 import { LinkButton, PrimaryButton } from './Buttons';
 import { FormField } from './FormField';
 import { AuthScreen } from './Screen';
+import { GlassCard } from '@/components/glass/GlassCard';
+import { portalAccents, radius, shadows, spacing } from '@/design/tokens';
 import { AuthMockError, ProvisionedRole, provisionedLogin } from '@/auth/mock-auth-api';
 import { useAuthFlowStore } from '@/auth/auth-flow.store';
 import { saveMockSession } from '@/auth/session';
 
-/** Gateman and Teacher portals are built; every other role still lands on the generic hard stop. */
+const ROLE_TO_PORTAL: Record<ProvisionedRole, keyof typeof portalAccents> = {
+  [UserRole.TEACHER]: 'teacher',
+  [UserRole.GATEKEEPER]: 'gateman',
+  [UserRole.CONDUCTOR]: 'conductor',
+  [UserRole.SCHOOL_ADMIN]: 'schoolAdmin',
+};
+
+/** Gateman opens its portal. Teacher and every other role stop on the hold screen. */
 function postLoginHref(role: ProvisionedRole): string {
   if (role === UserRole.GATEKEEPER) return '/(gateman)';
-  if (role === UserRole.TEACHER) return '/(teacher)';
   return '/(auth)/signed-in';
 }
 
 /**
  * Shared login screen for the four provisioned-access portals: teacher,
- * gateman, conductor, and school admin. Only labels and the post-login
- * route differ between them.
+ * gateman, conductor, and school admin.
  */
 export function ProvisionedLoginScreen({
   role,
@@ -43,6 +52,9 @@ export function ProvisionedLoginScreen({
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  const portalKey = ROLE_TO_PORTAL[role];
+  const accent = portalAccents[portalKey];
 
   async function onLogin() {
     setError(null);
@@ -68,12 +80,45 @@ export function ProvisionedLoginScreen({
   }
 
   return (
-    <AuthScreen title={title} subtitle={schoolSubtitle}>
-      <FormField label={idLabel} value={id} onChangeText={setId} placeholder={idPlaceholder} />
-      <FormField label="Password" value={password} onChangeText={setPassword} placeholder="Password" secureTextEntry />
-      {error ? <Banner tone="error">{error}</Banner> : null}
-      <PrimaryButton label="Log In" onPress={onLogin} loading={loading} />
-      <LinkButton label="Forgot password?" onPress={() => router.push(forgotPasswordHref as never)} />
+    <AuthScreen
+      title={title}
+      subtitle={schoolSubtitle}
+      headerIcon={
+        <LinearGradient
+          colors={[accent.from, accent.to]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.iconCircle}
+        >
+          <Text style={styles.iconEmoji}>{accent.icon}</Text>
+        </LinearGradient>
+      }
+    >
+      <GlassCard style={shadows.lg}>
+        <View style={styles.formContent}>
+          <FormField label={idLabel} value={id} onChangeText={setId} placeholder={idPlaceholder} />
+          <FormField label="Password" value={password} onChangeText={setPassword} placeholder="Password" secureTextEntry />
+          {error ? <Banner tone="error">{error}</Banner> : null}
+          <PrimaryButton label="Log In" onPress={onLogin} loading={loading} />
+          <LinkButton label="Forgot password?" onPress={() => router.push(forgotPasswordHref as never)} />
+        </View>
+      </GlassCard>
     </AuthScreen>
   );
 }
+
+const styles = StyleSheet.create({
+  iconCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: radius.full,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  iconEmoji: {
+    fontSize: 24,
+  },
+  formContent: {
+    gap: spacing.md,
+  },
+});

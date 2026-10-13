@@ -1,5 +1,8 @@
-import { ActivityIndicator, Pressable, StyleSheet, Text } from 'react-native';
-import { colors, radius, spacing } from '@/design/theme';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
+import { AnimatedPressable } from '@/components/glass/AnimatedPressable';
+import { colors, palette, radius, shadows, spacing, typography } from '@/design/tokens';
 
 export function PrimaryButton({
   label,
@@ -14,58 +17,125 @@ export function PrimaryButton({
 }) {
   const isDisabled = disabled || loading;
   return (
-    <Pressable
-      style={({ pressed }) => [
-        styles.primary,
-        isDisabled ? styles.primaryDisabled : null,
-        pressed && !isDisabled ? styles.primaryPressed : null,
-      ]}
+    <AnimatedPressable
       onPress={onPress}
       disabled={isDisabled}
+      style={[styles.primaryWrapper, shadows.md, isDisabled ? styles.disabled : null]}
     >
-      {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryText}>{label}</Text>}
-    </Pressable>
+      <LinearGradient
+        colors={[colors.primary, '#6366F1']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0 }}
+        style={styles.primaryInner}
+      >
+        {loading ? (
+          <ActivityIndicator color={palette.white} />
+        ) : (
+          <Text style={styles.primaryText}>{label}</Text>
+        )}
+      </LinearGradient>
+    </AnimatedPressable>
   );
 }
 
-export function SecondaryButton({ label, onPress }: { label: string; onPress: () => void }) {
+export function SecondaryButton({
+  label,
+  onPress,
+  disabled = false,
+}: {
+  label: string;
+  onPress: () => void;
+  disabled?: boolean;
+}) {
   return (
-    <Pressable style={styles.secondary} onPress={onPress}>
-      <Text style={styles.secondaryText}>{label}</Text>
-    </Pressable>
+    <AnimatedPressable
+      onPress={onPress}
+      disabled={disabled}
+      style={[styles.secondaryWrapper, shadows.sm, disabled ? styles.disabled : null]}
+    >
+      <BlurView intensity={40} tint="light" style={styles.secondaryBlur}>
+        <View style={styles.secondaryInner}>
+          <Text style={styles.secondaryText}>{label}</Text>
+        </View>
+      </BlurView>
+    </AnimatedPressable>
   );
 }
 
-export function LinkButton({ label, onPress }: { label: string; onPress: () => void }) {
+export function LinkButton({
+  label,
+  onPress,
+  disabled = false,
+}: {
+  label: string;
+  onPress: () => void;
+  disabled?: boolean;
+}) {
   return (
-    <Pressable style={styles.link} onPress={onPress} hitSlop={6}>
+    <AnimatedPressable
+      style={styles.link}
+      onPress={onPress}
+      disabled={disabled}
+      hitSlop={8}
+    >
       <Text style={styles.linkText}>{label}</Text>
-    </Pressable>
+    </AnimatedPressable>
   );
 }
 
 const styles = StyleSheet.create({
-  primary: {
-    minHeight: 46,
+  primaryWrapper: {
     borderRadius: radius.md,
-    backgroundColor: colors.primary,
+    overflow: 'hidden',
+  },
+  primaryInner: {
+    minHeight: 48,
+    borderRadius: radius.md,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: spacing.lg,
   },
-  primaryPressed: { backgroundColor: colors.primaryPressed },
-  primaryDisabled: { opacity: 0.5 },
-  primaryText: { color: '#fff', fontSize: 16, fontWeight: '700' },
-  secondary: {
-    minHeight: 46,
+  primaryText: {
+    ...typography.label,
+    color: palette.white,
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  secondaryWrapper: {
     borderRadius: radius.md,
-    borderWidth: 1.5,
-    borderColor: colors.primary,
+    overflow: 'hidden',
+  },
+  secondaryBlur: {
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.borderStrong,
+    overflow: 'hidden',
+  },
+  secondaryInner: {
+    minHeight: 48,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: spacing.lg,
+    backgroundColor: colors.surfaceStrong,
   },
-  secondaryText: { color: colors.primary, fontSize: 16, fontWeight: '600' },
-  link: { minHeight: 40, alignItems: 'center', justifyContent: 'center' },
-  linkText: { color: colors.primary, fontSize: 15, fontWeight: '600' },
+  secondaryText: {
+    ...typography.label,
+    color: colors.primary,
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  link: {
+    minHeight: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing.xs,
+  },
+  linkText: {
+    ...typography.bodyBold,
+    color: colors.primary,
+    fontSize: 15,
+  },
+  disabled: {
+    opacity: 0.5,
+  },
 });

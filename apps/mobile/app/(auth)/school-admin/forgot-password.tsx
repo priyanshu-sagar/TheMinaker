@@ -1,10 +1,12 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Alert } from 'react-native';
+import { Alert, StyleSheet, View } from 'react-native';
 import { Banner } from '@/components/auth/Banner';
 import { PrimaryButton } from '@/components/auth/Buttons';
 import { FormField } from '@/components/auth/FormField';
 import { AuthScreen } from '@/components/auth/Screen';
+import { GlassCard } from '@/components/glass/GlassCard';
+import { shadows, spacing } from '@/design/tokens';
 import { AuthMockError, setNewPassword, staffRequestPasswordResetOtp } from '@/auth/mock-auth-api';
 
 /**
@@ -56,26 +58,36 @@ export default function SchoolAdminForgotPasswordScreen() {
 
   return (
     <AuthScreen title="Reset Password" subtitle="We'll email a code to your registered administrative address.">
-      <FormField
-        label="Administrative Email"
-        value={email}
-        onChangeText={setEmail}
-        placeholder="admin@school.edu"
-        keyboardType="email-address"
-        editable={!otp}
-      />
-      {!otp ? (
-        <PrimaryButton label="Send Reset Code" onPress={onSendCode} loading={loading} />
-      ) : (
-        <>
-          <Banner tone="warning">{`Development OTP: ${otp}`}</Banner>
-          <FormField label="6-digit code" value={enteredOtp} onChangeText={setEnteredOtp} placeholder="000000" keyboardType="number-pad" maxLength={6} />
-          <FormField label="New Password" value={newPassword} onChangeText={setNewPasswordValue} placeholder="At least 8 characters" secureTextEntry />
-          <FormField label="Confirm Password" value={confirmPassword} onChangeText={setConfirmPassword} placeholder="Re-enter new password" secureTextEntry />
-          <PrimaryButton label="Update Password" onPress={onReset} loading={loading} />
-        </>
-      )}
-      {error ? <Banner tone="error">{error}</Banner> : null}
+      <GlassCard style={shadows.lg}>
+        <View style={styles.formContent}>
+          <FormField
+            label="Administrative Email"
+            value={email}
+            onChangeText={setEmail}
+            placeholder="admin@school.edu"
+            keyboardType="email-address"
+            editable={!otp}
+          />
+          {!otp ? (
+            <PrimaryButton label="Send Reset Code" onPress={onSendCode} loading={loading} />
+          ) : (
+            <>
+              <Banner tone="warning">{`Development OTP: ${otp}`}</Banner>
+              <FormField label="6-digit code" value={enteredOtp} onChangeText={setEnteredOtp} placeholder="000000" keyboardType="number-pad" maxLength={6} />
+              <FormField label="New Password" value={newPassword} onChangeText={setNewPasswordValue} placeholder="At least 8 characters" secureTextEntry />
+              <FormField label="Confirm Password" value={confirmPassword} onChangeText={setConfirmPassword} placeholder="Re-enter new password" secureTextEntry />
+              <PrimaryButton label="Update Password" onPress={onReset} loading={loading} />
+            </>
+          )}
+          {error ? <Banner tone="error">{error}</Banner> : null}
+        </View>
+      </GlassCard>
     </AuthScreen>
   );
 }
+
+const styles = StyleSheet.create({
+  formContent: {
+    gap: spacing.md,
+  },
+});

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { colors, spacing } from '@/design/theme';
+import { colors, spacing, typography } from '@/design/tokens';
 import { FormField } from './FormField';
 import { OptionRow } from './OptionRow';
 import { LinkButton } from './Buttons';
@@ -42,6 +42,7 @@ export function SchoolPicker({
           sublabel={pinned.id}
           initial={pinned.name.charAt(0)}
           onPress={() => choose(pinned)}
+          selected={true}
         />
         <LinkButton label="Not your school? Search instead" onPress={() => setQuery(' ')} />
       </View>
@@ -73,6 +74,7 @@ export function SchoolPicker({
           sublabel={school.id}
           initial={school.name.charAt(0)}
           onPress={() => choose(school)}
+          selected={pinned?.id === school.id}
         />
       ))}
       {pinned ? <LinkButton label="Use pinned school instead" onPress={forgetPinned} /> : null}
@@ -82,5 +84,9 @@ export function SchoolPicker({
 
 const styles = StyleSheet.create({
   gap: { gap: spacing.md },
-  helper: { fontSize: 13, color: colors.textMuted },
+  helper: {
+    ...typography.caption,
+    color: colors.textMuted,
+    paddingHorizontal: spacing.xs,
+  },
 });

@@ -1,19 +1,20 @@
 import { UserRole } from '@minaker/shared-types';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { BackHandler, Platform } from 'react-native';
+import { BackHandler, Platform, StyleSheet, View } from 'react-native';
 import { Banner } from './Banner';
 import { PrimaryButton } from './Buttons';
 import { FormField } from './FormField';
 import { AuthScreen } from './Screen';
+import { GlassCard } from '@/components/glass/GlassCard';
+import { shadows, spacing } from '@/design/tokens';
 import { useAuthFlowStore } from '@/auth/auth-flow.store';
 import { AuthMockError, ProvisionedRole, setNewPassword } from '@/auth/mock-auth-api';
 import { saveMockSession } from '@/auth/session';
 
-/** Gateman and Teacher portals are built; every other role still lands on the generic hard stop. */
+/** Gateman opens its portal. Teacher and every other role stop on the hold screen. */
 function postLoginHref(role: ProvisionedRole): string {
   if (role === UserRole.GATEKEEPER) return '/(gateman)';
-  if (role === UserRole.TEACHER) return '/(teacher)';
   return '/(auth)/signed-in';
 }
 
@@ -64,10 +65,20 @@ export function ProvisionedSetPasswordScreen() {
       subtitle="This is your first time signing in. Please set a new password to continue."
       showBack={false}
     >
-      <FormField label="New Password" value={newPassword} onChangeText={setNewPasswordValue} placeholder="At least 8 characters" secureTextEntry />
-      <FormField label="Confirm Password" value={confirmPassword} onChangeText={setConfirmPassword} placeholder="Re-enter new password" secureTextEntry />
-      {error ? <Banner tone="error">{error}</Banner> : null}
-      <PrimaryButton label="Set Password & Continue" onPress={onSubmit} loading={loading} />
+      <GlassCard style={shadows.lg}>
+        <View style={styles.formContent}>
+          <FormField label="New Password" value={newPassword} onChangeText={setNewPasswordValue} placeholder="At least 8 characters" secureTextEntry />
+          <FormField label="Confirm Password" value={confirmPassword} onChangeText={setConfirmPassword} placeholder="Re-enter new password" secureTextEntry />
+          {error ? <Banner tone="error">{error}</Banner> : null}
+          <PrimaryButton label="Set Password & Continue" onPress={onSubmit} loading={loading} />
+        </View>
+      </GlassCard>
     </AuthScreen>
   );
 }
+
+const styles = StyleSheet.create({
+  formContent: {
+    gap: spacing.md,
+  },
+});

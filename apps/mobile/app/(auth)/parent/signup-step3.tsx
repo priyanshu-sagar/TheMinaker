@@ -1,12 +1,15 @@
 import { UserRole } from '@minaker/shared-types';
 import { router } from 'expo-router';
 import { useState } from 'react';
+import { StyleSheet, View } from 'react-native';
 import { Banner } from '@/components/auth/Banner';
 import { LinkButton, PrimaryButton } from '@/components/auth/Buttons';
 import { FormField } from '@/components/auth/FormField';
 import { ProgressDots } from '@/components/auth/ProgressDots';
 import { AuthScreen } from '@/components/auth/Screen';
 import { StepHeader } from '@/components/auth/StepHeader';
+import { GlassCard } from '@/components/glass/GlassCard';
+import { shadows, spacing } from '@/design/tokens';
 import { useAuthFlowStore } from '@/auth/auth-flow.store';
 import { AuthMockError, sendEmailOtp, verifyEmailOtp } from '@/auth/mock-auth-api';
 import { saveMockSession } from '@/auth/session';
@@ -46,21 +49,41 @@ export default function ParentSignupStep3() {
 
   return (
     <AuthScreen title="Verify Your Email" subtitle={`Step 3 — enter the code sent to ${draft.email || 'your email'}`}>
-      <StepHeader step={3} total={3} />
-      <ProgressDots count={3} activeIndex={2} />
-      {signupOtp ? <Banner tone="warning">{`Development OTP: ${signupOtp}`}</Banner> : null}
-      <FormField
-        label="6-digit code"
-        value={enteredOtp}
-        onChangeText={setEnteredOtp}
-        placeholder="000000"
-        keyboardType="number-pad"
-        maxLength={6}
-      />
-      {info ? <Banner tone="info">{info}</Banner> : null}
-      {error ? <Banner tone="error">{error}</Banner> : null}
-      <PrimaryButton label="Verify & Create Account" onPress={onVerify} loading={loading} />
-      <LinkButton label="Resend code" onPress={onResend} />
+      <View style={styles.stepProgressRow}>
+        <StepHeader step={3} total={3} />
+        <ProgressDots count={3} activeIndex={2} />
+      </View>
+
+      <GlassCard style={shadows.lg}>
+        <View style={styles.formContent}>
+          {signupOtp ? <Banner tone="warning">{`Development OTP: ${signupOtp}`}</Banner> : null}
+          <FormField
+            label="6-digit code"
+            value={enteredOtp}
+            onChangeText={setEnteredOtp}
+            placeholder="000000"
+            keyboardType="number-pad"
+            maxLength={6}
+          />
+          {info ? <Banner tone="info">{info}</Banner> : null}
+          {error ? <Banner tone="error">{error}</Banner> : null}
+          <PrimaryButton label="Verify & Create Account" onPress={onVerify} loading={loading} />
+          <LinkButton label="Resend code" onPress={onResend} />
+        </View>
+      </GlassCard>
     </AuthScreen>
   );
 }
+
+const styles = StyleSheet.create({
+  stepProgressRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: spacing.xs,
+    paddingHorizontal: spacing.xs,
+  },
+  formContent: {
+    gap: spacing.md,
+  },
+});
