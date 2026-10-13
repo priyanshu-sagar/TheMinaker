@@ -170,7 +170,7 @@ export default function PortalShowcaseScreen() {
         </Animated.View>
 
         {/* ── TOP: Navigation Tiles ── */}
-        <Animated.View entering={FadeInDown.delay(200).duration(400)} style={styles.tilesRow}>
+        <Animated.View entering={FadeInDown.delay(200).duration(400)} style={styles.tilesGrid}>
           {PORTALS.map((portal, i) => {
             const isActive = i === activeIndex;
             return (
@@ -181,18 +181,34 @@ export default function PortalShowcaseScreen() {
                 style={[styles.tile, isActive && styles.tileActive]}
               >
                 <LinearGradient
-                  colors={isActive ? [portal.from, portal.to] : ['transparent', 'transparent']}
+                  colors={isActive ? [portal.from, portal.to] : ['rgba(255,255,255,0.4)', 'rgba(255,255,255,0.2)']}
                   style={styles.tileGradient}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
                 >
-                  <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
-                    <Path d={portal.icon} fill={isActive ? 'white' : portal.from} />
-                  </Svg>
-                  <Text style={[styles.tileLabel, isActive && styles.tileLabelActive]}>
+                  {/* BlurView behind for glass effect when inactive */}
+                  {!isActive && (
+                    <BlurView intensity={20} tint="light" style={StyleSheet.absoluteFill} />
+                  )}
+                  <View style={[
+                    styles.tileIconCircle,
+                    { backgroundColor: isActive ? 'rgba(255,255,255,0.25)' : portal.from + '18' }
+                  ]}>
+                    <Svg width={26} height={26} viewBox="0 0 24 24" fill="none">
+                      <Path d={portal.icon} fill={isActive ? 'white' : portal.from} />
+                    </Svg>
+                  </View>
+                  <Text style={[styles.tileLabel, isActive && styles.tileLabelActive]} numberOfLines={1}>
                     {portal.shortLabel}
                   </Text>
+                  {isActive && (
+                    <View style={styles.tileActiveDot} />
+                  )}
                 </LinearGradient>
+                {/* Border for inactive */}
+                {!isActive && (
+                  <View style={[StyleSheet.absoluteFill, styles.tileBorder, { borderColor: portal.from + '30' }]} pointerEvents="none" />
+                )}
               </AnimatedPressable>
             );
           })}
@@ -379,29 +395,64 @@ const styles = StyleSheet.create({
   header: { paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.sm },
   headerTitle: { ...typography.title, letterSpacing: -0.3 },
   headerSub: { ...typography.subtitle, marginTop: 2 },
-  tilesRow: {
+  tilesGrid: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
     paddingHorizontal: spacing.lg,
     gap: spacing.sm,
     marginBottom: spacing.sm,
   },
   tile: {
-    flex: 1,
-    borderRadius: radius.md,
+    width: '48%',
+    aspectRatio: 1.2,
+    borderRadius: radius.lg,
     overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: colors.borderStrong,
-    backgroundColor: colors.surfaceStrong,
+    // shadow
+    shadowColor: '#000',
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
   },
-  tileActive: { borderColor: 'transparent' },
+  tileActive: {
+    shadowOpacity: 0.25,
+    elevation: 8,
+  },
   tileGradient: {
-    paddingVertical: spacing.sm,
+    flex: 1,
     alignItems: 'center',
-    gap: 4,
-    borderRadius: radius.md,
+    justifyContent: 'center',
+    gap: spacing.sm,
+    padding: spacing.md,
   },
-  tileLabel: { ...typography.caption, fontWeight: '600', color: colors.textMuted },
-  tileLabelActive: { color: 'white' },
+  tileIconCircle: {
+    width: 52,
+    height: 52,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  tileLabel: {
+    ...typography.label,
+    fontWeight: '700',
+    color: colors.textSecondary,
+    textAlign: 'center',
+  },
+  tileLabelActive: {
+    color: 'white',
+    fontSize: 13,
+  },
+  tileActiveDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: 'rgba(255,255,255,0.8)',
+  },
+  tileBorder: {
+    borderRadius: radius.lg,
+    borderWidth: 1.5,
+  },
   carousel: { flex: 1 },
   carouselContent: {},
   slide: {
