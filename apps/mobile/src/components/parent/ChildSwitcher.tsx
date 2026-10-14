@@ -4,7 +4,7 @@ import { ChevronDown } from 'lucide-react-native';
 import { AnimatedPressable } from '@/components/glass/AnimatedPressable';
 import { GlassCard } from '@/components/glass/GlassCard';
 import { GlassModal } from '@/components/glass/GlassModal';
-import { colors, portalAccents, radius, spacing, typography } from '@/design/tokens';
+import { colors, palette, portalAccents, radius, spacing, typography } from '@/design/tokens';
 import { useParentStore } from '@/store/parent.store';
 
 /** Glass child switcher. Every parent tab reads the same active child. */
