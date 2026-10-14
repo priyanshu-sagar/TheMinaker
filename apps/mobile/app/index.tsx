@@ -15,6 +15,9 @@ export default function Index() {
     if (role === UserRole.GATEKEEPER) {
       return <Redirect href={'/(gateman)' as never} />;
     }
+    if (role === UserRole.PARENT) {
+      return <Redirect href={'/(parent)' as never} />;
+    }
     return <Redirect href="/(auth)/signed-in" />;
   }
 

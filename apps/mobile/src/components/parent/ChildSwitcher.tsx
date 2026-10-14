@@ -65,7 +65,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  avatarText: { ...typography.heading, color: colors.surfaceStrong, backgroundColor: 'transparent' },
+  avatarText: { ...typography.heading, color: palette.white, backgroundColor: 'transparent' },
   info: { flex: 1 },
   kicker: { ...typography.overline, color: portalAccents.parent.from },
   name: { ...typography.heading },

@@ -32,7 +32,7 @@ export default function ParentSignupStep3() {
       await verifyEmailOtp({ enteredOtp, expectedOtp: signupOtp });
       await saveMockSession({ role: UserRole.PARENT, fullName: draft.fullName, email: draft.email });
       resetParentDraft();
-      router.replace('/(auth)/signed-in');
+      router.replace('/(parent)' as never);
     } catch (err) {
       setError(err instanceof AuthMockError ? err.message : 'Something went wrong. Please try again.');
     } finally {

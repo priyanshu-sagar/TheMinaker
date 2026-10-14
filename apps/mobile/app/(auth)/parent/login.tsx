@@ -39,7 +39,7 @@ export default function ParentLoginScreen() {
         email: method === 'email' ? value.trim() : undefined,
         phone: method === 'phone' ? value.trim() : undefined,
       });
-      router.replace('/(auth)/signed-in');
+      router.replace('/(parent)' as never);
     } catch (err) {
       setError(err instanceof AuthMockError ? err.message : 'Something went wrong. Please try again.');
     } finally {
