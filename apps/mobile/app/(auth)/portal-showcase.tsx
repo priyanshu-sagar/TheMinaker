@@ -167,8 +167,9 @@ export default function PortalShowcaseScreen() {
       <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
         {/* ── Header ── */}
         <Animated.View entering={FadeIn.delay(100).duration(400)} style={styles.header}>
-          <Text style={styles.headerTitle}>Choose Your Portal</Text>
-          <Text style={styles.headerSub}>Swipe to explore what each role can do.</Text>
+          <Text style={styles.kicker}>TheMinaker</Text>
+          <Text style={styles.headerTitle}>Choose your portal</Text>
+          <Text style={styles.headerSub}>Four roles. One campus. Pick where you work.</Text>
         </Animated.View>
 
         {/* ── TOP: Navigation Tiles ── */}
@@ -317,9 +318,7 @@ export default function PortalShowcaseScreen() {
         >
           <View style={styles.modalOverlay}>
             <Pressable style={StyleSheet.absoluteFill} onPress={() => setModalPortal(null)} />
-            <BlurView intensity={28} tint="dark" style={StyleSheet.absoluteFill} pointerEvents="none" />
             <View style={styles.sheet}>
-              <BlurView intensity={55} tint="light" style={StyleSheet.absoluteFill} />
               <View style={styles.sheetContent}>
                 {/* Handle */}
                 <View style={styles.sheetHandle} />
@@ -394,30 +393,32 @@ export default function PortalShowcaseScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1 },
-  header: { paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.sm },
-  headerTitle: { ...typography.title, letterSpacing: -0.3 },
-  headerSub: { ...typography.subtitle, marginTop: 2 },
+  header: { paddingHorizontal: spacing.xl, paddingTop: spacing.lg, paddingBottom: spacing.md, gap: 4 },
+  kicker: { ...typography.overline, color: colors.primary },
+  headerTitle: { ...typography.hero, fontSize: 28 },
+  headerSub: { ...typography.subtitle, marginTop: 2, maxWidth: 280 },
   tilesGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    paddingHorizontal: spacing.lg,
-    gap: spacing.xs,
-    marginBottom: spacing.sm,
+    paddingHorizontal: spacing.xl,
+    gap: spacing.sm,
+    marginBottom: spacing.md,
+    justifyContent: 'space-between',
   },
   tile: {
-    width: '48.5%',
-    borderRadius: radius.md,
+    width: '48%',
+    borderRadius: radius.lg,
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOpacity: 0.07,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 3 },
-    elevation: 3,
+    backgroundColor: 'rgba(255,255,255,0.72)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.8)',
+    boxShadow: '0px 8px 18px rgba(15, 23, 42, 0.08)',
+    elevation: 0,
   },
   tileGradient: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: spacing.md,
+    paddingVertical: spacing.lg,
     paddingHorizontal: spacing.md,
     gap: spacing.sm,
   },
@@ -448,8 +449,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   tileActive: {
-    shadowOpacity: 0.2,
-    elevation: 6,
+    borderColor: 'transparent',
+    boxShadow: '0px 10px 22px rgba(15, 23, 42, 0.16)',
+    elevation: 0,
   },
   carousel: { flex: 1 },
   carouselContent: {},
@@ -470,7 +472,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.18,
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 6 },
-    elevation: 6,
+    elevation: 0,
   },
   slideTagline: {
     fontSize: 20,
@@ -520,16 +522,17 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   ctaText: { fontSize: 16, fontWeight: '700', color: 'white' },
-  modalOverlay: { flex: 1, justifyContent: 'flex-end' },
+  modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(15, 23, 42, 0.62)' },
   sheet: {
     maxHeight: '85%',
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     overflow: 'hidden',
+    backgroundColor: palette.offWhite,
     borderWidth: 1,
-    borderColor: glass.border,
+    borderColor: 'rgba(255,255,255,0.9)',
   },
-  sheetContent: { padding: spacing.lg },
+  sheetContent: { padding: spacing.lg, backgroundColor: palette.offWhite },
   sheetHandle: {
     width: 40,
     height: 4,

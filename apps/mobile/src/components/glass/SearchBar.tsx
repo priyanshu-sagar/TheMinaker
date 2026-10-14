@@ -1,5 +1,6 @@
-import { StyleSheet, Text, TextInput, View } from 'react-native';
+import { Platform, StyleSheet, Text, View } from 'react-native';
 import { BlurView } from 'expo-blur';
+import { AppTextInput } from '@/components/glass/AppTextInput';
 import { glass } from '@/design/glass-theme';
 import { colors, radius, spacing } from '@/design/theme';
 
@@ -13,20 +14,29 @@ export function SearchBar({
   onChangeText: (value: string) => void;
   placeholder: string;
 }) {
+  const field = (
+    <View style={styles.inner}>
+      <Text style={styles.icon}>🔍</Text>
+      <AppTextInput
+        value={value}
+        onChangeText={onChangeText}
+        placeholder={placeholder}
+        placeholderTextColor={colors.textMuted}
+        blurOnSubmit={false}
+        style={styles.input}
+      />
+    </View>
+  );
+
   return (
     <View style={styles.wrap}>
-      <BlurView intensity={35} tint="light" style={styles.blur}>
-        <View style={styles.inner}>
-          <Text style={styles.icon}>🔍</Text>
-          <TextInput
-            value={value}
-            onChangeText={onChangeText}
-            placeholder={placeholder}
-            placeholderTextColor={colors.textMuted}
-            style={styles.input}
-          />
-        </View>
-      </BlurView>
+      {Platform.OS === 'android' ? (
+        <View style={styles.blur}>{field}</View>
+      ) : (
+        <BlurView intensity={35} tint="light" style={styles.blur}>
+          {field}
+        </BlurView>
+      )}
     </View>
   );
 }
@@ -38,10 +48,10 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.08,
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 3 },
-    elevation: 2,
+    elevation: 0,
   },
   blur: { borderRadius: radius.lg, overflow: 'hidden', borderWidth: 1, borderColor: glass.border },
   inner: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, backgroundColor: glass.cardBg, paddingHorizontal: spacing.md, minHeight: 44 },
-  icon: { fontSize: 15 },
-  input: { flex: 1, fontSize: 15, color: colors.textPrimary },
+  icon: { fontSize: 15, backgroundColor: 'transparent' },
+  input: { flex: 1, fontSize: 15, color: colors.textPrimary, backgroundColor: 'transparent' },
 });

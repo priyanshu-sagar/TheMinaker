@@ -1,5 +1,6 @@
-import { useState } from 'react';
-import { StyleSheet, Text, TextInput, View } from 'react-native';
+import { useRef } from 'react';
+import { StyleSheet, Text, View } from 'react-native';
+import { AppTextInput } from '@/components/glass/AppTextInput';
 import { colors, radius, spacing, typography } from '@/design/tokens';
 
 export function FormField({
@@ -25,20 +26,17 @@ export function FormField({
   error?: string | null;
   editable?: boolean;
 }) {
-  const [focused, setFocused] = useState(false);
+  const box = useRef<View>(null);
 
   return (
-    <View style={styles.field}>
+    <View style={styles.field} collapsable={false}>
       <Text style={styles.label}>{label}</Text>
       <View
-        style={[
-          styles.inputContainer,
-          focused ? styles.inputFocused : null,
-          error ? styles.inputError : null,
-          !editable ? styles.inputDisabled : null,
-        ]}
+        ref={box}
+        collapsable={false}
+        style={[styles.inputContainer, error ? styles.inputError : null, !editable ? styles.inputDisabled : null]}
       >
-        <TextInput
+        <AppTextInput
           value={value}
           onChangeText={onChangeText}
           placeholder={placeholder}
@@ -48,8 +46,14 @@ export function FormField({
           autoCapitalize={autoCapitalize}
           maxLength={maxLength}
           editable={editable}
-          onFocus={() => setFocused(true)}
-          onBlur={() => setFocused(false)}
+          onFocus={() => {
+            box.current?.setNativeProps({ style: { borderColor: colors.primary } });
+          }}
+          onBlur={() => {
+            box.current?.setNativeProps({
+              style: { borderColor: error ? colors.error : colors.borderStrong },
+            });
+          }}
           style={styles.input}
         />
       </View>
@@ -60,41 +64,33 @@ export function FormField({
 
 const styles = StyleSheet.create({
   field: {
-    gap: spacing.xs,
+    marginBottom: spacing.md,
   },
   label: {
     ...typography.label,
     color: colors.textPrimary,
+    backgroundColor: 'transparent',
+    marginBottom: spacing.xs,
   },
   inputContainer: {
     minHeight: 48,
     borderWidth: 1,
     borderColor: colors.borderStrong,
     borderRadius: radius.md,
-    backgroundColor: 'rgba(255,255,255,0.65)',
+    backgroundColor: 'rgba(255,255,255,0.92)',
     justifyContent: 'center',
   },
   input: {
     minHeight: 48,
-    backgroundColor: 'transparent',
+    backgroundColor: 'rgba(255,255,255,0.01)',
     paddingHorizontal: spacing.md,
     fontSize: 16,
     color: colors.textPrimary,
-  },
-  inputFocused: {
-    borderColor: colors.primary,
-    shadowColor: colors.primary,
-    shadowOpacity: 0.18,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 3,
   },
   inputError: {
     borderColor: colors.error,
   },
   inputDisabled: {
-    backgroundColor: colors.surface,
-    color: colors.textPlaceholder,
     opacity: 0.7,
   },
   errorText: {

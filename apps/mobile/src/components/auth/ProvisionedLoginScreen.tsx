@@ -119,6 +119,6 @@ const styles = StyleSheet.create({
     fontSize: 24,
   },
   formContent: {
-    gap: spacing.md,
+    marginBottom: spacing.sm,
   },
 });

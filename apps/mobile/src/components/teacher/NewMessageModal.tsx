@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Alert, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, StyleSheet, Text, View } from 'react-native';
+import { AppTextInput } from '@/components/glass/AppTextInput';
 import { glass, colors, radius, spacing, palette, shadows, typography, portalAccents } from '@/design/tokens';
 import { GlassModal } from '@/components/glass/GlassModal';
 import { AnimatedPressable } from '@/components/glass/AnimatedPressable';
@@ -141,7 +142,7 @@ function Field({
   return (
     <View style={styles.field}>
       <Text style={styles.label}>{label}</Text>
-      <TextInput
+      <AppTextInput
         value={value}
         onChangeText={onChangeText}
         placeholder={placeholder}

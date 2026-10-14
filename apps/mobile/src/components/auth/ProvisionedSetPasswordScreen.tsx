@@ -78,7 +78,5 @@ export function ProvisionedSetPasswordScreen() {
 }
 
 const styles = StyleSheet.create({
-  formContent: {
-    gap: spacing.md,
-  },
+  formContent: {},
 });

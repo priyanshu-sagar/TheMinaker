@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { AppTextInput } from '@/components/glass/AppTextInput';
 import { glass } from '@/design/glass-theme';
 import { colors, radius, spacing, statusColors } from '@/design/gateman-theme';
 import { GlassModal } from '@/components/glass/GlassModal';
@@ -43,7 +44,7 @@ export function RequestModificationModal({
             Describe the change you need to your profile or gate access details. The school admin
             will review and update your record.
           </Text>
-          <TextInput
+          <AppTextInput
             value={text}
             onChangeText={setText}
             placeholder="e.g. Update my registered phone number…"

@@ -1,5 +1,5 @@
 import { ReactNode } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { colors, radius, spacing } from '@/design/theme';
 import { glass } from '@/design/glass-theme';
@@ -16,25 +16,38 @@ export function GlassModal({
   onClose: () => void;
   children: ReactNode;
 }) {
+  const sheet = (
+    <View style={styles.sheet}>
+      <View style={styles.header}>
+        <Text style={styles.title}>{title}</Text>
+        <Pressable style={styles.closeBtn} onPress={onClose} hitSlop={8}>
+          <Text style={styles.closeText}>✕</Text>
+        </Pressable>
+      </View>
+      <ScrollView
+        contentContainerStyle={styles.body}
+        keyboardShouldPersistTaps="always"
+        keyboardDismissMode="none"
+        removeClippedSubviews={false}
+      >
+        {children}
+      </ScrollView>
+    </View>
+  );
+
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <View style={styles.overlay}>
         <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
         <BlurView intensity={30} tint="dark" style={StyleSheet.absoluteFill} pointerEvents="none" />
         <View style={styles.sheetShadow}>
-          <BlurView intensity={50} tint="light" style={styles.sheetBlur}>
-            <View style={styles.sheet}>
-              <View style={styles.header}>
-                <Text style={styles.title}>{title}</Text>
-                <Pressable style={styles.closeBtn} onPress={onClose} hitSlop={8}>
-                  <Text style={styles.closeText}>✕</Text>
-                </Pressable>
-              </View>
-              <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
-                {children}
-              </ScrollView>
-            </View>
-          </BlurView>
+          {Platform.OS === 'android' ? (
+            <View style={styles.sheetBlur}>{sheet}</View>
+          ) : (
+            <BlurView intensity={50} tint="light" style={styles.sheetBlur}>
+              {sheet}
+            </BlurView>
+          )}
         </View>
       </View>
     </Modal>
@@ -50,7 +63,8 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 20,
     shadowOffset: { width: 0, height: -6 },
-    elevation: 8,
+    elevation: 0,
+    boxShadow: '0px -8px 28px rgba(15, 23, 42, 0.18)',
     maxHeight: '85%',
   },
   sheetBlur: {
@@ -79,5 +93,5 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   closeText: { fontSize: 15, color: colors.textSecondary, fontWeight: '700' },
-  body: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xl, gap: spacing.md },
+  body: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xl },
 });

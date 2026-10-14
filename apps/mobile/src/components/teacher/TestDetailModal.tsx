@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { StyleSheet, Text, TextInput, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
+import { AppTextInput } from '@/components/glass/AppTextInput';
 import { glass, colors, radius, spacing, palette, portalAccents, shadows, typography } from '@/design/tokens';
 import { GlassModal } from '@/components/glass/GlassModal';
 import { AnimatedPressable } from '@/components/glass/AnimatedPressable';
@@ -72,7 +73,7 @@ export function TestDetailModal({
                                     <Text style={styles.name} numberOfLines={1}>{student.name}</Text>
                                     <Text style={styles.roll}>Roll {student.rollNumber}</Text>
                                 </View>
-                                <TextInput
+                                <AppTextInput
                                     value={drafts[student.id] ?? ''}
                                     onChangeText={(value) => setDrafts((prev) => ({ ...prev, [student.id]: value }))}
                                     keyboardType="number-pad"

@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { StyleSheet, Text, TextInput, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
+import { AppTextInput } from '@/components/glass/AppTextInput';
 import { glass, colors, radius, spacing, palette, portalAccents, shadows, typography } from '@/design/tokens';
 import { GlassModal } from '@/components/glass/GlassModal';
 import { AnimatedPressable } from '@/components/glass/AnimatedPressable';
@@ -35,7 +36,7 @@ export function UploadMaterialModal({
     <GlassModal visible={visible} title="Upload Material" onClose={handleClose}>
       <Text style={styles.hint}>This is a mock upload. The file is stored locally until the API is connected.</Text>
       <Text style={styles.label}>Title</Text>
-      <TextInput
+      <AppTextInput
         value={title}
         onChangeText={setTitle}
         placeholder="e.g. Chapter 5 worksheet"

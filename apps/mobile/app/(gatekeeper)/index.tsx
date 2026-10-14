@@ -15,9 +15,9 @@ import {
   RefreshControl,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from 'react-native';
+import { AppTextInput } from '@/components/glass/AppTextInput';
 
 const MODE_OPTIONS: Array<{ type: AttendanceType; label: string; emoji: string }> = [
   { type: AttendanceType.SCHOOL_ENTRY, label: 'Entry', emoji: '🏫' },
@@ -103,7 +103,7 @@ export default function GatekeeperHomeScreen() {
       </View>
 
       {/* Search */}
-      <TextInput
+      <AppTextInput
         style={styles.search as any}
         placeholder="🔍  Search name or roll no…"
         value={searchQuery}

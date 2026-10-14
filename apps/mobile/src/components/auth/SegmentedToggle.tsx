@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { Platform, StyleSheet, Text, View } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { AnimatedPressable } from '@/components/glass/AnimatedPressable';
 import { colors, glass, radius, shadows, spacing, typography } from '@/design/tokens';
@@ -12,27 +12,33 @@ export function SegmentedToggle<T extends string>({
   value: T;
   onChange: (value: T) => void;
 }) {
+  const track = (
+    <View style={styles.track}>
+      {options.map((option) => {
+        const active = option.value === value;
+        return (
+          <AnimatedPressable
+            key={option.value}
+            style={[styles.segment, active ? styles.segmentActive : null]}
+            onPress={() => onChange(option.value)}
+            haptic="selection"
+          >
+            <Text style={[styles.label, active ? styles.labelActive : null]}>{option.label}</Text>
+          </AnimatedPressable>
+        );
+      })}
+    </View>
+  );
+
   return (
     <View style={[styles.wrap, shadows.sm]}>
-      <BlurView intensity={25} tint="light" style={styles.blur}>
-        <View style={styles.track}>
-          {options.map((option) => {
-            const active = option.value === value;
-            return (
-              <AnimatedPressable
-                key={option.value}
-                style={[styles.segment, active ? styles.segmentActive : null]}
-                onPress={() => onChange(option.value)}
-                haptic="selection"
-              >
-                <Text style={[styles.label, active ? styles.labelActive : null]}>
-                  {option.label}
-                </Text>
-              </AnimatedPressable>
-            );
-          })}
-        </View>
-      </BlurView>
+      {Platform.OS === 'android' ? (
+        <View style={styles.blur}>{track}</View>
+      ) : (
+        <BlurView intensity={25} tint="light" style={styles.blur}>
+          {track}
+        </BlurView>
+      )}
     </View>
   );
 }
@@ -66,7 +72,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 6,
     shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
+    elevation: 0,
   },
   label: {
     ...typography.label,

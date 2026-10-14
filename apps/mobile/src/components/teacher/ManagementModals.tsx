@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
-import { Linking, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Linking, StyleSheet, Text, View } from 'react-native';
+import { AppTextInput } from '@/components/glass/AppTextInput';
 import { Phone, Trash2 } from 'lucide-react-native';
 import { glass, colors, radius, spacing, palette, shadows, typography } from '@/design/tokens';
 import { GlassModal } from '@/components/glass/GlassModal';
@@ -28,7 +29,7 @@ export function ManageClassesModal({ visible, onClose }: { visible: boolean; onC
         <ClassRow key={cls.id} cls={cls} canRemove={classes.length > 1} onRemove={() => removeClass(cls.id)} />
       ))}
       <Text style={styles.label}>New class</Text>
-      <TextInput value={name} onChangeText={setName} placeholder="e.g. Class 9-A Science" placeholderTextColor={colors.textMuted} style={styles.input} />
+      <AppTextInput value={name} onChangeText={setName} placeholder="e.g. Class 9-A Science" placeholderTextColor={colors.textMuted} style={styles.input} />
       <AnimatedPressable haptic="selection" onPress={() => setHomeroom((value) => !value)} style={[styles.toggle, homeroom ? styles.toggleOn : null]}>
         <Text style={[styles.toggleText, homeroom ? styles.toggleTextOn : null]}>{homeroom ? 'Homeroom class' : 'Subject class only'}</Text>
       </AnimatedPressable>
@@ -84,10 +85,10 @@ export function EditTimetableModal({ visible, classId, onClose }: { visible: boo
         <PeriodRow key={period.id} period={period} onRemove={() => removeSchedulePeriod(period.id)} />
       ))}
       <Text style={styles.label}>Add period</Text>
-      <TextInput value={subject} onChangeText={setSubject} placeholder="Subject" placeholderTextColor={colors.textMuted} style={styles.input} />
-      <TextInput value={time} onChangeText={setTime} placeholder="Start, e.g. 2:05 PM" placeholderTextColor={colors.textMuted} style={styles.input} />
-      <TextInput value={endTime} onChangeText={setEndTime} placeholder="End, e.g. 2:50 PM" placeholderTextColor={colors.textMuted} style={styles.input} />
-      <TextInput value={room} onChangeText={setRoom} placeholder="Room" placeholderTextColor={colors.textMuted} style={styles.input} />
+      <AppTextInput value={subject} onChangeText={setSubject} placeholder="Subject" placeholderTextColor={colors.textMuted} style={styles.input} />
+      <AppTextInput value={time} onChangeText={setTime} placeholder="Start, e.g. 2:05 PM" placeholderTextColor={colors.textMuted} style={styles.input} />
+      <AppTextInput value={endTime} onChangeText={setEndTime} placeholder="End, e.g. 2:50 PM" placeholderTextColor={colors.textMuted} style={styles.input} />
+      <AppTextInput value={room} onChangeText={setRoom} placeholder="Room" placeholderTextColor={colors.textMuted} style={styles.input} />
       <AnimatedPressable haptic="medium" onPress={handleAdd} disabled={!canAdd} style={[styles.primary, shadows.sm, !canAdd ? styles.disabled : null]}>
         <Text style={styles.primaryText}>Add Period</Text>
       </AnimatedPressable>
@@ -150,11 +151,11 @@ export function RosterManagementModal({ visible, classId, onClose }: { visible: 
         </View>
       ))}
       <Text style={styles.label}>Add student</Text>
-      <TextInput value={name} onChangeText={setName} placeholder="Student name" placeholderTextColor={colors.textMuted} style={styles.input} />
-      <TextInput value={roll} onChangeText={setRoll} placeholder="Roll number" placeholderTextColor={colors.textMuted} style={styles.input} />
-      <TextInput value={parentName} onChangeText={setParentName} placeholder="Parent name" placeholderTextColor={colors.textMuted} style={styles.input} />
-      <TextInput value={parentPhone} onChangeText={setParentPhone} placeholder="Parent phone" placeholderTextColor={colors.textMuted} keyboardType="phone-pad" style={styles.input} />
-      <TextInput value={parentEmail} onChangeText={setParentEmail} placeholder="Parent email" placeholderTextColor={colors.textMuted} keyboardType="email-address" autoCapitalize="none" style={styles.input} />
+      <AppTextInput value={name} onChangeText={setName} placeholder="Student name" placeholderTextColor={colors.textMuted} style={styles.input} />
+      <AppTextInput value={roll} onChangeText={setRoll} placeholder="Roll number" placeholderTextColor={colors.textMuted} style={styles.input} />
+      <AppTextInput value={parentName} onChangeText={setParentName} placeholder="Parent name" placeholderTextColor={colors.textMuted} style={styles.input} />
+      <AppTextInput value={parentPhone} onChangeText={setParentPhone} placeholder="Parent phone" placeholderTextColor={colors.textMuted} keyboardType="phone-pad" style={styles.input} />
+      <AppTextInput value={parentEmail} onChangeText={setParentEmail} placeholder="Parent email" placeholderTextColor={colors.textMuted} keyboardType="email-address" autoCapitalize="none" style={styles.input} />
       <AnimatedPressable haptic="medium" onPress={handleAdd} disabled={!name.trim() || !roll.trim()} style={[styles.primary, shadows.sm, !name.trim() || !roll.trim() ? styles.disabled : null]}>
         <Text style={styles.primaryText}>Add Student</Text>
       </AnimatedPressable>

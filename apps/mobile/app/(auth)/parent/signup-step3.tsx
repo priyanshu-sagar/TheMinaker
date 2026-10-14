@@ -83,7 +83,5 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xs,
     paddingHorizontal: spacing.xs,
   },
-  formContent: {
-    gap: spacing.md,
-  },
+  formContent: {},
 });

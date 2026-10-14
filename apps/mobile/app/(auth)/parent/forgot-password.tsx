@@ -109,7 +109,5 @@ export default function ParentForgotPasswordScreen() {
 }
 
 const styles = StyleSheet.create({
-  formContent: {
-    gap: spacing.md,
-  },
+  formContent: {},
 });

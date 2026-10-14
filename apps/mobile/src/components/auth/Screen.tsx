@@ -40,7 +40,9 @@ export function AuthScreen({
         >
           <ScrollView
             contentContainerStyle={styles.scroll}
-            keyboardShouldPersistTaps="handled"
+            keyboardShouldPersistTaps="always"
+            keyboardDismissMode="none"
+            removeClippedSubviews={false}
             showsVerticalScrollIndicator={false}
           >
             {showBack ? <BackRow /> : null}
@@ -97,7 +99,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   body: {
-    gap: spacing.md,
+    marginBottom: spacing.md,
   },
   footerBlur: {
     borderTopWidth: 1,

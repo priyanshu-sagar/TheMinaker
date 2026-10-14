@@ -92,7 +92,5 @@ export function ProvisionedForgotPasswordScreen({ loginHref }: { loginHref: stri
 }
 
 const styles = StyleSheet.create({
-  formContent: {
-    gap: spacing.md,
-  },
+  formContent: {},
 });

@@ -25,7 +25,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 10,
     shadowOffset: { width: 0, height: 5 },
-    elevation: 6,
+    elevation: 0,
   },
-  label: { color: '#fff', fontSize: 22, fontWeight: '700' },
+  label: { color: '#fff', fontSize: 22, fontWeight: '700', backgroundColor: 'transparent' },
 });

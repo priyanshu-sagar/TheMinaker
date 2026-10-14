@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
-import { StyleSheet, Text, TextInput, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
+import { AppTextInput } from '@/components/glass/AppTextInput';
 import { Check, Users } from 'lucide-react-native';
 import { glass, colors, radius, spacing, palette, portalAccents, shadows, typography } from '@/design/tokens';
 import { GlassModal } from '@/components/glass/GlassModal';
@@ -150,7 +151,7 @@ function Field({
     return (
         <View style={styles.field}>
             <Text style={styles.label}>{label}</Text>
-            <TextInput
+            <AppTextInput
                 value={value}
                 onChangeText={onChangeText}
                 placeholder={placeholder}

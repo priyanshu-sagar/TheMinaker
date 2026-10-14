@@ -163,12 +163,12 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
   },
   segmentBtnActive: {
-    backgroundColor: '#ffffff',
+    backgroundColor: 'rgba(255,255,255,0.92)',
     shadowColor: '#000000',
     shadowOpacity: 0.12,
     shadowRadius: 4,
     shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
+    elevation: 0,
   },
   segmentLabel: {
     ...typography.label,

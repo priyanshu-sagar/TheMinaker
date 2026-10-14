@@ -83,7 +83,7 @@ export function SchoolPicker({
 }
 
 const styles = StyleSheet.create({
-  gap: { gap: spacing.md },
+  gap: {},
   helper: {
     ...typography.caption,
     color: colors.textMuted,

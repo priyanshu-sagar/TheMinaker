@@ -24,12 +24,20 @@ export function GlassCard({
 
   const isFlex = flatStyle?.flex !== undefined;
 
+  const inner = (
+    <View style={[styles.tint, padded ? styles.padded : null, isFlex && { flex: 1 }]}>{children}</View>
+  );
+
   return (
     <View style={[styles.shadowWrap, style, { borderRadius: cardRadius }]}>
       <View style={[styles.glassBg, { borderRadius: cardRadius }, isFlex && { flex: 1 }]}>
-        <BlurView intensity={intensity} tint="light" style={[styles.blur, { borderRadius: cardRadius }, isFlex && { flex: 1 }]}>
-          <View style={[styles.tint, padded ? styles.padded : null, isFlex && { flex: 1 }]}>{children}</View>
-        </BlurView>
+        {Platform.OS === 'android' ? (
+          <View style={[styles.blur, { borderRadius: cardRadius }, isFlex && { flex: 1 }]}>{inner}</View>
+        ) : (
+          <BlurView intensity={intensity} tint="light" style={[styles.blur, { borderRadius: cardRadius }, isFlex && { flex: 1 }]}>
+            {inner}
+          </BlurView>
+        )}
       </View>
     </View>
   );
@@ -43,7 +51,8 @@ const styles = StyleSheet.create({
     shadowOpacity: Platform.OS === 'ios' ? 0.12 : 0.18,
     shadowRadius: 14,
     shadowOffset: { width: 0, height: 6 },
-    elevation: 4,
+    elevation: 0,
+    boxShadow: '0px 6px 14px rgba(15, 23, 42, 0.12)',
   },
   glassBg: {
     backgroundColor: 'rgba(255,255,255,0.55)',

@@ -182,55 +182,70 @@ export const radius = {
 
 // ─── Typography ───────────────────────────────────────────────
 
+/**
+ * backgroundColor stays transparent. On Android, an elevated parent paints
+ * a solid white plate behind any Text that does not opt out.
+ */
+const clearText = { backgroundColor: 'transparent' as const };
+
 export const typography = {
   // Display
-  hero:     { fontSize: 32, fontWeight: '800' as const, color: colors.textPrimary, letterSpacing: -0.5 },
-  title:    { fontSize: 22, fontWeight: '700' as const, color: colors.textPrimary, letterSpacing: -0.3 },
-  heading:  { fontSize: 18, fontWeight: '700' as const, color: colors.textPrimary },
+  hero:     { ...clearText, fontSize: 32, fontWeight: '800' as const, color: colors.textPrimary, letterSpacing: -0.5 },
+  title:    { ...clearText, fontSize: 22, fontWeight: '700' as const, color: colors.textPrimary, letterSpacing: -0.3 },
+  heading:  { ...clearText, fontSize: 18, fontWeight: '700' as const, color: colors.textPrimary },
 
   // Body
-  body:     { fontSize: 15, fontWeight: '400' as const, color: colors.textPrimary, lineHeight: 22 },
-  bodyBold: { fontSize: 15, fontWeight: '600' as const, color: colors.textPrimary },
+  body:     { ...clearText, fontSize: 15, fontWeight: '400' as const, color: colors.textPrimary, lineHeight: 22 },
+  bodyBold: { ...clearText, fontSize: 15, fontWeight: '600' as const, color: colors.textPrimary },
 
   // Utility
-  label:    { fontSize: 14, fontWeight: '600' as const, color: colors.textPrimary },
-  caption:  { fontSize: 12, fontWeight: '400' as const, color: colors.textMuted, lineHeight: 17 },
-  overline: { fontSize: 11, fontWeight: '700' as const, color: colors.textMuted, letterSpacing: 0.8, textTransform: 'uppercase' as const },
+  label:    { ...clearText, fontSize: 14, fontWeight: '600' as const, color: colors.textPrimary },
+  caption:  { ...clearText, fontSize: 12, fontWeight: '400' as const, color: colors.textMuted, lineHeight: 17 },
+  overline: { ...clearText, fontSize: 11, fontWeight: '700' as const, color: colors.textMuted, letterSpacing: 0.8, textTransform: 'uppercase' as const },
 
   // Subtitle
-  subtitle: { fontSize: 15, fontWeight: '400' as const, color: colors.textMuted, lineHeight: 22 },
+  subtitle: { ...clearText, fontSize: 15, fontWeight: '400' as const, color: colors.textMuted, lineHeight: 22 },
 } as const;
 
 // ─── Shadow Levels ────────────────────────────────────────────
 
+/**
+ * elevation is 0 on purpose. Android draws an opaque white backing on any
+ * view (and its Text children) that has elevation and a transparent fill.
+ * boxShadow is the shadow that does not do that.
+ */
 export const shadows = {
   sm: {
     shadowColor: glass.shadow,
     shadowOpacity: 0.07,
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 3 },
-    elevation: 2,
+    elevation: 0,
+    boxShadow: '0px 3px 8px rgba(15, 23, 42, 0.08)',
   },
   md: {
     shadowColor: glass.shadow,
     shadowOpacity: 0.11,
     shadowRadius: 14,
     shadowOffset: { width: 0, height: 6 },
-    elevation: 4,
+    elevation: 0,
+    boxShadow: '0px 6px 14px rgba(15, 23, 42, 0.12)',
   },
   lg: {
     shadowColor: glass.shadow,
     shadowOpacity: 0.18,
     shadowRadius: 22,
     shadowOffset: { width: 0, height: 10 },
-    elevation: 8,
+    elevation: 0,
+    boxShadow: '0px 10px 22px rgba(15, 23, 42, 0.16)',
   },
   modal: {
     shadowColor: glass.shadow,
     shadowOpacity: 0.25,
     shadowRadius: 28,
     shadowOffset: { width: 0, height: -8 },
-    elevation: 12,
+    elevation: 0,
+    boxShadow: '0px -8px 28px rgba(15, 23, 42, 0.18)',
   },
 } as const;
 

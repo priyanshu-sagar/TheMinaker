@@ -246,7 +246,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.5,
     shadowRadius: 20,
     shadowOffset: { width: 0, height: 8 },
-    elevation: 10,
+    elevation: 0,
   },
   logoGradient: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   appName: {
