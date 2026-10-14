@@ -10,14 +10,41 @@ export interface BoardingPoint {
   lng: number;
 }
 
+export type ChildStatus = 'Pending' | 'Active';
+
 export interface ParentChild {
   id: string;
   name: string;
   grade: string;
   assignedBusId: string;
   boardingPoint: BoardingPoint;
+  parentPhone: string;
+  parentEmail: string;
   absentToday: boolean;
+  selfDropOff: boolean;
+  earlyPickup: boolean;
   waitingAtStop: boolean;
+  arrivalReminder: boolean;
+  status: ChildStatus;
+}
+
+export type ExceptionKind = 'selfDropOff' | 'earlyPickup' | 'absent' | 'reminder';
+
+export interface ExceptionLog {
+  id: string;
+  childId: string;
+  kind: ExceptionKind;
+  label: string;
+  at: string;
+}
+
+export interface ParentNotice {
+  id: string;
+  channel: 'school' | 'transit';
+  title: string;
+  body: string;
+  at: string;
+  read: boolean;
 }
 
 export interface LiveTransit {
@@ -44,11 +71,19 @@ export interface AttendanceLog {
   status: AttendanceMark;
 }
 
+export interface FleetBusOption {
+  id: string;
+  routeName: string;
+  departs: string;
+}
+
 export interface ParentRequest {
   id: string;
   childId: string;
-  kind: 'Bus change' | 'Boarding point' | 'Contact number' | 'Child details';
+  kind: 'Boarding point' | 'Contact number' | 'Child details';
   audience: RequestAudience;
+  currentValue: string;
+  nextValue: string;
   detail: string;
   reason: string;
   createdAt: string;
@@ -59,15 +94,21 @@ interface ParentState {
   activeChildId: string;
   liveTransit: LiveTransit;
   attendanceHistory: AttendanceLog[];
-  requests: ParentRequest[];
-  /** One-time code a trusted adult can quote at the gate. */
-  pickupCode: string;
+  pendingRequests: ParentRequest[];
+  availableBuses: FleetBusOption[];
+  exceptionLogs: ExceptionLog[];
+  notices: ParentNotice[];
   setActiveChildId: (id: string) => void;
-  markAbsentToday: (childId: string) => void;
+  addChild: (input: { name: string; grade: string }) => void;
+  setAbsentToday: (childId: string, on: boolean) => void;
+  setSelfDropOff: (childId: string, on: boolean) => void;
+  setEarlyPickup: (childId: string, on: boolean) => void;
+  setArrivalReminder: (childId: string, on: boolean) => void;
   confirmWaitingAtStop: (childId: string) => void;
-  requestBusChange: (newBus: string, reason: string) => void;
-  requestStopChange: (newStop: string, reason: string) => void;
-  requestProfileUpdate: (data: { kind: 'Contact number' | 'Child details'; detail: string; reason: string }) => void;
+  requestStopChange: (input: { lat: number; lng: number; flat: string; area: string; landmark: string; reason: string }) => void;
+  requestContactUpdate: (input: { channel: 'phone' | 'email'; nextValue: string; reason: string }) => void;
+  withdrawRequest: (id: string) => void;
+  markNoticesRead: (channel: 'school' | 'transit') => void;
 }
 
 const TRANSIT: Record<string, LiveTransit> = {
@@ -106,8 +147,14 @@ const CHILDREN: ParentChild[] = [
     grade: 'Class 6-B',
     assignedBusId: 'MH-01-AB-2144',
     boardingPoint: { name: 'Lokhandwala Circle', lat: 19.1307, lng: 72.8296 },
+    parentPhone: '+919820011122',
+    parentEmail: 'rohan.sharma@example.in',
     absentToday: false,
+    selfDropOff: false,
+    earlyPickup: false,
     waitingAtStop: false,
+    arrivalReminder: true,
+    status: 'Active',
   },
   {
     id: 'child-meher',
@@ -115,8 +162,14 @@ const CHILDREN: ParentChild[] = [
     grade: 'Class 3-A',
     assignedBusId: 'MH-01-CD-9081',
     boardingPoint: { name: 'Khar Telephone Exchange', lat: 19.0688, lng: 72.8400 },
+    parentPhone: '+919820077788',
+    parentEmail: 'rohan.sharma@example.in',
     absentToday: false,
+    selfDropOff: false,
+    earlyPickup: false,
     waitingAtStop: false,
+    arrivalReminder: false,
+    status: 'Active',
   },
 ];
 
@@ -132,6 +185,12 @@ const HISTORY: AttendanceLog[] = [
   { id: 'm4', childId: 'child-meher', date: '2026-10-08', boardedTime: null, droppedTime: null, status: 'Absent' },
 ];
 
+const BUSES: FleetBusOption[] = [
+  { id: 'MH-01-AB-2144', routeName: 'Andheri West — Route 4', departs: '6:30 AM' },
+  { id: 'MH-01-CD-9081', routeName: 'Bandra East — Route 2', departs: '6:45 AM' },
+  { id: 'MH-01-EF-3310', routeName: 'Juhu — Route 6', departs: '7:00 AM' },
+  { id: 'MH-01-GH-5528', routeName: 'Versova — Route 1', departs: '7:15 AM' },
+];
 function pushRequest(
   state: ParentState,
   input: Omit<ParentRequest, 'id' | 'childId' | 'createdAt'>,
@@ -143,7 +202,7 @@ function pushRequest(
       childId: state.activeChildId,
       createdAt: new Date().toISOString(),
     },
-    ...state.requests,
+    ...state.pendingRequests,
   ];
 }
 
@@ -152,30 +211,112 @@ export const useParentStore = create<ParentState>((set, get) => ({
   activeChildId: CHILDREN[0]!.id,
   liveTransit: TRANSIT[CHILDREN[0]!.id]!,
   attendanceHistory: HISTORY,
-  requests: [],
-  pickupCode: '4821',
+  pendingRequests: [],
+  availableBuses: BUSES,
+  exceptionLogs: [
+    { id: 'ex1', childId: 'child-aarav', kind: 'absent', label: 'Bus skipped for the day', at: '2026-10-10T07:02:00.000Z' },
+    { id: 'ex2', childId: 'child-aarav', kind: 'earlyPickup', label: 'Early pick-up', at: '2026-10-09T12:10:00.000Z' },
+    { id: 'ex3', childId: 'child-meher', kind: 'selfDropOff', label: 'Dropped at school by parent', at: '2026-10-08T07:40:00.000Z' },
+  ],
+  notices: [
+    { id: 'n1', channel: 'school', title: 'Holiday on 20 Oct', body: 'School is closed for Diwali prep. No buses that morning.', at: '2026-10-12T09:00:00.000Z', read: false },
+    { id: 'n2', channel: 'school', title: 'Transport fee reminder', body: 'October transport fee is due by the 18th.', at: '2026-10-11T08:00:00.000Z', read: true },
+    { id: 'n3', channel: 'transit', title: 'Bus is 6 minutes out', body: 'Route 4 is approaching Lokhandwala Circle.', at: '2026-10-14T06:40:00.000Z', read: false },
+  ],
 
   setActiveChildId: (id) => {
-    const transit = TRANSIT[id];
     const child = get().children.find((item) => item.id === id);
-    if (!transit || !child) return;
+    const transit = TRANSIT[id];
+    if (!child) return;
+    if (!transit || child.status === 'Pending') {
+      set({
+        activeChildId: id,
+        liveTransit: {
+          busId: '—',
+          routeName: 'Awaiting verification',
+          conductorName: '—',
+          conductorPhone: '',
+          gatemanName: '—',
+          gatemanPhone: '',
+          officePhone: '+912226401100',
+          status: 'Not travelling',
+          eta: '—',
+          currentLocation: child.boardingPoint,
+          distanceToStop: 0,
+        },
+      });
+      return;
+    }
     set({
       activeChildId: id,
       liveTransit: child.absentToday ? { ...transit, status: 'Not travelling', eta: '—' } : transit,
     });
   },
 
-  markAbsentToday: (childId) =>
+  addChild: ({ name, grade }) =>
     set((state) => {
-      const children = state.children.map((child) =>
-        child.id === childId ? { ...child, absentToday: true, waitingAtStop: false } : child,
-      );
-      const liveTransit =
-        state.activeChildId === childId
-          ? { ...state.liveTransit, status: 'Not travelling' as const, eta: '—' }
-          : state.liveTransit;
-      return { children, liveTransit };
+      const id = `child-${Date.now()}`;
+      const child: ParentChild = {
+        id,
+        name: name.trim(),
+        grade: grade.trim(),
+        assignedBusId: 'Unassigned',
+        boardingPoint: { name: 'Not set', lat: 19.076, lng: 72.8777 },
+        parentPhone: '',
+        parentEmail: '',
+        absentToday: false,
+        selfDropOff: false,
+        earlyPickup: false,
+        waitingAtStop: false,
+        arrivalReminder: false,
+        status: 'Pending',
+      };
+      return {
+        children: [...state.children, child],
+        pendingRequests: [
+          {
+            id: `req-${Date.now()}`,
+            childId: id,
+            kind: 'Child details',
+            audience: 'School Admin',
+            currentValue: 'No child on file',
+            nextValue: `${name.trim()} · ${grade.trim()}`,
+            detail: `${name.trim()} · ${grade.trim()}`,
+            reason: 'New child added',
+            createdAt: new Date().toISOString(),
+          },
+          ...state.pendingRequests,
+        ],
+        activeChildId: id,
+        liveTransit: {
+          busId: '—',
+          routeName: 'Awaiting verification',
+          conductorName: '—',
+          conductorPhone: '',
+          gatemanName: '—',
+          gatemanPhone: '',
+          officePhone: '+912226401100',
+          status: 'Not travelling',
+          eta: '—',
+          currentLocation: child.boardingPoint,
+          distanceToStop: 0,
+        },
+      };
     }),
+
+  setAbsentToday: (childId, on) =>
+    set((state) => ({
+      children: state.children.map((child) =>
+        child.id === childId ? { ...child, absentToday: on, waitingAtStop: on ? false : child.waitingAtStop, selfDropOff: on ? false : child.selfDropOff } : child,
+      ),
+      liveTransit: state.activeChildId === childId
+        ? { ...state.liveTransit, status: on ? 'Not travelling' : 'En route', eta: on ? '—' : state.liveTransit.eta === '—' ? '6 min' : state.liveTransit.eta }
+        : state.liveTransit,
+      exceptionLogs: [
+        { id: `ex-${Date.now()}`, childId, kind: 'absent', label: on ? 'Marked absent for the day' : 'Bus service resumed', at: new Date().toISOString() },
+        ...state.exceptionLogs,
+      ],
+    })),
 
   confirmWaitingAtStop: (childId) =>
     set((state) => ({
@@ -184,34 +325,79 @@ export const useParentStore = create<ParentState>((set, get) => ({
       ),
     })),
 
-  requestBusChange: (newBus, reason) =>
+  setSelfDropOff: (childId, on) =>
     set((state) => ({
-      requests: pushRequest(state, {
-        kind: 'Bus change',
-        audience: 'Gateman',
-        detail: newBus,
-        reason,
-      }),
+      children: state.children.map((child) =>
+        child.id === childId ? { ...child, selfDropOff: on, absentToday: on ? false : child.absentToday } : child,
+      ),
+      exceptionLogs: [
+        { id: `ex-${Date.now()}`, childId, kind: 'selfDropOff', label: on ? 'Morning bus skipped' : 'Morning bus resumed', at: new Date().toISOString() },
+        ...state.exceptionLogs,
+      ],
     })),
 
-  requestStopChange: (newStop, reason) =>
+  setEarlyPickup: (childId, on) =>
     set((state) => ({
-      requests: pushRequest(state, {
-        kind: 'Boarding point',
-        audience: 'Gateman',
-        detail: newStop,
-        reason,
-      }),
+      children: state.children.map((child) =>
+        child.id === childId ? { ...child, earlyPickup: on } : child,
+      ),
+      exceptionLogs: [
+        { id: `ex-${Date.now()}`, childId, kind: 'earlyPickup', label: on ? 'Early pick-up' : 'Afternoon bus resumed', at: new Date().toISOString() },
+        ...state.exceptionLogs,
+      ],
     })),
 
-  requestProfileUpdate: ({ kind, detail, reason }) =>
+  setArrivalReminder: (childId, on) =>
     set((state) => ({
-      requests: pushRequest(state, {
-        kind,
-        audience: 'School Admin',
-        detail,
-        reason,
-      }),
+      children: state.children.map((child) =>
+        child.id === childId ? { ...child, arrivalReminder: on } : child,
+      ),
+      exceptionLogs: [
+        { id: `ex-${Date.now()}`, childId, kind: 'reminder', label: on ? 'Arrival reminder turned on' : 'Arrival reminder turned off', at: new Date().toISOString() },
+        ...state.exceptionLogs,
+      ],
+    })),
+
+  requestStopChange: ({ lat, lng, flat, area, landmark, reason }) =>
+    set((state) => {
+      const child = state.children.find((item) => item.id === state.activeChildId);
+      const next = `${flat}, ${area}${landmark ? ` · ${landmark}` : ''} (${lat.toFixed(5)}, ${lng.toFixed(5)})`;
+      return {
+        pendingRequests: pushRequest(state, {
+          kind: 'Boarding point',
+          audience: 'Gateman',
+          currentValue: child?.boardingPoint.name ?? '—',
+          nextValue: next,
+          detail: next,
+          reason,
+        }),
+      };
+    }),
+
+  requestContactUpdate: ({ channel, nextValue, reason }) =>
+    set((state) => {
+      const child = state.children.find((item) => item.id === state.activeChildId);
+      const current = channel === 'phone' ? child?.parentPhone || 'No number' : child?.parentEmail || 'No email';
+      return {
+        pendingRequests: pushRequest(state, {
+          kind: 'Contact number',
+          audience: 'School Admin',
+          currentValue: current,
+          nextValue,
+          detail: nextValue,
+          reason,
+        }),
+      };
+    }),
+
+  withdrawRequest: (id) =>
+    set((state) => ({
+      pendingRequests: state.pendingRequests.filter((item) => item.id !== id),
+    })),
+
+  markNoticesRead: (channel) =>
+    set((state) => ({
+      notices: state.notices.map((notice) => (notice.channel === channel ? { ...notice, read: true } : notice)),
     })),
 }));
 

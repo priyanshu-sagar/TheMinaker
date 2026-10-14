@@ -1,84 +1,132 @@
 import { useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import MapView, { Marker, UrlTile } from 'react-native-maps';
+import { Swipeable } from 'react-native-gesture-handler';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MeshBackground } from '@/components/glass/MeshBackground';
 import { GlassCard } from '@/components/glass/GlassCard';
 import { AnimatedPressable } from '@/components/glass/AnimatedPressable';
-import { ChildSwitcher } from '@/components/parent/ChildSwitcher';
-import { RequestModal } from '@/components/parent/RequestModal';
-import { colors, portalAccents, radius, shadows, spacing, typography } from '@/design/tokens';
+import { FadeInRow } from '@/components/glass/FadeInList';
+import { ParentChrome } from '@/components/parent/ParentChrome';
+import { ContactUpdateModal } from '@/components/parent/ContactUpdateModal';
+import { ParentToast } from '@/components/parent/ParentToast';
+import { StopDraft, StopMapModal } from '@/components/parent/StopMapModal';
+import { StopReasonModal } from '@/components/parent/ContactUpdateModal';
+import { colors, palette, portalAccents, radius, shadows, spacing, typography } from '@/design/tokens';
 import { useActiveChild, useParentStore } from '@/store/parent.store';
-
-type RequestKind = 'bus' | 'stop' | 'phone' | 'details' | null;
 
 export default function ParentProfileScreen() {
   const child = useActiveChild();
-  const requests = useParentStore((state) => state.requests);
-  const requestBusChange = useParentStore((state) => state.requestBusChange);
+  const pendingRequests = useParentStore((state) => state.pendingRequests);
   const requestStopChange = useParentStore((state) => state.requestStopChange);
-  const requestProfileUpdate = useParentStore((state) => state.requestProfileUpdate);
-  const [kind, setKind] = useState<RequestKind>(null);
+  const requestContactUpdate = useParentStore((state) => state.requestContactUpdate);
+  const withdrawRequest = useParentStore((state) => state.withdrawRequest);
+  const [contactOpen, setContactOpen] = useState(false);
+  const [mapOpen, setMapOpen] = useState(false);
+  const [draft, setDraft] = useState<StopDraft | null>(null);
+  const [openId, setOpenId] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
 
-  const mine = requests.filter((item) => item.childId === child?.id);
-
-  function done(message: string) {
-    setKind(null);
-    setToast(message);
+  function statusLine(audience: string, kindLabel: string) {
+    return audience === 'Gateman' ? `${kindLabel} — Pending Gateman Approval` : `${kindLabel} — Pending Admin Approval`;
   }
-
-  const modal =
-    kind === 'bus'
-      ? { title: 'Request bus change', label: 'Requested bus or route', placeholder: 'e.g. Route 6, Andheri East' }
-      : kind === 'stop'
-        ? { title: 'Request boarding point', label: 'New boarding point', placeholder: 'e.g. Infinity Mall stop' }
-        : kind === 'phone'
-          ? { title: 'Update contact number', label: 'New phone number', placeholder: '+91 ...' }
-          : { title: 'Edit child details', label: 'What should change', placeholder: 'e.g. spelling of the name' };
 
   return (
     <MeshBackground>
       <SafeAreaView style={styles.safe} edges={['top']}>
-        <ChildSwitcher />
+        <ParentChrome />
         <ScrollView contentContainerStyle={styles.list}>
-          <GlassCard style={shadows.md}>
-            <Text style={styles.kicker}>Assigned now</Text>
-            <Text style={styles.name}>{child?.name}</Text>
-            <Text style={styles.line}>{child?.grade}</Text>
-            <Text style={styles.line}>Bus {child?.assignedBusId}</Text>
-            <Text style={styles.line}>Stop {child?.boardingPoint.name}</Text>
+          <GlassCard style={[shadows.md, styles.assignedCard]}>
+            <View style={styles.assigned}>
+              <View style={styles.assignedText}>
+                <Text style={styles.kicker}>Assigned now</Text>
+                <Text style={styles.name}>{child?.name}</Text>
+                <Text style={styles.line}>{child?.grade}</Text>
+                <Text style={styles.line}>Stop {child?.boardingPoint.name}</Text>
+                <Text style={styles.line}>Phone {child?.parentPhone || '—'}</Text>
+              </View>
+              <AnimatedPressable haptic="selection" onPress={() => setMapOpen(true)} style={styles.miniMap}>
+                <MapView
+                  style={styles.miniMapFill}
+                  pointerEvents="none"
+                  provider={undefined}
+                  region={{
+                    latitude: child?.boardingPoint.lat ?? 19.07,
+                    longitude: child?.boardingPoint.lng ?? 72.87,
+                    latitudeDelta: 0.02,
+                    longitudeDelta: 0.02,
+                  }}
+                >
+                  <UrlTile urlTemplate="https://tile.openstreetmap.org/{z}/{x}/{y}.png" maximumZ={19} />
+                  {child ? <Marker coordinate={{ latitude: child.boardingPoint.lat, longitude: child.boardingPoint.lng }} /> : null}
+                </MapView>
+              </AnimatedPressable>
+            </View>
           </GlassCard>
-
+          <GlassCard style={styles.action}>
+            <Text style={styles.kicker}>Gate passes</Text>
+            <Text style={styles.line}>Last early exit: 9 Oct, 12:10 PM. Approved by the gateman.</Text>
+          </GlassCard>
+          <GlassCard style={styles.action}>
+            <Text style={styles.kicker}>Transport fee</Text>
+            <Text style={styles.line}>October is unpaid. Due 18 Oct. This is a local preview only.</Text>
+          </GlassCard>
           <Text style={styles.section}>Ask for a change</Text>
-          <Action label="Request bus change" hint="Goes to the gateman" onPress={() => setKind('bus')} />
-          <Action label="Request boarding point" hint="Goes to the gateman" onPress={() => setKind('stop')} />
-          <Action label="Update contact number" hint="Goes to the school admin" onPress={() => setKind('phone')} />
-          <Action label="Edit child details" hint="Goes to the school admin" onPress={() => setKind('details')} />
-
-          {mine.length > 0 ? <Text style={styles.section}>Sent requests</Text> : null}
-          {mine.map((item) => (
-            <GlassCard key={item.id} style={styles.request}>
-              <Text style={styles.requestTitle}>{item.kind}</Text>
-              <Text style={styles.line}>{item.detail}</Text>
-              <Text style={styles.hint}>To {item.audience}</Text>
-            </GlassCard>
+          <Action label="Change boarding point" hint="Pin a new stop for the gateman" onPress={() => setMapOpen(true)} />
+          <Action label="Update contact details" hint="Phone or email, confirmed with a code" onPress={() => setContactOpen(true)} />
+          {pendingRequests.length > 0 ? <Text style={styles.section}>Pending requests</Text> : null}
+          {pendingRequests.map((item, index) => (
+            <FadeInRow key={item.id} index={index}>
+              <Swipeable renderRightActions={() => (
+                <AnimatedPressable haptic="medium" onPress={() => withdrawRequest(item.id)} style={styles.withdraw}>
+                  <Text style={styles.withdrawText}>Withdraw</Text>
+                </AnimatedPressable>
+              )}>
+                <AnimatedPressable haptic="selection" onPress={() => setOpenId(openId === item.id ? null : item.id)}>
+                  <GlassCard style={styles.request}>
+                    <Text style={styles.requestTitle}>{statusLine(item.audience, item.kind)}</Text>
+                    {openId === item.id ? (
+                      <View>
+                        <Text style={styles.hint}>Current: {item.currentValue}</Text>
+                        <Text style={styles.line}>Requested: {item.nextValue}</Text>
+                        <Text style={styles.hint}>{item.reason}</Text>
+                      </View>
+                    ) : <Text style={styles.hint}>Tap to compare. Swipe to withdraw.</Text>}
+                  </GlassCard>
+                </AnimatedPressable>
+              </Swipeable>
+            </FadeInRow>
           ))}
-          {toast ? <Text style={styles.toast}>{toast}</Text> : null}
         </ScrollView>
+        <ParentToast message={toast} onDone={() => setToast(null)} />
       </SafeAreaView>
-
-      <RequestModal
-        visible={kind !== null}
-        title={modal.title}
-        detailLabel={modal.label}
-        detailPlaceholder={modal.placeholder}
-        onClose={() => setKind(null)}
-        onSubmit={(detail, reason) => {
-          if (kind === 'bus') requestBusChange(detail, reason);
-          if (kind === 'stop') requestStopChange(detail, reason);
-          if (kind === 'phone') requestProfileUpdate({ kind: 'Contact number', detail, reason });
-          if (kind === 'details') requestProfileUpdate({ kind: 'Child details', detail, reason });
-          done('Request sent. It stays in this list until the school acts on it.');
+      <StopMapModal
+        visible={mapOpen}
+        currentStop={child?.boardingPoint.name ?? '—'}
+        onClose={() => setMapOpen(false)}
+        onConfirm={(next) => { setMapOpen(false); setDraft(next); }}
+      />
+      <StopReasonModal
+        visible={draft !== null}
+        currentStop={child?.boardingPoint.name ?? '—'}
+        requested={draft ? `${draft.flat}, ${draft.area}` : ''}
+        onClose={() => setDraft(null)}
+        onSubmit={(reason) => {
+          if (!draft) return;
+          requestStopChange({ ...draft, reason });
+          setDraft(null);
+          setToast('Stop change is pending gateman approval.');
+        }}
+      />
+      <ContactUpdateModal
+        visible={contactOpen}
+        currentPhone={child?.parentPhone ?? ''}
+        currentEmail={child?.parentEmail ?? ''}
+        onClose={() => setContactOpen(false)}
+        onSubmit={(input) => {
+          requestContactUpdate(input);
+          setContactOpen(false);
+          setToast('Contact update is pending admin approval.');
         }}
       />
     </MeshBackground>
@@ -98,22 +146,21 @@ function Action({ label, hint, onPress }: { label: string; hint: string; onPress
 
 const styles = StyleSheet.create({
   safe: { flex: 1 },
-  list: { padding: spacing.lg, paddingBottom: 110 },
+  list: { padding: spacing.lg, paddingBottom: 140 },
+  assignedCard: { marginBottom: spacing.lg },
+  assigned: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  assignedText: { flex: 1 },
   kicker: { ...typography.overline, color: portalAccents.parent.from },
+  miniMap: { width: 110, height: 110, borderRadius: radius.lg, overflow: 'hidden' },
+  miniMapFill: { flex: 1 },
   name: { ...typography.heading, marginTop: 4 },
   line: { ...typography.body, marginTop: 2 },
   section: { ...typography.overline, marginTop: spacing.lg, marginBottom: spacing.sm },
-  action: { marginBottom: spacing.sm },
+  action: { marginBottom: spacing.lg },
   actionLabel: { ...typography.bodyBold },
   hint: { ...typography.caption, marginTop: 2 },
   request: { marginBottom: spacing.sm },
   requestTitle: { ...typography.bodyBold },
-  toast: {
-    marginTop: spacing.md,
-    backgroundColor: colors.successBg,
-    color: colors.success,
-    borderRadius: radius.md,
-    padding: spacing.md,
-    overflow: 'hidden',
-  },
+  withdraw: { backgroundColor: colors.error, justifyContent: 'center', paddingHorizontal: spacing.lg, borderRadius: radius.md, marginBottom: spacing.sm },
+  withdrawText: { ...typography.bodyBold, color: palette.white, backgroundColor: 'transparent' },
 });

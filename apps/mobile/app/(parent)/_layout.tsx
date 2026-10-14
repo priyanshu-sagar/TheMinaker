@@ -12,7 +12,7 @@ export default function ParentLayout() {
         headerShown: false,
         tabBarActiveTintColor: portalAccents.parent.from,
         tabBarInactiveTintColor: colors.textMuted,
-        tabBarBackground: () => <BlurView intensity={55} tint="light" style={StyleSheet.absoluteFill} />,
+        tabBarBackground: () => <BlurView intensity={80} tint="light" style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(248,250,252,0.94)' }]} />,
         tabBarStyle: {
           position: 'absolute',
           backgroundColor: 'transparent',
@@ -40,7 +40,7 @@ export default function ParentLayout() {
       <Tabs.Screen
         name="support"
         options={{
-          title: 'Support',
+          title: 'Actions',
           tabBarIcon: ({ color, focused }) => <TabBarIcon icon={Phone} color={color} focused={focused} />,
         }}
       />

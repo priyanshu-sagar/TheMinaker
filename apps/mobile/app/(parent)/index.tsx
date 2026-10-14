@@ -3,23 +3,28 @@ import { StyleSheet, Text, View } from 'react-native';
 import MapView, { Marker, UrlTile } from 'react-native-maps';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated, { FadeInDown, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
+import { LinearGradient } from 'expo-linear-gradient';
+import { ParentToast } from '@/components/parent/ParentToast';
 import { MeshBackground } from '@/components/glass/MeshBackground';
 import { GlassCard } from '@/components/glass/GlassCard';
 import { AnimatedPressable } from '@/components/glass/AnimatedPressable';
 import { StatusPill } from '@/components/shared/StatusPill';
-import { ChildSwitcher } from '@/components/parent/ChildSwitcher';
+import { Linking } from 'react-native';
+import { Phone } from 'lucide-react-native';
+import { ConfirmModal } from '@/components/parent/ConfirmModal';
+import { ParentChrome } from '@/components/parent/ParentChrome';
 import { colors, glass, palette, portalAccents, radius, shadows, spacing, typography } from '@/design/tokens';
 import { useActiveChild, useParentStore } from '@/store/parent.store';
 
 export default function ParentLiveScreen() {
   const child = useActiveChild();
   const transit = useParentStore((state) => state.liveTransit);
-  const markAbsentToday = useParentStore((state) => state.markAbsentToday);
+  const setAbsentToday = useParentStore((state) => state.setAbsentToday);
   const confirmWaitingAtStop = useParentStore((state) => state.confirmWaitingAtStop);
-  const pickupCode = useParentStore((state) => state.pickupCode);
   const [note, setNote] = useState<string | null>(null);
+  const [askAbsent, setAskAbsent] = useState(false);
 
-  const nearby = !child?.absentToday && transit.status === 'En route' && transit.distanceToStop <= 600;
+  const nearby = child?.status === 'Active' && !child.absentToday && transit.status === 'En route' && transit.distanceToStop <= 600;
   const pulse = useSharedValue(0.45);
   useEffect(() => {
     pulse.value = withRepeat(withTiming(1, { duration: 900 }), -1, true);
@@ -36,10 +41,13 @@ export default function ParentLiveScreen() {
   return (
     <MeshBackground>
       <SafeAreaView style={styles.safe} edges={['top']}>
-        <ChildSwitcher />
+        <ParentChrome />
+        <View style={styles.stage}>
         {nearby ? (
-          <Animated.View entering={FadeInDown.duration(320)} style={[styles.banner, glow]}>
-            <Text style={styles.bannerText}>Bus is arriving soon. Please reach the boarding point.</Text>
+          <Animated.View entering={FadeInDown.duration(320)}>
+            <Animated.View style={[styles.banner, glow]}>
+              <Text style={styles.bannerText}>Bus is arriving soon. Please reach the boarding point.</Text>
+            </Animated.View>
           </Animated.View>
         ) : null}
 
@@ -74,39 +82,57 @@ export default function ParentLiveScreen() {
           <Text style={styles.meta}>Conductor {transit.conductorName}</Text>
           <Text style={styles.eta}>ETA {transit.eta}</Text>
           <Text style={styles.meta}>{transit.distanceToStop} m from {child?.boardingPoint.name}</Text>
-          {child?.waitingAtStop ? <Text style={styles.waiting}>Marked waiting at the stop. The conductor can see this.</Text> : null}
-          <Text style={styles.code}>Trusted pickup code {pickupCode}</Text>
-          <View style={styles.actions}>
+          {child?.waitingAtStop ? <Text style={styles.waiting}>Marked waiting at the stop.</Text> : null}
+          <View style={styles.dialRow}>
+            <Text style={styles.meta}>{child?.absentToday ? 'Not taking the bus' : 'Taking the bus'}</Text>
             <AnimatedPressable
-              haptic="medium"
-              disabled={!child || child.absentToday}
-              onPress={() => child && confirmWaitingAtStop(child.id)}
-              style={styles.secondary}
+              haptic="selection"
+              onPress={() => setAskAbsent(true)}
+              style={[styles.switch, child?.absentToday ? null : styles.switchOn]}
             >
-              <Text style={styles.secondaryText}>I am at the stop</Text>
+              <View style={[styles.knob, child?.absentToday ? null : styles.knobOn]} />
             </AnimatedPressable>
             <AnimatedPressable
               haptic="medium"
-              disabled={!child || child.absentToday}
-              onPress={() => {
-                if (!child) return;
-                markAbsentToday(child.id);
-                setNote(`${child.name} is off today's bus. The conductor's list updates locally.`);
-              }}
-              style={[styles.primary, child?.absentToday ? styles.disabled : null]}
+              onPress={() => transit.conductorPhone && Linking.openURL(`tel:${transit.conductorPhone}`).catch(() => undefined)}
+              style={styles.dial}
             >
-              <Text style={styles.primaryText}>{child?.absentToday ? 'Marked absent today' : 'Not taking bus today'}</Text>
+              <Phone color={palette.white} size={14} />
             </AnimatedPressable>
           </View>
-          {note ? <Text style={styles.note}>{note}</Text> : null}
         </GlassCard>
+        {child?.status === 'Pending' ? (
+          <View style={styles.lock}>
+            <GlassCard style={shadows.lg}>
+              <Text style={styles.lockTitle}>Awaiting School Admin Verification</Text>
+              <Text style={styles.lockBody}>Live tracking stays hidden until the school confirms {child.name}.</Text>
+            </GlassCard>
+          </View>
+        ) : null}
+        </View>
+        <ParentToast message={note} onDone={() => setNote(null)} />
       </SafeAreaView>
+      <ConfirmModal
+        visible={askAbsent}
+        title={child?.absentToday ? 'Resume the bus?' : 'Mark absent today?'}
+        body={child?.absentToday ? 'The conductor will expect them on the route again.' : 'They will be taken off both runs. You can undo this.'}
+        confirmLabel={child?.absentToday ? 'Resume' : 'Mark absent'}
+        onClose={() => setAskAbsent(false)}
+        onConfirm={() => {
+          if (!child) return;
+          const next = !child.absentToday;
+          setAbsentToday(child.id, next);
+          setNote(next ? `${child.name} is off the bus today.` : `${child.name} is back on the route.`);
+          setAskAbsent(false);
+        }}
+      />
     </MeshBackground>
   );
 }
 
 const styles = StyleSheet.create({
   safe: { flex: 1, paddingBottom: 88 },
+  stage: { flex: 1 },
   banner: {
     marginHorizontal: spacing.lg,
     marginTop: spacing.sm,
@@ -125,8 +151,12 @@ const styles = StyleSheet.create({
   meta: { ...typography.caption, marginTop: 4 },
   eta: { ...typography.heading, color: portalAccents.parent.from, marginTop: spacing.xs },
   waiting: { ...typography.caption, color: colors.success, marginTop: spacing.sm },
-  code: { ...typography.caption, marginTop: spacing.sm },
-  actions: { marginTop: spacing.md },
+  dialRow: { flexDirection: 'row', alignItems: 'center', marginTop: spacing.sm, gap: spacing.sm },
+  switch: { width: 44, height: 26, borderRadius: 13, backgroundColor: colors.borderStrong, justifyContent: 'center', paddingHorizontal: 3 },
+  switchOn: { backgroundColor: portalAccents.parent.from },
+  knob: { width: 20, height: 20, borderRadius: 10, backgroundColor: palette.white },
+  knobOn: { alignSelf: 'flex-end' },
+  dial: { marginLeft: 'auto', width: 32, height: 32, borderRadius: 16, backgroundColor: portalAccents.parent.from, alignItems: 'center', justifyContent: 'center' },
   secondary: {
     minHeight: 44,
     borderRadius: radius.md,
@@ -137,14 +167,22 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   secondaryText: { ...typography.bodyBold, color: portalAccents.parent.from, backgroundColor: 'transparent' },
-  primary: {
-    minHeight: 48,
-    borderRadius: radius.md,
-    backgroundColor: portalAccents.parent.from,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  primary: { borderRadius: radius.md, overflow: 'hidden' },
+  primaryFill: { minHeight: 48, alignItems: 'center', justifyContent: 'center' },
   primaryText: { ...typography.bodyBold, color: palette.white, backgroundColor: 'transparent' },
   disabled: { opacity: 0.55 },
   note: { ...typography.caption, marginTop: spacing.sm },
+  lock: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(255,251,235,0.88)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: spacing.xl,
+  },
+  lockTitle: { ...typography.heading, color: colors.warning, backgroundColor: 'transparent' },
+  lockBody: { ...typography.body, marginTop: spacing.sm },
 });

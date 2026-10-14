@@ -1,19 +1,21 @@
 import { ReactNode } from 'react';
 import { Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { BlurView } from 'expo-blur';
-import { colors, radius, spacing } from '@/design/theme';
-import { glass } from '@/design/glass-theme';
+import { colors, palette, radius, spacing } from '@/design/tokens';
+import { glass } from '@/design/tokens';
 
 /** Shared full-width bottom-sheet glass modal, used across every portal. */
 export function GlassModal({
   visible,
   title,
   onClose,
+  maxHeight = '85%',
   children,
 }: {
   visible: boolean;
   title: string;
   onClose: () => void;
+  maxHeight?: `${number}%`;
   children: ReactNode;
 }) {
   const sheet = (
@@ -40,7 +42,7 @@ export function GlassModal({
       <View style={styles.overlay}>
         <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
         <BlurView intensity={30} tint="dark" style={StyleSheet.absoluteFill} pointerEvents="none" />
-        <View style={styles.sheetShadow}>
+        <View style={[styles.sheetShadow, { maxHeight }]}>
           {Platform.OS === 'android' ? (
             <View style={styles.sheetBlur}>{sheet}</View>
           ) : (
@@ -55,7 +57,7 @@ export function GlassModal({
 }
 
 const styles = StyleSheet.create({
-  overlay: { flex: 1, justifyContent: 'flex-end' },
+  overlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(15, 23, 42, 0.72)' },
   sheetShadow: {
     borderTopLeftRadius: radius.lg + 6,
     borderTopRightRadius: radius.lg + 6,
@@ -74,7 +76,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: glass.border,
   },
-  sheet: { backgroundColor: glass.cardBgStrong, maxHeight: '100%' },
+  sheet: { backgroundColor: palette.offWhite, maxHeight: '100%' },
   header: {
     flexDirection: 'row',
     alignItems: 'center',

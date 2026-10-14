@@ -208,10 +208,6 @@ export default function PortalShowcaseScreen() {
                     <View style={styles.tileActiveDot} />
                   )}
                 </LinearGradient>
-                {/* Border for inactive */}
-                {!isActive && (
-                  <View style={[StyleSheet.absoluteFill, styles.tileBorder, { borderColor: portal.from + '30' }]} pointerEvents="none" />
-                )}
               </AnimatedPressable>
             );
           })}
@@ -410,8 +406,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     overflow: 'hidden',
     backgroundColor: 'rgba(255,255,255,0.72)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.8)',
+    borderWidth: 0,
     boxShadow: '0px 8px 18px rgba(15, 23, 42, 0.08)',
     elevation: 0,
   },
