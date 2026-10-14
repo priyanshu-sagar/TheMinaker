@@ -1,290 +1,151 @@
+import { useMemo, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import MapView, { Marker } from 'react-native-maps';
-import { LinearGradient } from 'expo-linear-gradient';
-import { useLiveTracking } from '@/hooks/use-live-tracking';
+import MapView, { Marker, UrlTile } from 'react-native-maps';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import Animated, { FadeInDown, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
+import { useEffect } from 'react';
 import { MeshBackground } from '@/components/glass/MeshBackground';
 import { GlassCard } from '@/components/glass/GlassCard';
 import { AnimatedPressable } from '@/components/glass/AnimatedPressable';
 import { StatusPill } from '@/components/shared/StatusPill';
-import { colors, glass, portalAccents, radius, shadows, spacing, typography } from '@/design/tokens';
+import { ChildSwitcher } from '@/components/parent/ChildSwitcher';
+import { colors, glass, palette, portalAccents, radius, shadows, spacing, typography } from '@/design/tokens';
+import { useActiveChild, useParentStore } from '@/store/parent.store';
 
-/**
- * Parent Live Tracking Screen
- * Shows the real-time position of the child's school bus on a map with
- * a floating glassmorphic overlay for trip status and live telemetry.
- */
-export default function ParentTrackingScreen() {
-  const { buses } = useLiveTracking();
-  const busEntries = Object.entries(buses);
-  const isLive = busEntries.length > 0;
+export default function ParentLiveScreen() {
+  const child = useActiveChild();
+  const transit = useParentStore((state) => state.liveTransit);
+  const markAbsentToday = useParentStore((state) => state.markAbsentToday);
+  const confirmWaitingAtStop = useParentStore((state) => state.confirmWaitingAtStop);
+  const pickupCode = useParentStore((state) => state.pickupCode);
+  const [note, setNote] = useState<string | null>(null);
+
+  const nearby = !child?.absentToday && transit.status === 'En route' && transit.distanceToStop <= 600;
+  const pulse = useSharedValue(0.45);
+  useEffect(() => {
+    pulse.value = withRepeat(withTiming(1, { duration: 900 }), -1, true);
+  }, [pulse]);
+  const glow = useAnimatedStyle(() => ({ opacity: pulse.value }));
+
+  const region = useMemo(() => {
+    if (!child) return { latitude: 19.076, longitude: 72.877, latitudeDelta: 0.08, longitudeDelta: 0.08 };
+    const lat = (transit.currentLocation.lat + child.boardingPoint.lat) / 2;
+    const lng = (transit.currentLocation.lng + child.boardingPoint.lng) / 2;
+    return { latitude: lat, longitude: lng, latitudeDelta: 0.08, longitudeDelta: 0.08 };
+  }, [child, transit.currentLocation.lat, transit.currentLocation.lng]);
 
   return (
     <MeshBackground>
-      <View style={styles.container}>
-        {/* MapView fills top 60% of the screen */}
-        <MapView
-          style={styles.map}
-          initialRegion={{
-            latitude: 19.0760, // Mumbai default
-            longitude: 72.8777,
-            latitudeDelta: 0.0922,
-            longitudeDelta: 0.0421,
-          }}
-        >
-          {busEntries.map(([busId, coords]) => (
+      <SafeAreaView style={styles.safe} edges={['top']}>
+        <ChildSwitcher />
+        {nearby ? (
+          <Animated.View entering={FadeInDown.duration(320)} style={[styles.banner, glow]}>
+            <Text style={styles.bannerText}>Bus is arriving soon. Please reach the boarding point.</Text>
+          </Animated.View>
+        ) : null}
+
+        <View style={styles.mapWrap}>
+          <MapView style={styles.map} provider={undefined} region={region}>
+            <UrlTile urlTemplate="https://tile.openstreetmap.org/{z}/{x}/{y}.png" maximumZ={19} />
             <Marker
-              key={busId}
-              coordinate={{ latitude: coords.lat, longitude: coords.lng }}
-              title="School Bus"
-              description="Live Location"
-            >
-              <View style={styles.markerContainer}>
-                <LinearGradient
-                  colors={[portalAccents.parent.from, '#2563EB']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={[styles.markerBubble, shadows.md]}
-                >
-                  <Text style={styles.busEmoji}>🚌</Text>
-                </LinearGradient>
-                <View style={styles.markerArrow} />
-              </View>
-            </Marker>
-          ))}
-        </MapView>
-
-        {/* Decorative orbs behind floating overlay */}
-        <View
-          style={{
-            position: 'absolute',
-            bottom: 220,
-            right: -40,
-            width: 200,
-            height: 200,
-            borderRadius: radius.full,
-            backgroundColor: glass.orb1,
-            opacity: 0.5,
-          }}
-          pointerEvents="none"
-        />
-        <View
-          style={{
-            position: 'absolute',
-            bottom: 40,
-            left: -60,
-            width: 240,
-            height: 240,
-            borderRadius: radius.full,
-            backgroundColor: glass.orb3,
-            opacity: 0.45,
-          }}
-          pointerEvents="none"
-        />
-
-        {/* Floating glass overlay at bottom, overlapping map bottom edge */}
-        <View style={styles.overlayContainer} pointerEvents="box-none">
-          <GlassCard style={[styles.card, shadows.lg]}>
-            {/* Header row: Bus Status title + green dot indicator */}
-            <View style={styles.statusHeaderRow}>
-              <View style={styles.statusTitleWithDot}>
-                {isLive ? (
-                  <View style={styles.greenDot} />
-                ) : (
-                  <View style={styles.idleDot} />
-                )}
-                <Text style={typography.overline}>Bus Status</Text>
-              </View>
-              <StatusPill
-                variant={isLive ? 'online' : 'offline'}
-                label={isLive ? 'Active Transit' : 'Idle'}
+              coordinate={{ latitude: transit.currentLocation.lat, longitude: transit.currentLocation.lng }}
+              title={transit.busId}
+              description={transit.routeName}
+              pinColor={portalAccents.parent.from}
+            />
+            {child ? (
+              <Marker
+                coordinate={{ latitude: child.boardingPoint.lat, longitude: child.boardingPoint.lng }}
+                title={child.boardingPoint.name}
+                description="Boarding point"
+                pinColor={palette.emerald}
               />
-            </View>
-
-            {/* Status text */}
-            <Text style={[typography.heading, styles.statusHeading]}>
-              {isLive ? '🟢 On Route' : '⏳ No active trip'}
-            </Text>
-
-            {/* ETA Row with StatusPill */}
-            <View style={styles.etaRow}>
-              <View style={styles.etaInfo}>
-                <Text style={typography.caption}>Estimated Arrival</Text>
-                <Text style={typography.bodyBold}>
-                  {isLive ? '8:15 AM (approx. 12 mins)' : 'Awaiting trip start'}
-                </Text>
-              </View>
-              <StatusPill variant="info" label="Tracking Live" />
-            </View>
-
-            {/* Mini-chips metrics strip */}
-            <View style={styles.metricsStrip}>
-              <View style={styles.metricChip}>
-                <Text style={typography.overline}>Students</Text>
-                <Text style={[typography.label, styles.metricValue]}>
-                  {isLive ? '18 / 32' : '0'}
-                </Text>
-              </View>
-              <View style={styles.metricDivider} />
-              <View style={styles.metricChip}>
-                <Text style={typography.overline}>Speed</Text>
-                <Text style={[typography.label, styles.metricValue]}>
-                  {isLive ? '28 km/h' : '0 km/h'}
-                </Text>
-              </View>
-              <View style={styles.metricDivider} />
-              <View style={styles.metricChip}>
-                <Text style={typography.overline}>Last Update</Text>
-                <Text style={[typography.label, styles.metricValue]}>
-                  {isLive ? 'Just now' : '--'}
-                </Text>
-              </View>
-            </View>
-
-            {/* Interactive recenter / details button */}
-            <AnimatedPressable
-              onPress={() => {}}
-              style={[styles.btn, shadows.sm]}
-            >
-              <LinearGradient
-                colors={[portalAccents.parent.from, '#2563EB']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={styles.btnInner}
-              >
-                <Text style={styles.btnText}>
-                  {isLive ? 'View Route Schedule' : 'Trip Details'}
-                </Text>
-              </LinearGradient>
-            </AnimatedPressable>
-          </GlassCard>
+            ) : null}
+          </MapView>
         </View>
-      </View>
+
+        <GlassCard style={[styles.card, shadows.lg]}>
+          <View style={styles.cardTop}>
+            <Text style={styles.route}>{transit.routeName}</Text>
+            <StatusPill
+              variant={transit.status === 'Not travelling' ? 'absent' : nearby ? 'warning' : 'online'}
+              label={transit.status}
+            />
+          </View>
+          <Text style={styles.meta}>Conductor {transit.conductorName}</Text>
+          <Text style={styles.eta}>ETA {transit.eta}</Text>
+          <Text style={styles.meta}>{transit.distanceToStop} m from {child?.boardingPoint.name}</Text>
+          {child?.waitingAtStop ? <Text style={styles.waiting}>Marked waiting at the stop. The conductor can see this.</Text> : null}
+          <Text style={styles.code}>Trusted pickup code {pickupCode}</Text>
+          <View style={styles.actions}>
+            <AnimatedPressable
+              haptic="medium"
+              disabled={!child || child.absentToday}
+              onPress={() => child && confirmWaitingAtStop(child.id)}
+              style={styles.secondary}
+            >
+              <Text style={styles.secondaryText}>I am at the stop</Text>
+            </AnimatedPressable>
+            <AnimatedPressable
+              haptic="medium"
+              disabled={!child || child.absentToday}
+              onPress={() => {
+                if (!child) return;
+                markAbsentToday(child.id);
+                setNote(`${child.name} is off today's bus. The conductor's list updates locally.`);
+              }}
+              style={[styles.primary, child?.absentToday ? styles.disabled : null]}
+            >
+              <Text style={styles.primaryText}>{child?.absentToday ? 'Marked absent today' : 'Not taking bus today'}</Text>
+            </AnimatedPressable>
+          </View>
+          {note ? <Text style={styles.note}>{note}</Text> : null}
+        </GlassCard>
+      </SafeAreaView>
     </MeshBackground>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  map: {
-    height: '62%',
-    width: '100%',
-  },
-  markerContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  markerBubble: {
-    width: 44,
-    height: 44,
-    borderRadius: radius.full,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: '#ffffff',
-  },
-  busEmoji: {
-    fontSize: 22,
-  },
-  markerArrow: {
-    width: 0,
-    height: 0,
-    borderLeftWidth: 6,
-    borderRightWidth: 6,
-    borderTopWidth: 8,
-    borderLeftColor: 'transparent',
-    borderRightColor: 'transparent',
-    borderTopColor: '#2563EB',
-    marginTop: -2,
-  },
-  overlayContainer: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    padding: spacing.md,
-    paddingBottom: spacing.xl,
-  },
-  card: {
-    gap: spacing.md,
-  },
-  statusHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  statusTitleWithDot: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  greenDot: {
-    width: 8,
-    height: 8,
-    borderRadius: radius.full,
-    backgroundColor: colors.success,
-  },
-  idleDot: {
-    width: 8,
-    height: 8,
-    borderRadius: radius.full,
-    backgroundColor: colors.textPlaceholder,
-  },
-  statusHeading: {
-    marginTop: spacing.xxs,
-  },
-  etaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: colors.surfaceStrong,
+  safe: { flex: 1, paddingBottom: 88 },
+  banner: {
+    marginHorizontal: spacing.lg,
+    marginTop: spacing.sm,
+    backgroundColor: colors.warningBg,
     borderRadius: radius.md,
     padding: spacing.md,
     borderWidth: 1,
-    borderColor: colors.divider,
+    borderColor: colors.warning,
   },
-  etaInfo: {
-    gap: spacing.xxs,
-  },
-  metricsStrip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: colors.surfaceStrong,
+  bannerText: { ...typography.bodyBold, color: colors.warning, backgroundColor: 'transparent' },
+  mapWrap: { flex: 1, margin: spacing.lg, borderRadius: radius.lg, overflow: 'hidden' },
+  map: { flex: 1 },
+  card: { marginHorizontal: spacing.lg, marginBottom: spacing.sm },
+  cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  route: { ...typography.bodyBold, flex: 1, marginRight: spacing.sm },
+  meta: { ...typography.caption, marginTop: 4 },
+  eta: { ...typography.heading, color: portalAccents.parent.from, marginTop: spacing.xs },
+  waiting: { ...typography.caption, color: colors.success, marginTop: spacing.sm },
+  code: { ...typography.caption, marginTop: spacing.sm },
+  actions: { marginTop: spacing.md },
+  secondary: {
+    minHeight: 44,
     borderRadius: radius.md,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
     borderWidth: 1,
-    borderColor: colors.divider,
-  },
-  metricChip: {
-    flex: 1,
+    borderColor: portalAccents.parent.from,
     alignItems: 'center',
-    gap: spacing.xxs,
+    justifyContent: 'center',
+    marginBottom: spacing.sm,
   },
-  metricValue: {
-    color: colors.textPrimary,
-  },
-  metricDivider: {
-    width: 1,
-    height: 24,
-    backgroundColor: colors.divider,
-  },
-  btn: {
+  secondaryText: { ...typography.bodyBold, color: portalAccents.parent.from, backgroundColor: 'transparent' },
+  primary: {
+    minHeight: 48,
     borderRadius: radius.md,
-    overflow: 'hidden',
-    marginTop: spacing.xs,
-  },
-  btnInner: {
-    paddingVertical: spacing.md,
+    backgroundColor: portalAccents.parent.from,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  btnText: {
-    color: '#ffffff',
-    fontSize: 14,
-    fontWeight: '700',
-    letterSpacing: 0.3,
-  },
+  primaryText: { ...typography.bodyBold, color: palette.white, backgroundColor: 'transparent' },
+  disabled: { opacity: 0.55 },
+  note: { ...typography.caption, marginTop: spacing.sm },
 });
