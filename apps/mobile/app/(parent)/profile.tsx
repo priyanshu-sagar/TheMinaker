@@ -6,7 +6,7 @@ import { GlassCard } from '@/components/glass/GlassCard';
 import { AnimatedPressable } from '@/components/glass/AnimatedPressable';
 import { ChildSwitcher } from '@/components/parent/ChildSwitcher';
 import { RequestModal } from '@/components/parent/RequestModal';
-import { colors, palette, portalAccents, radius, shadows, spacing, typography } from '@/design/tokens';
+import { colors, portalAccents, radius, shadows, spacing, typography } from '@/design/tokens';
 import { useActiveChild, useParentStore } from '@/store/parent.store';
 
 type RequestKind = 'bus' | 'stop' | 'phone' | 'details' | null;
