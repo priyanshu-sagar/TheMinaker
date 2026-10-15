@@ -25,7 +25,7 @@ export function AnimatedPressable({
     children: ReactNode;
     onPress?: () => void;
     style?: StyleProp<ViewStyle>;
-    haptic?: 'light' | 'medium' | 'selection' | 'none';
+    haptic?: 'light' | 'medium' | 'heavy' | 'selection' | 'none';
 }) {
     const scale = useSharedValue(1);
     const animatedStyle = useAnimatedStyle(() => ({
@@ -38,7 +38,11 @@ export function AnimatedPressable({
             Haptics.selectionAsync().catch(() => undefined);
             return;
         }
-        const style = haptic === 'medium' ? Haptics.ImpactFeedbackStyle.Medium : Haptics.ImpactFeedbackStyle.Light;
+        const style = haptic === 'heavy'
+            ? Haptics.ImpactFeedbackStyle.Heavy
+            : haptic === 'medium'
+            ? Haptics.ImpactFeedbackStyle.Medium
+            : Haptics.ImpactFeedbackStyle.Light;
         Haptics.impactAsync(style).catch(() => undefined);
     }
 

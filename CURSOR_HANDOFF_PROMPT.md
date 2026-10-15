@@ -50,7 +50,7 @@ Still mock UI, same glass system, then point `app/index.tsx` at the portal inste
 
 - Conductor: `app/(conductor)/` trip and manifest are early screens, not the finished portal.
 - School admin: `app/(school-admin)/_layout.tsx` expects Attendance and Students tabs, but only `index.tsx` exists. Those missing files will fail if the tabs are opened. No grades.
-- Gateman portal (fleet, inbox, attendance, settings) already exists. Leave it unless the user asks for a change.
+- Gateman portal has five tabs: Command Hub, Gate access, Parent requests, Directory, and Shift. The open/close gate control sits on Command Hub. Closing is blocked while buses are still out; a bus can be marked at school if the conductor phone died. School admin override can open or close anyway. Tracking is paused while the gate is closed. Search covers students, buses, and conductors. The bell opens a 75% sheet with Bus & emergency, Parent actions, and School updates. Old inbox, attendance, and settings files stay in the folder but are hidden from the tab bar.
 
 ## Shared UI rules
 

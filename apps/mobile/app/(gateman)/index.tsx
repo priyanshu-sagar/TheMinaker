@@ -1,8 +1,8 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
-  Dimensions,
-  Modal,
+  Animated,
+  Linking,
   Platform,
   Pressable,
   ScrollView,
@@ -12,297 +12,328 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import { BlurView } from 'expo-blur';
-import Svg, { Circle, Path, Rect } from 'react-native-svg';
 import MapView, { Marker, UrlTile } from 'react-native-maps';
+import Svg, { Circle, Path, Rect } from 'react-native-svg';
+
+import { MeshBackground } from '@/components/glass/MeshBackground';
+import { GlassCard } from '@/components/glass/GlassCard';
+import { GlassModal } from '@/components/glass/GlassModal';
+import { AnimatedPressable } from '@/components/glass/AnimatedPressable';
+import { NotificationBell } from '@/components/gateman/NotificationBell';
 
 import {
   colors,
+  glass,
   palette,
-  spacing,
+  portalAccents,
   radius,
   shadows,
-  glass,
+  spacing,
   typography,
-  portalAccents,
 } from '@/design/tokens';
-import { MeshBackground } from '@/components/glass/MeshBackground';
-import { GlassCard } from '@/components/glass/GlassCard';
-import { AnimatedPressable } from '@/components/glass/AnimatedPressable';
-import { NotificationBell } from '@/components/gateman/NotificationBell';
-import { useGatemanStore, GateBus, GateStudent } from '@/store/gateman.store';
 
-const { height: SCREEN_H, width: SCREEN_W } = Dimensions.get('window');
-const MAP_H = 200;
+import {
+  BusStatus,
+  GateBus,
+  GateStudent,
+  useGatemanStore,
+} from '@/store/gateman.store';
 
-// Delhi-NCR Region coordinates
-const NCR_MAP_REGION = {
-  latitude: 28.5,
-  longitude: 77.2,
-  latitudeDelta: 0.8,
-  longitudeDelta: 0.8,
-};
+// ─── SVG Icons (NO Lucide imports) ───────────────────────────
 
-// ─── Color Helpers ──────────────────────────────────────────
-
-function getBusStatusColor(status: GateBus['status']): string {
-  switch (status) {
-    case 'Active':
-    case 'En Route':
-      return colors.success;
-    case 'Delayed':
-      return colors.warning;
-    case 'At School':
-      return colors.info;
-    case 'Offline':
-      return colors.error;
-    default:
-      return colors.textMuted;
-  }
-}
-
-function getBusStatusBg(status: GateBus['status']): string {
-  switch (status) {
-    case 'Active':
-    case 'En Route':
-      return colors.successBg;
-    case 'Delayed':
-      return colors.warningBg;
-    case 'At School':
-      return colors.infoBg;
-    case 'Offline':
-      return colors.errorBg;
-    default:
-      return colors.neutralBg;
-  }
-}
-
-function getStudentStatusColor(status: GateStudent['currentStatus']): { color: string; bg: string } {
-  switch (status) {
-    case 'On Bus':
-      return { color: colors.success, bg: colors.successBg };
-    case 'At School':
-      return { color: colors.info, bg: colors.infoBg };
-    case 'Picked Up':
-      return { color: colors.warning, bg: colors.warningBg };
-    case 'Absent':
-      return { color: colors.error, bg: colors.errorBg };
-    case 'In Transit':
-      return { color: portalAccents.gateman.from, bg: 'rgba(249,115,22,0.12)' };
-    default:
-      return { color: colors.textMuted, bg: colors.neutralBg };
-  }
-}
-
-function getInitials(name: string): string {
-  const parts = name.trim().split(/\s+/);
-  if (parts.length >= 2) {
-    return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
-  }
-  return (name[0] ?? 'C').toUpperCase();
-}
-
-function getShiftDuration(): string {
-  const now = new Date();
-  const shiftStart = new Date();
-  shiftStart.setHours(7, 0, 0, 0);
-  const diffMs = Math.max(0, now.getTime() - shiftStart.getTime());
-  const hours = Math.floor(diffMs / (1000 * 60 * 60));
-  const mins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
-  return `${hours}h ${mins}m`;
-}
-
-// ─── Bus Widget Component (React.memo) ───────────────────────
-
-interface BusWidgetProps {
-  bus: GateBus;
-  onPress: () => void;
-}
-
-const BusWidget = React.memo(({ bus, onPress }: BusWidgetProps) => {
-  const statusColor = getBusStatusColor(bus.status);
-  const statusBg = getBusStatusBg(bus.status);
-  const progressRatio =
-    bus.totalStudents > 0
-      ? Math.min(1, Math.max(0, bus.boardedCount / bus.totalStudents))
-      : 0;
-  const progressPercent = Math.round(progressRatio * 100);
-
-  const conductorShort = useMemo(() => {
-    const parts = bus.conductorName.split(' ');
-    if (parts.length > 1) {
-      return `${parts[0]} ${parts[1][0]}.`;
-    }
-    return bus.conductorName;
-  }, [bus.conductorName]);
-
+function SearchIcon({ size = 18, color = colors.textMuted }: { size?: number; color?: string }) {
   return (
-    <AnimatedPressable onPress={onPress} haptic="selection" style={styles.busWidgetWrap}>
-      <GlassCard padded={false} style={[shadows.sm, styles.busWidgetCard]}>
-        <View style={styles.busWidgetInner}>
-          {/* Status Badge + ETA */}
-          <View style={styles.busWidgetHeader}>
-            <View style={[styles.statusBadge, { backgroundColor: statusBg }]}>
-              <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
-              <Text style={[styles.statusBadgeText, { color: statusColor }]}>
-                {bus.status}
-              </Text>
-            </View>
-            <Text style={styles.busWidgetEta}>
-              {bus.etaMinutes > 0 ? `${bus.etaMinutes}m ETA` : 'At Stop'}
-            </Text>
-          </View>
-
-          {/* Bus Number */}
-          <Text style={styles.busWidgetNumber} numberOfLines={1}>
-            {bus.busNumber}
-          </Text>
-
-          {/* Route Name (2 lines) */}
-          <Text style={styles.busWidgetRoute} numberOfLines={2}>
-            {bus.routeName}
-          </Text>
-
-          {/* Boarding Progress Bar */}
-          <View style={styles.progressContainer}>
-            <View style={styles.progressLabelRow}>
-              <Text style={styles.progressLabel}>Boarded</Text>
-              <Text style={styles.progressValue}>
-                {bus.boardedCount}/{bus.totalStudents} ({progressPercent}%)
-              </Text>
-            </View>
-            <View style={styles.progressTrack}>
-              <LinearGradient
-                colors={[portalAccents.gateman.from, portalAccents.gateman.to]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={[styles.progressBar, { width: `${progressPercent}%` }]}
-              />
-            </View>
-          </View>
-
-          {/* Departure & Conductor Footer */}
-          <View style={styles.busWidgetFooter}>
-            <Text style={styles.busWidgetDep}>Dep: {bus.departureTime}</Text>
-            <Text style={styles.busWidgetConductor} numberOfLines={1}>
-              👨‍✈️ {conductorShort}
-            </Text>
-          </View>
-        </View>
-      </GlassCard>
-    </AnimatedPressable>
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <Circle cx="11" cy="11" r="8" />
+      <Path d="m21 21-4.3-4.3" />
+    </Svg>
   );
-});
+}
+
+function PhoneIcon({ size = 16, color = palette.white }: { size?: number; color?: string }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <Path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
+    </Svg>
+  );
+}
+
+function CheckCircleIcon({ size = 20, color = portalAccents.gateman.from }: { size?: number; color?: string }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <Path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+      <Path d="m9 11 3 3L22 4" />
+    </Svg>
+  );
+}
+
+function BroadcastIcon({ size = 20, color = portalAccents.gateman.from }: { size?: number; color?: string }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <Path d="M4.9 19.1C1 15.2 1 8.8 4.9 4.9" />
+      <Path d="M7.8 16.2c-2.3-2.3-2.3-6.1 0-8.5" />
+      <Circle cx="12" cy="12" r="2" />
+      <Path d="M16.2 7.8c2.3 2.3 2.3 6.1 0 8.5" />
+      <Path d="M19.1 4.9C23 8.8 23 15.2 19.1 19.1" />
+    </Svg>
+  );
+}
+
+function UserPlusIcon({ size = 20, color = portalAccents.gateman.from }: { size?: number; color?: string }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <Path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+      <Circle cx="9" cy="7" r="4" />
+      <Path d="M19 8v6m-3-3h6" />
+    </Svg>
+  );
+}
+
+function ClipboardListIcon({ size = 20, color = portalAccents.gateman.from }: { size?: number; color?: string }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <Path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
+      <Rect x="8" y="2" width="8" height="4" rx="1" ry="1" />
+      <Path d="M9 12h6m-6 4h6" />
+    </Svg>
+  );
+}
+
+function ChevronRightIcon({ size = 16, color = portalAccents.gateman.from }: { size?: number; color?: string }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <Path d="m9 18 6-6-6-6" />
+    </Svg>
+  );
+}
+
+function AlertTriangleIcon({ size = 16, color = colors.warning }: { size?: number; color?: string }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <Path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" />
+      <Path d="M12 9v4" />
+      <Path d="M12 17h.01" />
+    </Svg>
+  );
+}
+
+// ─── Status Helpers ──────────────────────────────────────────
+
+function getStatusColor(status: BusStatus) {
+  switch (status) {
+    case 'En Route':
+    case 'Active':
+      return { fg: colors.success, bg: colors.successBg, border: 'rgba(16,185,129,0.3)' };
+    case 'Delayed':
+      return { fg: colors.warning, bg: colors.warningBg, border: colors.warningBorder };
+    case 'At School':
+      return { fg: colors.info, bg: colors.infoBg, border: colors.infoBorder };
+    case 'Offline':
+    default:
+      return { fg: colors.error, bg: colors.errorBg, border: colors.dangerBorder };
+  }
+}
+
+function getStudentStatusColor(status: GateStudent['currentStatus']) {
+  switch (status) {
+    case 'At School':
+      return { fg: colors.info, bg: colors.infoBg };
+    case 'On Bus':
+    case 'In Transit':
+      return { fg: colors.success, bg: colors.successBg };
+    case 'Picked Up':
+      return { fg: colors.checkedOut, bg: colors.checkedOutBg };
+    case 'Absent':
+    default:
+      return { fg: colors.absent, bg: colors.absentBg };
+  }
+}
+
+function getInitials(name: string) {
+  const parts = name.trim().split(/\s+/);
+  if (parts.length === 0 || !parts[0]) return 'CO';
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + (parts[1]?.[0] ?? '')).toUpperCase();
+}
 
 // ─── Main Screen Component ───────────────────────────────────
 
-export default function GatemanCommandHubScreen() {
+export default function CommandHubScreen() {
+  const router = useRouter();
+
+  // Zustand Store
   const buses = useGatemanStore((state) => state.buses);
   const students = useGatemanStore((state) => state.students);
+  const earlyPickups = useGatemanStore((state) => state.earlyPickups);
+  const routingRequests = useGatemanStore((state) => state.routingRequests);
+  const shiftLog = useGatemanStore((state) => state.shiftLog);
+  const gateLockedDown = useGatemanStore((state) => state.gateLockedDown);
+  const toggleGateLock = useGatemanStore((state) => state.toggleGateLock);
+  const attemptCloseGate = useGatemanStore((state) => state.attemptCloseGate);
+  const forceRecoverAndClose = useGatemanStore((state) => state.forceRecoverAndClose);
+  const markBusAtSchool = useGatemanStore((state) => state.markBusAtSchool);
+  const adminOverrideGate = useGatemanStore((state) => state.adminOverrideGate);
   const forceBusOffline = useGatemanStore((state) => state.forceBusOffline);
   const pingConductor = useGatemanStore((state) => state.pingConductor);
+  const addShiftLog = useGatemanStore((state) => state.addShiftLog);
 
-  // Local state
-  const [query, setQuery] = useState('');
+  // Derived Gate State
+  const gateOpen = !gateLockedDown;
+  const lastAdminLog = shiftLog.find(
+    (l) => l.action === 'OVERRIDE' && l.description.toLowerCase().includes('admin'),
+  );
+  const adminOverride = lastAdminLog
+    ? {
+        active: true,
+        openedBy: lastAdminLog.description.toLowerCase().includes('open')
+          ? 'Principal Rao'
+          : 'School Admin',
+      }
+    : null;
+
+  // Local State
+  const [searchQ, setSearchQ] = useState('');
+  const [blockedBuses, setBlockedBuses] = useState<GateBus[]>([]);
+  const [showFleetModal, setShowFleetModal] = useState(false);
   const [selectedBus, setSelectedBus] = useState<GateBus | null>(null);
-  const [showManifest, setShowManifest] = useState(false);
-  const [isMapExpanded, setIsMapExpanded] = useState(false);
+  const [fleetFilter, setFleetFilter] = useState<'All' | BusStatus>('All');
+  const [showArrivalModal, setShowArrivalModal] = useState(false);
+  const [showWalkInModal, setShowWalkInModal] = useState(false);
+  const [walkInName, setWalkInName] = useState('');
+  const [walkInGrade, setWalkInGrade] = useState('');
 
-  // Fleet summary stats
-  const activeCount = useMemo(
+  // Gate Toggle Animation: 0 = closed, 24 = open
+  const toggleAnim = useRef(new Animated.Value(gateOpen ? 24 : 0)).current;
+
+  useEffect(() => {
+    Animated.timing(toggleAnim, {
+      toValue: gateOpen ? 24 : 0,
+      duration: 220,
+      useNativeDriver: true,
+    }).start();
+  }, [gateOpen, toggleAnim]);
+
+  // Keep selectedBus reference updated if buses change in store
+  const currentSelectedBus = useMemo(() => {
+    if (!selectedBus) return null;
+    return buses.find((b) => b.id === selectedBus.id) ?? selectedBus;
+  }, [buses, selectedBus]);
+
+  // Gate Toggle Handler
+  function handleGateToggle() {
+    if (gateOpen) {
+      // Trying to CLOSE
+      const outside = attemptCloseGate();
+      if (outside.length > 0) {
+        setBlockedBuses(outside);
+      } else {
+        Alert.alert('Gate Closed', 'Gate marked CLOSED. Live tracking halted.');
+      }
+    } else {
+      // Trying to OPEN
+      if (gateLockedDown) {
+        toggleGateLock();
+      }
+      Alert.alert('Gate Opened', 'Gate marked OPEN. Live tracking resumed.');
+    }
+  }
+
+  // Universal Search
+  const searchHits = useMemo(() => {
+    const q = searchQ.trim().toLowerCase();
+    if (q.length < 2) return [];
+
+    const studentHits = students
+      .filter((s) => s.name.toLowerCase().includes(q))
+      .map((s) => ({ type: 'STUDENT' as const, key: `s-${s.id}`, data: s }));
+
+    const busHits = buses
+      .filter(
+        (b) =>
+          b.busNumber.toLowerCase().includes(q) ||
+          b.routeName.toLowerCase().includes(q),
+      )
+      .map((b) => ({ type: 'BUS' as const, key: `b-${b.id}`, data: b }));
+
+    const conductorHits = buses
+      .filter((b) => b.conductorName.toLowerCase().includes(q))
+      .map((b) => ({ type: 'CONDUCTOR' as const, key: `c-${b.id}`, data: b }));
+
+    return [...studentHits, ...busHits, ...conductorHits].slice(0, 8);
+  }, [searchQ, students, buses]);
+
+  // Quick Stats
+  const activeBusesCount = useMemo(
     () => buses.filter((b) => b.status !== 'Offline').length,
     [buses],
   );
-  const offlineCount = useMemo(
-    () => buses.filter((b) => b.status === 'Offline').length,
+  const transitStudentsCount = useMemo(
+    () =>
+      students.filter(
+        (s) => s.currentStatus === 'On Bus' || s.currentStatus === 'In Transit',
+      ).length,
+    [students],
+  );
+  const pendingActionsCount = useMemo(
+    () =>
+      earlyPickups.filter((p) => p.status === 'Pending').length +
+      routingRequests.filter((r) => r.status === 'Pending').length,
+    [earlyPickups, routingRequests],
+  );
+
+  // Fleet preview: first 4 buses
+  const fleetPreview = useMemo(() => buses.slice(0, 4), [buses]);
+
+  // Fleet modal filtered buses
+  const filteredFleet = useMemo(() => {
+    if (fleetFilter === 'All') return buses;
+    return buses.filter((b) => b.status === fleetFilter);
+  }, [buses, fleetFilter]);
+
+  // Buses not at school (for arrival selector modal)
+  const outsideBuses = useMemo(
+    () => buses.filter((b) => b.status !== 'At School'),
     [buses],
   );
-  const delayedCount = useMemo(
-    () => buses.filter((b) => b.status === 'Delayed').length,
-    [buses],
-  );
-  const totalStudentsCount = useMemo(
-    () => buses.reduce((acc, b) => acc + b.totalStudents, 0),
-    [buses],
-  );
 
-  // Filter students for Section 1: Student Quick-Track
-  const filteredStudents = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return [];
-    return students.filter((s) => s.name.toLowerCase().includes(q));
-  }, [students, query]);
-
-  // Students on the currently inspected bus
-  const selectedBusStudents = useMemo(() => {
-    if (!selectedBus) return [];
-    return students.filter((s) => s.busId === selectedBus.id);
-  }, [students, selectedBus]);
-
-  // Press handlers
-  const handleOpenBus = useCallback((bus: GateBus) => {
-    setSelectedBus(bus);
-    setShowManifest(false);
-  }, []);
-
-  const handleCloseBusModal = useCallback(() => {
-    setSelectedBus(null);
-    setShowManifest(false);
-  }, []);
-
-  const handlePingConductor = useCallback(() => {
-    if (!selectedBus) return;
-    pingConductor(selectedBus.id);
+  // Quick Action Handlers
+  function handlePingAllDelayed() {
+    const delayed = buses.filter((b) => b.status === 'Delayed');
+    if (delayed.length === 0) {
+      Alert.alert('On Schedule', 'No buses are currently reporting delays.');
+      return;
+    }
+    delayed.forEach((b) => pingConductor(b.id));
     Alert.alert(
       'Ping Dispatched',
-      `High-priority operational ping sent to conductor ${selectedBus.conductorName} (${selectedBus.conductorPhone}).`,
+      `Pinged conductors on ${delayed.length} delayed route(s).`,
     );
-  }, [selectedBus, pingConductor]);
+  }
 
-  const handleForceOffline = useCallback(() => {
-    if (!selectedBus) return;
-    Alert.alert(
-      'Force Bus Offline',
-      `Are you sure you want to take ${selectedBus.busNumber} offline? This will flag maintenance and notify transport admins.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Force Offline',
-          style: 'destructive',
-          onPress: () => {
-            forceBusOffline(selectedBus.id);
-            setSelectedBus((prev) =>
-              prev
-                ? { ...prev, status: 'Offline', speedKmh: 0, etaMinutes: 0 }
-                : null,
-            );
-          },
-        },
-      ],
-    );
-  }, [selectedBus, forceBusOffline]);
-
-  const handleStudentPress = useCallback(
-    (student: GateStudent) => {
-      const bus = buses.find((b) => b.id === student.busId);
-      Alert.alert(
-        student.name,
-        `Grade: ${student.grade}\nStatus: ${student.currentStatus}\nAssigned Bus: ${bus ? `${bus.busNumber} (${bus.routeName})` : 'No Bus Assigned'}\nPickup Stop: ${student.assignedStop}\nParent: ${student.parentName} (${student.parentPhone})`,
-        [{ text: 'OK' }],
-      );
-    },
-    [buses],
-  );
+  function handleConfirmWalkIn() {
+    const cleanName = walkInName.trim();
+    if (!cleanName) {
+      Alert.alert('Student Name Required', 'Please provide student name to log walk-in.');
+      return;
+    }
+    const desc = `Walk-in arrival logged: ${cleanName}${walkInGrade ? ` (${walkInGrade.trim()})` : ''}`;
+    addShiftLog({ action: 'AUTHORIZED', description: desc });
+    setWalkInName('');
+    setWalkInGrade('');
+    setShowWalkInModal(false);
+    Alert.alert('Walk-In Logged', desc);
+  }
 
   return (
     <MeshBackground>
-      {/* Decorative Orbs for bubbly floating depth */}
+      {/* Decorative bubbly orbs behind main content */}
       <View
         style={{
           position: 'absolute',
           top: -50,
-          right: -40,
+          right: -30,
           width: 220,
           height: 220,
           borderRadius: radius.full,
@@ -314,1362 +345,1437 @@ export default function GatemanCommandHubScreen() {
       <View
         style={{
           position: 'absolute',
-          top: 320,
+          bottom: 140,
           left: -70,
-          width: 240,
-          height: 240,
+          width: 280,
+          height: 280,
           borderRadius: radius.full,
           backgroundColor: glass.orb2,
-          opacity: 0.5,
+          opacity: 0.55,
         }}
         pointerEvents="none"
       />
       <View
         style={{
           position: 'absolute',
-          bottom: 110,
-          right: -60,
-          width: 200,
-          height: 200,
+          top: 340,
+          left: 200,
+          width: 170,
+          height: 170,
           borderRadius: radius.full,
           backgroundColor: glass.orb3,
-          opacity: 0.45,
+          opacity: 0.35,
         }}
         pointerEvents="none"
       />
 
-      <SafeAreaView style={styles.safe} edges={['top']}>
-        {/* Header */}
+      {/* FIXED HEADER — outside ScrollView */}
+      <SafeAreaView edges={['top']} style={{ zIndex: 10 }}>
         <View style={styles.header}>
-          <View style={styles.headerTitleWrap}>
-            <Text style={styles.headerTitle}>Command Hub</Text>
-            <Text style={styles.headerSubtitle}>Live Operations</Text>
+          <View>
+            <Text style={typography.title}>Command Hub</Text>
+            <Text style={[typography.caption, { color: colors.textMuted }]}>
+              Operational Control Center
+            </Text>
           </View>
           <NotificationBell />
         </View>
-
-        {/* Scroll Content */}
-        <ScrollView
-          style={styles.scrollView}
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-        >
-          {/* Autonomous Feature 1: Shift Pulse Card */}
-          <GlassCard style={[shadows.md, styles.shiftCard]} padded={false}>
-            <View style={styles.shiftCardInner}>
-              <View style={styles.shiftHeaderRow}>
-                <View style={styles.shiftLivePill}>
-                  <View style={styles.pulseDot} />
-                  <Text style={styles.shiftLiveText}>SHIFT ACTIVE</Text>
-                </View>
-                <Text style={styles.shiftElapsedText}>
-                  Elapsed: {getShiftDuration()}
-                </Text>
-              </View>
-
-              <View style={styles.shiftMetricsRow}>
-                <View style={styles.shiftMetricItem}>
-                  <Text style={styles.shiftMetricLabel}>Start</Text>
-                  <Text style={styles.shiftMetricVal}>7:00 AM</Text>
-                </View>
-                <View style={styles.shiftDivider} />
-                <View style={styles.shiftMetricItem}>
-                  <Text style={styles.shiftMetricLabel}>Active Fleet</Text>
-                  <Text style={[styles.shiftMetricVal, { color: colors.success }]}>
-                    {activeCount}/{buses.length}
-                  </Text>
-                </View>
-                <View style={styles.shiftDivider} />
-                <View style={styles.shiftMetricItem}>
-                  <Text style={styles.shiftMetricLabel}>Students Tracked</Text>
-                  <Text style={[styles.shiftMetricVal, { color: portalAccents.gateman.from }]}>
-                    {totalStudentsCount}
-                  </Text>
-                </View>
-              </View>
-            </View>
-          </GlassCard>
-
-          {/* Section 1: Student Quick-Track (Search) */}
-          <View style={styles.searchSection}>
-            <GlassCard padded={false} style={[shadows.sm, styles.searchCard]}>
-              <View style={styles.searchInner}>
-                <Svg
-                  width={18}
-                  height={18}
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke={colors.textMuted}
-                  strokeWidth={2.2}
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <Circle cx="11" cy="11" r="8" />
-                  <Path d="m21 21-4.35-4.35" />
-                </Svg>
-                <TextInput
-                  value={query}
-                  onChangeText={setQuery}
-                  placeholder="Quick-Track student by name..."
-                  placeholderTextColor={colors.textPlaceholder}
-                  style={styles.searchInput}
-                  autoCorrect={false}
-                  clearButtonMode="while-editing"
-                />
-                {query.length > 0 && (
-                  <AnimatedPressable
-                    onPress={() => setQuery('')}
-                    haptic="light"
-                    style={styles.clearSearchBtn}
-                  >
-                    <Text style={styles.clearSearchText}>✕</Text>
-                  </AnimatedPressable>
-                )}
-              </View>
-            </GlassCard>
-
-            {/* Results list below search bar */}
-            {query.trim().length > 0 && (
-              <View style={styles.searchResultsWrap}>
-                {filteredStudents.length === 0 ? (
-                  <GlassCard style={shadows.sm}>
-                    <Text style={styles.noResultsText}>
-                      No students found matching &quot;{query}&quot;
-                    </Text>
-                  </GlassCard>
-                ) : (
-                  filteredStudents.map((stu) => {
-                    const statusInfo = getStudentStatusColor(stu.currentStatus);
-                    const bus = buses.find((b) => b.id === stu.busId);
-                    return (
-                      <AnimatedPressable
-                        key={stu.id}
-                        onPress={() => handleStudentPress(stu)}
-                        haptic="light"
-                        style={styles.studentResultCardWrap}
-                      >
-                        <GlassCard padded={false} style={[shadows.sm, styles.studentResultCard]}>
-                          <View style={styles.studentResultInner}>
-                            <View style={styles.studentResultLeft}>
-                              <View style={styles.studentNameRow}>
-                                <Text style={styles.studentResultName}>{stu.name}</Text>
-                                <View style={styles.gradeBadge}>
-                                  <Text style={styles.gradeBadgeText}>{stu.grade}</Text>
-                                </View>
-                              </View>
-                              <Text style={styles.studentResultMeta}>
-                                🚌 {bus ? bus.busNumber : 'No Bus'} · 📍 {stu.assignedStop}
-                              </Text>
-                            </View>
-
-                            <View
-                              style={[
-                                styles.studentStatusBadge,
-                                { backgroundColor: statusInfo.bg },
-                              ]}
-                            >
-                              <Text
-                                style={[
-                                  styles.studentStatusText,
-                                  { color: statusInfo.color },
-                                ]}
-                              >
-                                {stu.currentStatus}
-                              </Text>
-                            </View>
-                          </View>
-                        </GlassCard>
-                      </AnimatedPressable>
-                    );
-                  })
-                )}
-              </View>
-            )}
-          </View>
-
-          {/* Section 2: Live Fleet Summary Row */}
-          <GlassCard style={[shadows.sm, styles.summaryCard]} padded={false}>
-            <View style={styles.summaryRow}>
-              <AnimatedPressable haptic="light" style={styles.summaryChip}>
-                <View style={[styles.chipDot, { backgroundColor: colors.success }]} />
-                <Text style={styles.chipNumber}>{activeCount}</Text>
-                <Text style={styles.chipLabel}>Active</Text>
-              </AnimatedPressable>
-
-              <View style={styles.summaryChipDivider} />
-
-              <AnimatedPressable haptic="light" style={styles.summaryChip}>
-                <View style={[styles.chipDot, { backgroundColor: colors.error }]} />
-                <Text style={styles.chipNumber}>{offlineCount}</Text>
-                <Text style={styles.chipLabel}>Offline</Text>
-              </AnimatedPressable>
-
-              <View style={styles.summaryChipDivider} />
-
-              <AnimatedPressable haptic="light" style={styles.summaryChip}>
-                <View style={[styles.chipDot, { backgroundColor: colors.warning }]} />
-                <Text style={styles.chipNumber}>{delayedCount}</Text>
-                <Text style={styles.chipLabel}>Delayed</Text>
-              </AnimatedPressable>
-            </View>
-          </GlassCard>
-
-          {/* Autonomous Feature 3: Bus Status Legend */}
-          <GlassCard style={[shadows.sm, styles.legendCard]} padded={false}>
-            <View style={styles.legendRow}>
-              <View style={styles.legendItem}>
-                <View style={[styles.legendDot, { backgroundColor: colors.success }]} />
-                <Text style={styles.legendLabel}>Active</Text>
-              </View>
-              <View style={styles.legendItem}>
-                <View style={[styles.legendDot, { backgroundColor: colors.warning }]} />
-                <Text style={styles.legendLabel}>Delayed</Text>
-              </View>
-              <View style={styles.legendItem}>
-                <View style={[styles.legendDot, { backgroundColor: colors.info }]} />
-                <Text style={styles.legendLabel}>At School</Text>
-              </View>
-              <View style={styles.legendItem}>
-                <View style={[styles.legendDot, { backgroundColor: colors.error }]} />
-                <Text style={styles.legendLabel}>Offline</Text>
-              </View>
-            </View>
-          </GlassCard>
-
-          {/* Section 3: Bus Widget Grid (3x2 grid) */}
-          <View style={styles.sectionHeaderRow}>
-            <Text style={styles.sectionTitle}>Fleet Grid</Text>
-            <Text style={styles.sectionSubtitle}>{buses.length} Vehicles Tracked</Text>
-          </View>
-
-          <View style={styles.busGridContainer}>
-            {buses.slice(0, 6).map((bus) => (
-              <BusWidget key={bus.id} bus={bus} onPress={() => handleOpenBus(bus)} />
-            ))}
-          </View>
-
-          {/* Section 4: Map Card (react-native-maps) */}
-          <View style={styles.sectionHeaderRow}>
-            <Text style={styles.sectionTitle}>Live Fleet Map</Text>
-            <AnimatedPressable
-              onPress={() => setIsMapExpanded(true)}
-              haptic="light"
-              style={styles.expandHeaderBtn}
-            >
-              <Svg
-                width={14}
-                height={14}
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke={portalAccents.gateman.from}
-                strokeWidth={2.5}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <Path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" />
-              </Svg>
-              <Text style={styles.expandHeaderText}>Expand Map</Text>
-            </AnimatedPressable>
-          </View>
-
-          <GlassCard padded={false} style={[shadows.md, styles.mapCardWrapper]}>
-            <MapView
-              style={styles.mapView}
-              provider={undefined}
-              initialRegion={NCR_MAP_REGION}
-            >
-              <UrlTile
-                urlTemplate="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
-                maximumZ={19}
-              />
-              {buses.map((bus) => {
-                const markerColor = getBusStatusColor(bus.status);
-                return (
-                  <Marker
-                    key={bus.id}
-                    coordinate={{
-                      latitude: bus.coordinates.lat,
-                      longitude: bus.coordinates.lng,
-                    }}
-                    title={bus.busNumber}
-                    description={`${bus.routeName} · ${bus.conductorName}`}
-                    onCalloutPress={() => handleOpenBus(bus)}
-                  >
-                    <View style={[styles.mapMarkerBadge, { borderColor: markerColor }]}>
-                      <View
-                        style={[styles.mapMarkerDot, { backgroundColor: markerColor }]}
-                      />
-                      <Text style={styles.mapMarkerText}>
-                        {bus.busNumber.slice(-4)}
-                      </Text>
-                    </View>
-                  </Marker>
-                );
-              })}
-            </MapView>
-
-            <AnimatedPressable
-              style={[styles.floatingExpandBtn, shadows.sm]}
-              onPress={() => setIsMapExpanded(true)}
-              haptic="light"
-            >
-              <Svg
-                width={16}
-                height={16}
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke={colors.textPrimary}
-                strokeWidth={2.5}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <Path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" />
-              </Svg>
-            </AnimatedPressable>
-          </GlassCard>
-        </ScrollView>
+        <View style={styles.headerDivider} />
       </SafeAreaView>
 
-      {/* ─── Bus Quick-Action Modal ─────────────────────────────── */}
-      <Modal
-        visible={!!selectedBus}
-        transparent
-        animationType="slide"
-        onRequestClose={handleCloseBusModal}
+      {/* MAIN SCROLL CONTENT */}
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
       >
-        <View style={styles.modalOverlay}>
-          <Pressable style={styles.modalBackdrop} onPress={handleCloseBusModal}>
-            <BlurView intensity={30} tint="dark" style={StyleSheet.absoluteFill} />
-          </Pressable>
-
-          <View style={styles.modalSheetContainer}>
-            {Platform.OS === 'android' ? (
-              <View style={styles.modalSheetInner}>{renderBusModalContent()}</View>
-            ) : (
-              <BlurView intensity={55} tint="light" style={styles.modalSheetInner}>
-                {renderBusModalContent()}
-              </BlurView>
-            )}
-          </View>
-        </View>
-      </Modal>
-
-      {/* ─── Expanded Full Screen Map Modal ─────────────────────── */}
-      <Modal
-        visible={isMapExpanded}
-        animationType="slide"
-        onRequestClose={() => setIsMapExpanded(false)}
-      >
-        <SafeAreaView style={styles.fullMapSafe} edges={['top', 'bottom']}>
-          <View style={styles.fullMapHeader}>
-            <View>
-              <Text style={styles.fullMapTitle}>Full Fleet Map</Text>
-              <Text style={styles.fullMapSubtitle}>Delhi-NCR Region</Text>
-            </View>
-            <AnimatedPressable
-              style={[styles.fullMapCloseBtn, shadows.sm]}
-              onPress={() => setIsMapExpanded(false)}
-              haptic="light"
-            >
-              <Text style={styles.fullMapCloseText}>Close</Text>
-            </AnimatedPressable>
-          </View>
-
-          <MapView
-            style={styles.fullMapView}
-            provider={undefined}
-            initialRegion={NCR_MAP_REGION}
-          >
-            <UrlTile
-              urlTemplate="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
-              maximumZ={19}
-            />
-            {buses.map((bus) => {
-              const markerColor = getBusStatusColor(bus.status);
-              return (
-                <Marker
-                  key={bus.id}
-                  coordinate={{
-                    latitude: bus.coordinates.lat,
-                    longitude: bus.coordinates.lng,
-                  }}
-                  title={bus.busNumber}
-                  description={`${bus.routeName} · ${bus.conductorName}`}
-                  onCalloutPress={() => {
-                    setIsMapExpanded(false);
-                    handleOpenBus(bus);
-                  }}
-                >
-                  <View style={[styles.mapMarkerBadge, { borderColor: markerColor }]}>
-                    <View
-                      style={[styles.mapMarkerDot, { backgroundColor: markerColor }]}
-                    />
-                    <Text style={styles.mapMarkerText}>
-                      {bus.busNumber.slice(-4)}
-                    </Text>
-                  </View>
-                </Marker>
-              );
-            })}
-          </MapView>
-        </SafeAreaView>
-      </Modal>
-    </MeshBackground>
-  );
-
-  // ─── Modal Content Renderer ────────────────────────────────
-  function renderBusModalContent() {
-    if (!selectedBus) return null;
-    const busColor = getBusStatusColor(selectedBus.status);
-    const busBg = getBusStatusBg(selectedBus.status);
-    const initials = getInitials(selectedBus.conductorName);
-
-    return (
-      <View style={styles.modalSheetBody}>
-        {/* Header Row */}
-        <View style={styles.modalHeaderRow}>
-          <View style={styles.modalHeaderTitles}>
-            <View style={styles.modalBusTitleRow}>
-              <Text style={styles.modalBusNumber}>{selectedBus.busNumber}</Text>
-              <View style={[styles.statusBadge, { backgroundColor: busBg }]}>
-                <View style={[styles.statusDot, { backgroundColor: busColor }]} />
-                <Text style={[styles.statusBadgeText, { color: busColor }]}>
-                  {selectedBus.status}
-                </Text>
+        {/* SECTION 1: Gate Open/Close Master Control */}
+        <GlassCard
+          style={[
+            styles.gateCard,
+            shadows.md,
+            {
+              borderWidth: gateOpen ? 1 : 1.5,
+              borderColor: gateOpen ? 'rgba(16,185,129,0.35)' : colors.error,
+            },
+          ]}
+        >
+          <View style={styles.gateRow}>
+            <View style={styles.gateLeftCol}>
+              <View style={styles.gateTitleRow}>
+                <View
+                  style={[
+                    styles.gatePulseDot,
+                    { backgroundColor: gateOpen ? colors.success : colors.error },
+                  ]}
+                />
+                <Text style={typography.label}>School Gate</Text>
               </View>
+              <Text
+                style={[
+                  typography.bodyBold,
+                  { color: gateOpen ? colors.success : colors.error, marginTop: 2 },
+                ]}
+              >
+                {gateOpen ? 'OPEN — Tracking Active' : 'CLOSED — Tracking Halted'}
+              </Text>
             </View>
-            <Text style={styles.modalRouteName} numberOfLines={2}>
-              {selectedBus.routeName}
-            </Text>
-          </View>
-          <AnimatedPressable
-            onPress={handleCloseBusModal}
-            haptic="light"
-            style={styles.modalCloseBtn}
-          >
-            <Text style={styles.modalCloseText}>✕</Text>
-          </AnimatedPressable>
-        </View>
 
-        {/* Conductor Profile Bar */}
-        <GlassCard padded={false} style={[shadows.sm, styles.modalConductorCard]}>
-          <View style={styles.modalConductorInner}>
-            <LinearGradient
-              colors={[portalAccents.gateman.from, portalAccents.gateman.to]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.modalAvatar}
+            {/* Inline Toggle Switch */}
+            <Pressable
+              onPress={handleGateToggle}
+              hitSlop={8}
+              style={[
+                styles.toggleTrack,
+                {
+                  backgroundColor: gateOpen ? colors.successBg : colors.errorBg,
+                  borderColor: gateOpen ? colors.success : colors.error,
+                },
+              ]}
             >
-              <Text style={styles.modalAvatarText}>{initials}</Text>
-            </LinearGradient>
-            <View style={styles.modalConductorMeta}>
-              <Text style={styles.modalConductorName}>
-                {selectedBus.conductorName}
-              </Text>
-              <Text style={styles.modalConductorPhone}>
-                📞 {selectedBus.conductorPhone}
+              <Animated.View
+                style={[
+                  styles.toggleThumb,
+                  {
+                    backgroundColor: gateOpen ? colors.success : colors.error,
+                    transform: [{ translateX: toggleAnim }],
+                  },
+                ]}
+              />
+            </Pressable>
+          </View>
+
+          {/* Admin Override Banner */}
+          {adminOverride?.active && (
+            <View style={styles.adminBanner}>
+              <AlertTriangleIcon size={14} color={colors.warning} />
+              <Text style={styles.adminBannerText}>
+                Admin Override Active — {adminOverride.openedBy}
               </Text>
             </View>
+          )}
+
+          {/* Closed Gate Notice */}
+          {!gateOpen && (
+            <View style={styles.gateNoticeBox}>
+              <Text style={[typography.caption, { color: colors.textSecondary }]}>
+                Live tracking is paused. Switch gate to OPEN to resume all bus tracking.
+              </Text>
+            </View>
+          )}
+        </GlassCard>
+
+        {/* SECTION 2: Universal Search Bar */}
+        <GlassCard style={[styles.searchCard, shadows.sm]} padded={false}>
+          <View style={styles.searchRow}>
+            <SearchIcon size={18} color={colors.textMuted} />
+            <TextInput
+              placeholder="Search student, bus, or conductor..."
+              value={searchQ}
+              onChangeText={setSearchQ}
+              style={styles.searchInput}
+              placeholderTextColor={colors.textPlaceholder}
+              autoCapitalize="none"
+              autoCorrect={false}
+              clearButtonMode="while-editing"
+            />
+            {searchQ.length > 0 ? (
+              <Pressable
+                onPress={() => setSearchQ('')}
+                hitSlop={10}
+                style={styles.clearSearchBtn}
+              >
+                <Text style={styles.clearSearchText}>✕</Text>
+              </Pressable>
+            ) : null}
           </View>
         </GlassCard>
 
-        {/* Live Metrics Row */}
-        <View style={styles.modalMetricsRow}>
-          <GlassCard padded={false} style={[shadows.sm, styles.modalMetricCard]}>
-            <View style={styles.modalMetricInner}>
-              <Text style={styles.modalMetricLabel}>Speed</Text>
-              <Text style={styles.modalMetricVal}>
-                {selectedBus.speedKmh} <Text style={styles.modalMetricUnit}>km/h</Text>
-              </Text>
-            </View>
-          </GlassCard>
+        {/* Search Results */}
+        {searchHits.length > 0 ? (
+          <View style={styles.searchHitsWrap}>
+            <Text style={[typography.overline, styles.resultsHeader]}>
+              Search Results ({searchHits.length})
+            </Text>
+            {searchHits.map((hit) => {
+              if (hit.type === 'STUDENT') {
+                const s = hit.data;
+                const bus = buses.find((b) => b.id === s.busId);
+                const hasPending = routingRequests.some(
+                  (r) => r.studentId === s.id && r.status === 'Pending',
+                );
+                const sc = getStudentStatusColor(s.currentStatus);
 
-          <GlassCard padded={false} style={[shadows.sm, styles.modalMetricCard]}>
-            <View style={styles.modalMetricInner}>
-              <Text style={styles.modalMetricLabel}>ETA</Text>
-              <Text style={styles.modalMetricVal}>
-                {selectedBus.etaMinutes > 0
-                  ? `${selectedBus.etaMinutes} min`
-                  : 'At Stop'}
-              </Text>
-            </View>
-          </GlassCard>
-
-          <GlassCard padded={false} style={[shadows.sm, styles.modalMetricCard]}>
-            <View style={styles.modalMetricInner}>
-              <Text style={styles.modalMetricLabel}>Boarded</Text>
-              <Text style={styles.modalMetricVal}>
-                {selectedBus.boardedCount}/{selectedBus.totalStudents}
-              </Text>
-            </View>
-          </GlassCard>
-        </View>
-
-        {/* 3 Action Buttons */}
-        <View style={styles.modalActionsStack}>
-          {/* Action 1: Ping Conductor */}
-          <AnimatedPressable
-            onPress={handlePingConductor}
-            haptic="medium"
-            style={[styles.modalActionBtn, shadows.sm]}
-          >
-            <LinearGradient
-              colors={[portalAccents.gateman.from, portalAccents.gateman.to]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.modalActionGradient}
-            >
-              <Svg
-                width={18}
-                height={18}
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke={palette.white}
-                strokeWidth={2.2}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <Path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
-                <Path d="M13.73 21a2 2 0 0 1-3.46 0" />
-              </Svg>
-              <Text style={styles.modalActionTextWhite}>Ping Conductor</Text>
-            </LinearGradient>
-          </AnimatedPressable>
-
-          {/* Action 2: Force Offline */}
-          <AnimatedPressable
-            onPress={handleForceOffline}
-            haptic="medium"
-            style={[styles.modalActionBtn, shadows.sm]}
-          >
-            <View style={styles.modalActionForceOffline}>
-              <Svg
-                width={18}
-                height={18}
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke={colors.error}
-                strokeWidth={2.2}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <Circle cx="12" cy="12" r="10" />
-                <Path d="m4.93 4.93 14.14 14.14" />
-              </Svg>
-              <Text style={styles.modalActionTextError}>Force Bus Offline</Text>
-            </View>
-          </AnimatedPressable>
-
-          {/* Action 3: View Manifest Toggle */}
-          <AnimatedPressable
-            onPress={() => setShowManifest((prev) => !prev)}
-            haptic="light"
-            style={[styles.modalActionBtn, shadows.sm]}
-          >
-            <View style={styles.modalActionSecondary}>
-              <Svg
-                width={18}
-                height={18}
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke={colors.primary}
-                strokeWidth={2.2}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <Path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
-                <Rect x="8" y="2" width="8" height="4" rx="1" ry="1" />
-                <Path d="M9 12h6M9 16h6" />
-              </Svg>
-              <Text style={styles.modalActionTextPrimary}>
-                {showManifest
-                  ? 'Hide Student Manifest'
-                  : `View Manifest (${selectedBusStudents.length} Students)`}
-              </Text>
-            </View>
-          </AnimatedPressable>
-        </View>
-
-        {/* Student Manifest ScrollView inside Modal */}
-        {showManifest && (
-          <View style={styles.modalManifestWrap}>
-            <Text style={styles.modalManifestTitle}>Roster Manifest</Text>
-            <ScrollView
-              style={styles.modalManifestScroll}
-              nestedScrollEnabled
-              showsVerticalScrollIndicator
-            >
-              {selectedBusStudents.length === 0 ? (
-                <Text style={styles.modalManifestEmpty}>
-                  No students currently assigned to this route.
-                </Text>
-              ) : (
-                selectedBusStudents.map((st) => {
-                  const stColor = getStudentStatusColor(st.currentStatus);
-                  return (
-                    <View key={st.id} style={styles.manifestRow}>
-                      <View style={styles.manifestRowLeft}>
-                        <Text style={styles.manifestRowName}>{st.name}</Text>
-                        <Text style={styles.manifestRowSub}>
-                          Grade {st.grade} · 📍 {st.assignedStop}
+                return (
+                  <GlassCard key={hit.key} style={[styles.hitCard, shadows.sm]}>
+                    <View style={styles.hitTopRow}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={typography.bodyBold}>{s.name}</Text>
+                        <Text style={[typography.caption, { color: colors.textMuted }]}>
+                          Grade {s.grade} • Bus {bus ? bus.busNumber : 'Unassigned'}
                         </Text>
                       </View>
-                      <View
-                        style={[
-                          styles.studentStatusBadge,
-                          { backgroundColor: stColor.bg },
-                        ]}
-                      >
-                        <Text
-                          style={[
-                            styles.studentStatusText,
-                            { color: stColor.color },
-                          ]}
-                        >
-                          {st.currentStatus}
+                      <View style={[styles.statusBadge, { backgroundColor: sc.bg }]}>
+                        <Text style={[typography.caption, { color: sc.fg, fontWeight: '700' }]}>
+                          {s.currentStatus}
                         </Text>
                       </View>
                     </View>
-                  );
-                })
+                    <Text style={[typography.caption, { color: colors.textSecondary, marginTop: 4 }]}>
+                      Stop: {s.assignedStop}
+                    </Text>
+                    {hasPending && (
+                      <View style={styles.pendingRequestTag}>
+                        <Text style={[typography.caption, { color: colors.warning, fontWeight: '600' }]}>
+                          ⚠️ Pending Parent Routing Request
+                        </Text>
+                      </View>
+                    )}
+                  </GlassCard>
+                );
+              }
+
+              if (hit.type === 'BUS') {
+                const b = hit.data;
+                const bsc = getStatusColor(b.status);
+
+                return (
+                  <AnimatedPressable
+                    key={hit.key}
+                    onPress={() => setSelectedBus(b)}
+                    style={styles.hitPressable}
+                  >
+                    <GlassCard style={[styles.hitCard, shadows.sm]}>
+                      <View style={styles.hitTopRow}>
+                        <View style={{ flex: 1 }}>
+                          <Text style={typography.bodyBold}>{b.busNumber}</Text>
+                          <Text style={[typography.caption, { color: colors.textMuted }]}>
+                            {b.routeName}
+                          </Text>
+                        </View>
+                        <View
+                          style={[
+                            styles.statusBadge,
+                            { backgroundColor: bsc.bg, borderColor: bsc.border, borderWidth: 1 },
+                          ]}
+                        >
+                          <Text style={[typography.caption, { color: bsc.fg, fontWeight: '700' }]}>
+                            {b.status}
+                          </Text>
+                        </View>
+                      </View>
+                      <View style={styles.hitMetaRow}>
+                        <Text style={[typography.caption, { color: colors.textSecondary }]}>
+                          Conductor: {b.conductorName}
+                        </Text>
+                        <Text style={[typography.caption, { color: colors.primary, fontWeight: '600' }]}>
+                          ETA: {b.etaMinutes}m • {b.boardedCount}/{b.totalStudents} students
+                        </Text>
+                      </View>
+                    </GlassCard>
+                  </AnimatedPressable>
+                );
+              }
+
+              if (hit.type === 'CONDUCTOR') {
+                const b = hit.data;
+                const bsc = getStatusColor(b.status);
+
+                return (
+                  <GlassCard key={hit.key} style={[styles.hitCard, shadows.sm]}>
+                    <View style={styles.hitTopRow}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={typography.bodyBold}>{b.conductorName}</Text>
+                        <Text style={[typography.caption, { color: colors.textMuted }]}>
+                          Bus: {b.busNumber} • {b.routeName}
+                        </Text>
+                        <Text style={[typography.caption, { color: bsc.fg, fontWeight: '600', marginTop: 2 }]}>
+                          Status: {b.status}
+                        </Text>
+                      </View>
+                      <AnimatedPressable
+                        onPress={() => Linking.openURL(`tel:${b.conductorPhone}`)}
+                        style={styles.callSmallBtn}
+                      >
+                        <PhoneIcon size={14} color={palette.white} />
+                        <Text style={styles.callSmallBtnText}>Call</Text>
+                      </AnimatedPressable>
+                    </View>
+                  </GlassCard>
+                );
+              }
+
+              return null;
+            })}
+          </View>
+        ) : searchQ.trim().length >= 2 ? (
+          <GlassCard style={styles.noResultsCard}>
+            <Text style={[typography.caption, { textAlign: 'center', color: colors.textMuted }]}>
+              No students, buses, or conductors found for "{searchQ}"
+            </Text>
+          </GlassCard>
+        ) : null}
+
+        {/* SECTION 3: Quick Stats Row */}
+        <View style={styles.statsRow}>
+          <GlassCard style={styles.statTile} padded={false}>
+            <View style={styles.statTileContent}>
+              <Text style={[styles.statNumber, { color: colors.success }]}>
+                {activeBusesCount}
+              </Text>
+              <Text style={styles.statLabel} numberOfLines={1}>
+                Active Buses
+              </Text>
+            </View>
+          </GlassCard>
+
+          <GlassCard style={styles.statTile} padded={false}>
+            <View style={styles.statTileContent}>
+              <Text style={[styles.statNumber, { color: colors.info }]}>
+                {transitStudentsCount}
+              </Text>
+              <Text style={styles.statLabel} numberOfLines={1}>
+                In Transit
+              </Text>
+            </View>
+          </GlassCard>
+
+          <GlassCard style={styles.statTile} padded={false}>
+            <View style={styles.statTileContent}>
+              <Text
+                style={[
+                  styles.statNumber,
+                  { color: pendingActionsCount > 0 ? colors.warning : colors.textPrimary },
+                ]}
+              >
+                {pendingActionsCount}
+              </Text>
+              <Text style={styles.statLabel} numberOfLines={1}>
+                Pending
+              </Text>
+            </View>
+          </GlassCard>
+        </View>
+
+        {/* SECTION 4: Quick Action Deck */}
+        <View style={styles.deckSection}>
+          <Text style={styles.sectionHeading}>Quick Actions</Text>
+          <View style={styles.deckGrid}>
+            <AnimatedPressable
+              onPress={() => setShowArrivalModal(true)}
+              style={styles.deckTileWrap}
+            >
+              <GlassCard style={styles.deckTile}>
+                <View style={styles.deckIconCircle}>
+                  <CheckCircleIcon size={20} color={portalAccents.gateman.from} />
+                </View>
+                <Text style={styles.deckLabel}>Mark Bus Arrived</Text>
+              </GlassCard>
+            </AnimatedPressable>
+
+            <AnimatedPressable
+              onPress={handlePingAllDelayed}
+              style={styles.deckTileWrap}
+            >
+              <GlassCard style={styles.deckTile}>
+                <View style={styles.deckIconCircle}>
+                  <BroadcastIcon size={20} color={portalAccents.gateman.from} />
+                </View>
+                <Text style={styles.deckLabel}>Ping All Delayed</Text>
+              </GlassCard>
+            </AnimatedPressable>
+
+            <AnimatedPressable
+              onPress={() => setShowWalkInModal(true)}
+              style={styles.deckTileWrap}
+            >
+              <GlassCard style={styles.deckTile}>
+                <View style={styles.deckIconCircle}>
+                  <UserPlusIcon size={20} color={portalAccents.gateman.from} />
+                </View>
+                <Text style={styles.deckLabel}>Log Walk-In</Text>
+              </GlassCard>
+            </AnimatedPressable>
+
+            <AnimatedPressable
+              onPress={() => router.push('/(gateman)/requests' as any)}
+              style={styles.deckTileWrap}
+            >
+              <GlassCard style={styles.deckTile}>
+                <View style={styles.deckIconCircle}>
+                  <ClipboardListIcon size={20} color={portalAccents.gateman.from} />
+                </View>
+                <Text style={styles.deckLabel}>View All Requests</Text>
+              </GlassCard>
+            </AnimatedPressable>
+          </View>
+        </View>
+
+        {/* SECTION 5: Fleet Preview */}
+        <View style={styles.fleetSection}>
+          <View style={styles.fleetHeaderRow}>
+            <View style={styles.fleetHeaderLeft}>
+              <Text style={styles.sectionHeading}>Active Fleet</Text>
+              <View style={styles.countBadge}>
+                <Text style={styles.countBadgeText}>{buses.length}</Text>
+              </View>
+            </View>
+            <AnimatedPressable
+              onPress={() => setShowFleetModal(true)}
+              style={styles.viewAllBtn}
+            >
+              <Text style={styles.viewAllText}>View All</Text>
+              <ChevronRightIcon size={14} color={portalAccents.gateman.from} />
+            </AnimatedPressable>
+          </View>
+
+          {/* First 4 buses preview */}
+          <View style={styles.previewBusList}>
+            {fleetPreview.map((b) => {
+              const bsc = getStatusColor(b.status);
+              const progressPct = Math.min(
+                100,
+                Math.round((b.boardedCount / (b.totalStudents || 1)) * 100),
+              );
+
+              return (
+                <AnimatedPressable
+                  key={b.id}
+                  onPress={() => setSelectedBus(b)}
+                  style={styles.busPreviewCardWrap}
+                >
+                  <GlassCard style={[styles.busPreviewCard, shadows.sm]}>
+                    <View style={styles.busCardTopRow}>
+                      <View style={styles.busNumberRow}>
+                        <View style={[styles.statusDot, { backgroundColor: bsc.fg }]} />
+                        <Text style={typography.bodyBold}>{b.busNumber}</Text>
+                      </View>
+                      <View
+                        style={[
+                          styles.statusBadge,
+                          { backgroundColor: bsc.bg, borderColor: bsc.border, borderWidth: 1 },
+                        ]}
+                      >
+                        <Text style={[typography.caption, { color: bsc.fg, fontWeight: '700' }]}>
+                          {b.status}
+                        </Text>
+                      </View>
+                    </View>
+
+                    <Text
+                      style={[typography.caption, { color: colors.textSecondary, marginTop: 4 }]}
+                      numberOfLines={2}
+                    >
+                      {b.routeName}
+                    </Text>
+
+                    {/* Headcount progress */}
+                    <View style={styles.headcountRow}>
+                      <Text style={[typography.caption, { color: colors.textMuted }]}>
+                        Boarded:{' '}
+                        <Text style={{ fontWeight: '700', color: colors.textPrimary }}>
+                          {b.boardedCount}
+                        </Text>
+                        /{b.totalStudents} students
+                      </Text>
+                      <Text style={[typography.caption, { color: colors.textMuted, fontWeight: '600' }]}>
+                        {progressPct}%
+                      </Text>
+                    </View>
+                    <View style={styles.progressTrack}>
+                      <View
+                        style={[
+                          styles.progressFill,
+                          { width: `${progressPct}%`, backgroundColor: bsc.fg },
+                        ]}
+                      />
+                    </View>
+
+                    {/* Conductor & ETA chip */}
+                    <View style={styles.busCardBottomRow}>
+                      <Text
+                        style={[typography.caption, { color: colors.textMuted, flex: 1 }]}
+                        numberOfLines={1}
+                      >
+                        👤 {b.conductorName}
+                      </Text>
+                      <View style={styles.etaChip}>
+                        <Text style={[typography.caption, { color: colors.primary, fontWeight: '700' }]}>
+                          {b.status === 'At School' ? 'At School' : `ETA ${b.etaMinutes}m`}
+                        </Text>
+                      </View>
+                    </View>
+                  </GlassCard>
+                </AnimatedPressable>
+              );
+            })}
+          </View>
+        </View>
+      </ScrollView>
+
+      {/* ─── MODAL 1: Blocked Buses Modal (Cannot close gate) ─── */}
+      <GlassModal
+        visible={blockedBuses.length > 0}
+        title="Cannot Close Gate"
+        onClose={() => setBlockedBuses([])}
+        maxHeight="82%"
+      >
+        <Text style={[typography.caption, { color: colors.error, marginBottom: spacing.md }]}>
+          {blockedBuses.length} bus(es) are still en route outside campus. Mark returned buses as
+          at school or force recover to halt tracking and close the gate.
+        </Text>
+
+        {blockedBuses.map((b) => (
+          <GlassCard key={b.id} style={styles.modalBusCard}>
+            <View style={styles.hitTopRow}>
+              <View style={{ flex: 1 }}>
+                <Text style={typography.bodyBold}>{b.busNumber}</Text>
+                <Text style={[typography.caption, { color: colors.textMuted }]}>
+                  {b.conductorName} • {b.routeName}
+                </Text>
+                <Text style={[typography.caption, { color: getStatusColor(b.status).fg, fontWeight: '600' }]}>
+                  Status: {b.status} • ETA {b.etaMinutes}m
+                </Text>
+              </View>
+              <AnimatedPressable
+                onPress={() => {
+                  markBusAtSchool(b.id);
+                  const remaining = blockedBuses.filter((item) => item.id !== b.id);
+                  setBlockedBuses(remaining);
+                  if (remaining.length === 0) {
+                    attemptCloseGate();
+                    Alert.alert('Gate Closed', 'All outside buses accounted for. Gate closed.');
+                  }
+                }}
+                style={styles.markAtSchoolBtn}
+              >
+                <Text style={styles.markAtSchoolBtnText}>Mark At School</Text>
+              </AnimatedPressable>
+            </View>
+          </GlassCard>
+        ))}
+
+        <View style={styles.modalActionGroup}>
+          <AnimatedPressable
+            onPress={() => {
+              forceRecoverAndClose();
+              setBlockedBuses([]);
+              Alert.alert('Gate Closed', 'Forced all buses to At School and closed gate.');
+            }}
+            style={[styles.primaryActionBtn, { backgroundColor: colors.error }]}
+          >
+            <Text style={styles.primaryActionBtnText}>Force Place All At School & Close</Text>
+          </AnimatedPressable>
+
+          <AnimatedPressable
+            onPress={() => setBlockedBuses([])}
+            style={styles.cancelActionBtn}
+          >
+            <Text style={styles.cancelActionBtnText}>Cancel</Text>
+          </AnimatedPressable>
+        </View>
+      </GlassModal>
+
+      {/* ─── MODAL 2: Full Fleet Modal (View All) ─── */}
+      <GlassModal
+        visible={showFleetModal}
+        title="Fleet Overview"
+        onClose={() => setShowFleetModal(false)}
+        maxHeight="82%"
+      >
+        {/* Status Filter Pills */}
+        <View style={styles.filterPillsRow}>
+          {(['All', 'En Route', 'At School', 'Delayed', 'Offline'] as const).map((tab) => (
+            <Pressable
+              key={tab}
+              onPress={() => setFleetFilter(tab)}
+              style={[
+                styles.filterPill,
+                fleetFilter === tab ? styles.filterPillActive : null,
+              ]}
+            >
+              <Text
+                style={[
+                  styles.filterPillText,
+                  fleetFilter === tab ? styles.filterPillTextActive : null,
+                ]}
+              >
+                {tab}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+
+        {filteredFleet.length === 0 ? (
+          <Text style={[typography.caption, { textAlign: 'center', marginTop: spacing.lg }]}>
+            No buses match filter "{fleetFilter}".
+          </Text>
+        ) : null}
+
+        {filteredFleet.map((b) => {
+          const bsc = getStatusColor(b.status);
+
+          return (
+            <AnimatedPressable
+              key={b.id}
+              onPress={() => {
+                setShowFleetModal(false);
+                setSelectedBus(b);
+              }}
+              style={styles.fleetModalItemPressable}
+            >
+              <GlassCard style={styles.modalBusCard}>
+                <View style={styles.hitTopRow}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={typography.bodyBold}>{b.busNumber}</Text>
+                    <Text style={[typography.caption, { color: colors.textMuted }]}>
+                      {b.routeName}
+                    </Text>
+                    <Text style={[typography.caption, { color: colors.textSecondary, marginTop: 2 }]}>
+                      👤 {b.conductorName} • {b.boardedCount}/{b.totalStudents} boarded
+                    </Text>
+                  </View>
+                  <View
+                    style={[
+                      styles.statusBadge,
+                      { backgroundColor: bsc.bg, borderColor: bsc.border, borderWidth: 1 },
+                    ]}
+                  >
+                    <Text style={[typography.caption, { color: bsc.fg, fontWeight: '700' }]}>
+                      {b.status}
+                    </Text>
+                  </View>
+                </View>
+
+                {b.status !== 'At School' && (
+                  <View style={styles.modalBusItemBottom}>
+                    <AnimatedPressable
+                      onPress={() => {
+                        markBusAtSchool(b.id);
+                        Alert.alert('Bus Updated', `${b.busNumber} marked At School.`);
+                      }}
+                      style={styles.markAtSchoolBtn}
+                    >
+                      <Text style={styles.markAtSchoolBtnText}>Mark At School</Text>
+                    </AnimatedPressable>
+                  </View>
+                )}
+              </GlassCard>
+            </AnimatedPressable>
+          );
+        })}
+      </GlassModal>
+
+      {/* ─── MODAL 3: Bus Deep-Dive Modal (selectedBus) ─── */}
+      <GlassModal
+        visible={currentSelectedBus !== null}
+        title={currentSelectedBus?.busNumber ?? 'Bus Details'}
+        onClose={() => setSelectedBus(null)}
+        maxHeight="85%"
+      >
+        {currentSelectedBus && (
+          <View>
+            {/* Header info */}
+            <View style={styles.deepDiveHeader}>
+              <View style={{ flex: 1 }}>
+                <Text style={[typography.caption, { color: colors.textMuted }]}>
+                  {currentSelectedBus.routeName}
+                </Text>
+                <Text style={[typography.caption, { color: colors.textMuted, marginTop: 2 }]}>
+                  Departed: {currentSelectedBus.departureTime}
+                </Text>
+              </View>
+              <View
+                style={[
+                  styles.statusBadge,
+                  {
+                    backgroundColor: getStatusColor(currentSelectedBus.status).bg,
+                    borderColor: getStatusColor(currentSelectedBus.status).border,
+                    borderWidth: 1,
+                  },
+                ]}
+              >
+                <Text
+                  style={[
+                    typography.caption,
+                    { color: getStatusColor(currentSelectedBus.status).fg, fontWeight: '700' },
+                  ]}
+                >
+                  {currentSelectedBus.status}
+                </Text>
+              </View>
+            </View>
+
+            {/* Conductor avatar row */}
+            <GlassCard style={styles.conductorCard} padded={false}>
+              <View style={styles.conductorRow}>
+                <LinearGradient
+                  colors={[colors.primary, '#6366F1']}
+                  style={styles.avatarGradient}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                >
+                  <Text style={styles.avatarText}>
+                    {getInitials(currentSelectedBus.conductorName)}
+                  </Text>
+                </LinearGradient>
+                <View style={{ flex: 1, marginLeft: spacing.md }}>
+                  <Text style={typography.bodyBold}>{currentSelectedBus.conductorName}</Text>
+                  <Text style={[typography.caption, { color: colors.textMuted }]}>
+                    {currentSelectedBus.conductorPhone}
+                  </Text>
+                </View>
+                <AnimatedPressable
+                  onPress={() => Linking.openURL(`tel:${currentSelectedBus.conductorPhone}`)}
+                  style={styles.callSmallBtn}
+                >
+                  <PhoneIcon size={14} color={palette.white} />
+                  <Text style={styles.callSmallBtnText}>Call</Text>
+                </AnimatedPressable>
+              </View>
+            </GlassCard>
+
+            {/* Metrics Row */}
+            <View style={styles.metricsRow}>
+              <View style={styles.metricItem}>
+                <Text style={[typography.title, { color: colors.textPrimary }]}>
+                  {currentSelectedBus.speedKmh}
+                </Text>
+                <Text style={typography.caption}>km/h Speed</Text>
+              </View>
+              <View style={styles.metricDivider} />
+              <View style={styles.metricItem}>
+                <Text style={[typography.title, { color: colors.primary }]}>
+                  {currentSelectedBus.etaMinutes}m
+                </Text>
+                <Text style={typography.caption}>Est. Arrival</Text>
+              </View>
+              <View style={styles.metricDivider} />
+              <View style={styles.metricItem}>
+                <Text style={[typography.title, { color: colors.success }]}>
+                  {currentSelectedBus.boardedCount}/{currentSelectedBus.totalStudents}
+                </Text>
+                <Text style={typography.caption}>Boarded</Text>
+              </View>
+            </View>
+
+            {/* OpenStreetMap Map View */}
+            <View style={styles.mapContainer}>
+              <MapView
+                style={styles.mapFill}
+                provider={undefined}
+                pointerEvents="none"
+                region={{
+                  latitude: currentSelectedBus.coordinates.lat,
+                  longitude: currentSelectedBus.coordinates.lng,
+                  latitudeDelta: 0.05,
+                  longitudeDelta: 0.05,
+                }}
+              >
+                <UrlTile urlTemplate="https://tile.openstreetmap.org/{z}/{x}/{y}.png" maximumZ={19} />
+                <Marker
+                  coordinate={{
+                    latitude: currentSelectedBus.coordinates.lat,
+                    longitude: currentSelectedBus.coordinates.lng,
+                  }}
+                  title={currentSelectedBus.busNumber}
+                />
+              </MapView>
+            </View>
+
+            {/* Actions */}
+            <View style={styles.deepDiveActionRow}>
+              <AnimatedPressable
+                onPress={() => {
+                  pingConductor(currentSelectedBus.id);
+                  Alert.alert('Ping Sent', `Ping sent to conductor ${currentSelectedBus.conductorName}.`);
+                }}
+                style={styles.secondaryDeepDiveBtn}
+              >
+                <Text style={styles.secondaryDeepDiveBtnText}>Ping Conductor</Text>
+              </AnimatedPressable>
+
+              {currentSelectedBus.status !== 'At School' && (
+                <AnimatedPressable
+                  onPress={() => {
+                    markBusAtSchool(currentSelectedBus.id);
+                    Alert.alert('Bus Updated', `${currentSelectedBus.busNumber} marked At School.`);
+                  }}
+                  style={styles.primaryDeepDiveBtn}
+                >
+                  <Text style={styles.primaryDeepDiveBtnText}>Mark At School</Text>
+                </AnimatedPressable>
               )}
-            </ScrollView>
+            </View>
+
+            <AnimatedPressable
+              onPress={() => {
+                Alert.alert(
+                  'Confirm Force Offline',
+                  `Are you sure you want to force ${currentSelectedBus.busNumber} offline?`,
+                  [
+                    { text: 'Cancel', style: 'cancel' },
+                    {
+                      text: 'Force Offline',
+                      style: 'destructive',
+                      onPress: () => {
+                        forceBusOffline(currentSelectedBus.id);
+                        setSelectedBus(null);
+                        Alert.alert('Bus Offline', `${currentSelectedBus.busNumber} marked offline.`);
+                      },
+                    },
+                  ],
+                );
+              }}
+              style={styles.dangerDeepDiveBtn}
+            >
+              <Text style={styles.dangerDeepDiveBtnText}>Force Bus Offline</Text>
+            </AnimatedPressable>
+
+            {/* Mini Manifest */}
+            <Text style={[typography.overline, styles.manifestTitle]}>
+              Student Manifest ({students.filter((s) => s.busId === currentSelectedBus.id).length})
+            </Text>
+            {students
+              .filter((s) => s.busId === currentSelectedBus.id)
+              .map((s) => {
+                const sc = getStudentStatusColor(s.currentStatus);
+
+                return (
+                  <View key={s.id} style={styles.manifestRow}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={typography.bodyBold}>{s.name}</Text>
+                      <Text style={[typography.caption, { color: colors.textMuted }]}>
+                        {s.grade} • Stop: {s.assignedStop}
+                      </Text>
+                    </View>
+                    <View style={[styles.statusBadge, { backgroundColor: sc.bg }]}>
+                      <Text style={[typography.caption, { color: sc.fg, fontWeight: '700' }]}>
+                        {s.currentStatus}
+                      </Text>
+                    </View>
+                  </View>
+                );
+              })}
           </View>
         )}
-      </View>
-    );
-  }
+      </GlassModal>
+
+      {/* ─── MODAL 4: Mark Bus Arrived Selector ─── */}
+      <GlassModal
+        visible={showArrivalModal}
+        title="Mark Bus Arrived"
+        onClose={() => setShowArrivalModal(false)}
+        maxHeight="75%"
+      >
+        <Text style={[typography.caption, { color: colors.textMuted, marginBottom: spacing.md }]}>
+          Select an arriving route to record its arrival at school.
+        </Text>
+        {outsideBuses.length === 0 ? (
+          <Text style={[typography.body, { textAlign: 'center', marginTop: spacing.md, color: colors.success }]}>
+            All active buses are already at school!
+          </Text>
+        ) : null}
+
+        {outsideBuses.map((b) => (
+          <GlassCard key={b.id} style={styles.modalBusCard}>
+            <View style={styles.hitTopRow}>
+              <View style={{ flex: 1 }}>
+                <Text style={typography.bodyBold}>{b.busNumber}</Text>
+                <Text style={[typography.caption, { color: colors.textMuted }]}>
+                  {b.routeName} • {b.conductorName}
+                </Text>
+                <Text style={[typography.caption, { color: getStatusColor(b.status).fg, fontWeight: '600' }]}>
+                  Status: {b.status} • ETA {b.etaMinutes}m
+                </Text>
+              </View>
+              <AnimatedPressable
+                onPress={() => {
+                  markBusAtSchool(b.id);
+                  Alert.alert('Bus Arrived', `${b.busNumber} marked At School.`);
+                  if (outsideBuses.length <= 1) {
+                    setShowArrivalModal(false);
+                  }
+                }}
+                style={styles.markAtSchoolBtn}
+              >
+                <Text style={styles.markAtSchoolBtnText}>Mark Arrived</Text>
+              </AnimatedPressable>
+            </View>
+          </GlassCard>
+        ))}
+      </GlassModal>
+
+      {/* ─── MODAL 5: Log Walk-In Arrival ─── */}
+      <GlassModal
+        visible={showWalkInModal}
+        title="Log Walk-In Arrival"
+        onClose={() => setShowWalkInModal(false)}
+        maxHeight="65%"
+      >
+        <Text style={[typography.caption, { color: colors.textMuted, marginBottom: spacing.md }]}>
+          Record unscheduled student entry or visitor walk-in to campus shift log.
+        </Text>
+
+        <View style={styles.inputGroup}>
+          <Text style={typography.label}>Student Name *</Text>
+          <TextInput
+            placeholder="e.g. Aarav Sharma"
+            value={walkInName}
+            onChangeText={setWalkInName}
+            style={styles.modalTextInput}
+            placeholderTextColor={colors.textPlaceholder}
+          />
+        </View>
+
+        <View style={styles.inputGroup}>
+          <Text style={typography.label}>Grade / Purpose</Text>
+          <TextInput
+            placeholder="e.g. Grade 5-B or Parent Escort"
+            value={walkInGrade}
+            onChangeText={setWalkInGrade}
+            style={styles.modalTextInput}
+            placeholderTextColor={colors.textPlaceholder}
+          />
+        </View>
+
+        <AnimatedPressable
+          onPress={handleConfirmWalkIn}
+          style={[styles.primaryActionBtn, { marginTop: spacing.md }]}
+        >
+          <Text style={styles.primaryActionBtnText}>Confirm Walk-In Arrival</Text>
+        </AnimatedPressable>
+      </GlassModal>
+    </MeshBackground>
+  );
 }
 
-// ─── Styles ──────────────────────────────────────────────────
+// ─── Stylesheet ──────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  safe: {
-    flex: 1,
-  },
   header: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
+    alignItems: 'center',
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.sm,
-    paddingBottom: spacing.md,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: glass.border,
+    paddingVertical: spacing.sm,
   },
-  headerTitleWrap: {
-    gap: spacing.xxs,
-  },
-  headerTitle: {
-    ...typography.title,
-    color: colors.textPrimary,
-  },
-  headerSubtitle: {
-    ...typography.caption,
-    color: colors.textMuted,
-    fontWeight: '600',
+  headerDivider: {
+    height: 1,
+    backgroundColor: colors.divider,
   },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.md,
-    paddingBottom: spacing.xxxl,
-    gap: spacing.md,
+    padding: spacing.lg,
+    paddingBottom: 140, // Required clearance for floating tab bar
   },
 
-  // Shift Pulse Card
-  shiftCard: {
-    borderRadius: radius.lg,
+  // Gate Card
+  gateCard: {
+    marginBottom: spacing.md,
   },
-  shiftCardInner: {
-    padding: spacing.md,
-    gap: spacing.sm,
-  },
-  shiftHeaderRow: {
+  gateRow: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
-  },
-  shiftLivePill: {
-    flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.xs,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xxs,
-    borderRadius: radius.full,
-    backgroundColor: colors.successBg,
-    borderWidth: 1,
-    borderColor: 'rgba(16,185,129,0.3)',
   },
-  pulseDot: {
-    width: 7,
-    height: 7,
-    borderRadius: radius.full,
-    backgroundColor: colors.success,
-  },
-  shiftLiveText: {
-    ...typography.overline,
-    color: colors.success,
-    fontSize: 10,
-    fontWeight: '800',
-  },
-  shiftElapsedText: {
-    ...typography.caption,
-    color: colors.textMuted,
-    fontWeight: '600',
-  },
-  shiftMetricsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-around',
-    paddingTop: spacing.xs,
-  },
-  shiftMetricItem: {
-    alignItems: 'center',
-    gap: 2,
-  },
-  shiftMetricLabel: {
-    ...typography.caption,
-    fontSize: 11,
-    color: colors.textMuted,
-  },
-  shiftMetricVal: {
-    ...typography.bodyBold,
-    color: colors.textPrimary,
-    fontSize: 15,
-  },
-  shiftDivider: {
-    width: 1,
-    height: 24,
-    backgroundColor: glass.border,
-  },
-
-  // Section 1: Student Quick-Track
-  searchSection: {
-    gap: spacing.xs,
-  },
-  searchCard: {
-    borderRadius: radius.lg,
-  },
-  searchInner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    paddingHorizontal: spacing.md,
-    paddingVertical: Platform.OS === 'ios' ? spacing.sm : spacing.xs,
-  },
-  searchInput: {
+  gateLeftCol: {
     flex: 1,
-    ...typography.body,
-    fontSize: 14,
-    color: colors.textPrimary,
+    paddingRight: spacing.sm,
   },
-  clearSearchBtn: {
-    width: 24,
-    height: 24,
-    borderRadius: radius.full,
-    backgroundColor: colors.surfaceStrong,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  clearSearchText: {
-    ...typography.caption,
-    fontSize: 11,
-    fontWeight: '700',
-    color: colors.textMuted,
-  },
-  searchResultsWrap: {
-    marginTop: spacing.xs,
-    gap: spacing.xs,
-  },
-  noResultsText: {
-    ...typography.caption,
-    color: colors.textMuted,
-    textAlign: 'center',
-    paddingVertical: spacing.xs,
-  },
-  studentResultCardWrap: {
-    width: '100%',
-  },
-  studentResultCard: {
-    borderRadius: radius.md,
-  },
-  studentResultInner: {
+  gateTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    gap: 6,
   },
-  studentResultLeft: {
-    flex: 1,
-    gap: 2,
-  },
-  studentNameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  studentResultName: {
-    ...typography.label,
-    color: colors.textPrimary,
-  },
-  gradeBadge: {
-    paddingHorizontal: 6,
-    paddingVertical: 1,
-    borderRadius: radius.xs,
-    backgroundColor: palette.ink10,
-  },
-  gradeBadgeText: {
-    ...typography.overline,
-    fontSize: 10,
-    color: colors.textMuted,
-    textTransform: 'none',
-  },
-  studentResultMeta: {
-    ...typography.caption,
-    fontSize: 11,
-    color: colors.textMuted,
-  },
-  studentStatusBadge: {
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 3,
-    borderRadius: radius.full,
-  },
-  studentStatusText: {
-    ...typography.overline,
-    fontSize: 10,
-    fontWeight: '700',
-    textTransform: 'none',
-  },
-
-  // Section 2: Fleet Summary Row
-  summaryCard: {
-    borderRadius: radius.lg,
-  },
-  summaryRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-around',
-    paddingVertical: spacing.sm,
-  },
-  summaryChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-  },
-  chipDot: {
+  gatePulseDot: {
     width: 8,
     height: 8,
     borderRadius: radius.full,
   },
-  chipNumber: {
-    ...typography.heading,
-    fontSize: 16,
-    color: colors.textPrimary,
+  toggleTrack: {
+    width: 54,
+    height: 30,
+    borderRadius: 15,
+    padding: 3,
+    borderWidth: 1.5,
+    justifyContent: 'center',
   },
-  chipLabel: {
-    ...typography.caption,
-    fontWeight: '600',
-    color: colors.textMuted,
+  toggleThumb: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
   },
-  summaryChipDivider: {
-    width: 1,
-    height: 20,
-    backgroundColor: glass.border,
-  },
-
-  // Status Legend
-  legendCard: {
-    borderRadius: radius.md,
-  },
-  legendRow: {
+  adminBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-around',
-    paddingVertical: spacing.xs + 2,
+    gap: 6,
+    backgroundColor: colors.warningBg,
+    borderRadius: radius.sm,
     paddingHorizontal: spacing.sm,
+    paddingVertical: 5,
+    marginTop: spacing.sm,
   },
-  legendItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-  },
-  legendDot: {
-    width: 7,
-    height: 7,
-    borderRadius: radius.full,
-  },
-  legendLabel: {
+  adminBannerText: {
     ...typography.caption,
-    fontSize: 11,
-    color: colors.textMuted,
+    color: colors.warning,
+    fontWeight: '600',
+  },
+  gateNoticeBox: {
+    backgroundColor: 'rgba(244,63,94,0.06)',
+    borderRadius: radius.sm,
+    padding: spacing.sm,
+    marginTop: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.dangerBorder,
   },
 
-  // Section Headers
-  sectionHeaderRow: {
+  // Search Card
+  searchCard: {
+    marginBottom: spacing.md,
+    borderRadius: radius.md,
+    backgroundColor: colors.surfaceStrong,
+  },
+  searchRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: spacing.xs,
-  },
-  sectionTitle: {
-    ...typography.heading,
-    color: colors.textPrimary,
-    fontSize: 17,
-  },
-  sectionSubtitle: {
-    ...typography.caption,
-    color: colors.textMuted,
-  },
-  expandHeaderBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: spacing.xs,
-    paddingVertical: 2,
-  },
-  expandHeaderText: {
-    ...typography.caption,
-    fontWeight: '700',
-    color: portalAccents.gateman.from,
-  },
-
-  // Bus Grid (3x2)
-  busGridContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
+    paddingHorizontal: spacing.md,
+    minHeight: 46,
     gap: spacing.sm,
   },
-  busWidgetWrap: {
-    width: '48.5%',
+  searchInput: {
+    flex: 1,
+    ...typography.body,
+    paddingVertical: Platform.OS === 'ios' ? spacing.sm : 6,
+    color: colors.textPrimary,
   },
-  busWidgetCard: {
-    borderRadius: radius.md,
+  clearSearchBtn: {
+    padding: 4,
   },
-  busWidgetInner: {
-    padding: spacing.sm,
-    gap: 6,
+  clearSearchText: {
+    ...typography.caption,
+    color: colors.textMuted,
+    fontWeight: '700',
   },
-  busWidgetHeader: {
+
+  // Search Hits
+  searchHitsWrap: {
+    marginBottom: spacing.md,
+  },
+  resultsHeader: {
+    marginBottom: spacing.xs,
+  },
+  hitPressable: {
+    marginBottom: spacing.xs,
+  },
+  hitCard: {
+    marginBottom: spacing.xs,
+  },
+  hitTopRow: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  hitMetaRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 6,
   },
   statusBadge: {
+    borderRadius: radius.full,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
+  pendingRequestTag: {
+    marginTop: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    backgroundColor: colors.warningBg,
+    borderRadius: radius.xs,
+    alignSelf: 'flex-start',
+  },
+  callSmallBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: radius.full,
+    backgroundColor: portalAccents.gateman.from,
+    borderRadius: radius.sm,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 6,
   },
-  statusDot: {
-    width: 5,
-    height: 5,
-    borderRadius: radius.full,
-  },
-  statusBadgeText: {
-    ...typography.overline,
-    fontSize: 9,
-    fontWeight: '700',
-    textTransform: 'none',
-  },
-  busWidgetEta: {
-    ...typography.overline,
-    fontSize: 10,
-    color: colors.textMuted,
-    fontWeight: '600',
-  },
-  busWidgetNumber: {
-    ...typography.label,
-    fontSize: 13,
-    fontWeight: '700',
-    color: colors.textPrimary,
-  },
-  busWidgetRoute: {
+  callSmallBtnText: {
     ...typography.caption,
-    fontSize: 10,
-    lineHeight: 13,
-    color: colors.textMuted,
-    minHeight: 26,
-  },
-  progressContainer: {
-    gap: 3,
-    marginTop: 2,
-  },
-  progressLabelRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  progressLabel: {
-    ...typography.caption,
-    fontSize: 9,
-    color: colors.textMuted,
-  },
-  progressValue: {
-    ...typography.overline,
-    fontSize: 9,
-    color: colors.textPrimary,
+    color: palette.white,
     fontWeight: '700',
   },
-  progressTrack: {
-    width: '100%',
-    height: 5,
-    borderRadius: radius.full,
-    backgroundColor: palette.ink10,
-    overflow: 'hidden',
-  },
-  progressBar: {
-    height: '100%',
-    borderRadius: radius.full,
-  },
-  busWidgetFooter: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: 4,
-    paddingTop: 4,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: glass.border,
-  },
-  busWidgetDep: {
-    ...typography.caption,
-    fontSize: 9,
-    color: colors.textMuted,
-  },
-  busWidgetConductor: {
-    ...typography.caption,
-    fontSize: 9,
-    color: colors.textSecondary,
-    fontWeight: '600',
-    maxWidth: '55%',
-  },
-
-  // Map Card
-  mapCardWrapper: {
-    height: MAP_H,
-    borderRadius: radius.lg,
-    overflow: 'hidden',
-  },
-  mapView: {
-    flex: 1,
-    borderRadius: radius.lg,
-  },
-  mapMarkerBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: colors.surfaceStrong,
-    borderWidth: 2,
-    borderRadius: radius.full,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    ...shadows.sm,
-  },
-  mapMarkerDot: {
-    width: 6,
-    height: 6,
-    borderRadius: radius.full,
-  },
-  mapMarkerText: {
-    ...typography.overline,
-    fontSize: 9,
-    fontWeight: '800',
-    color: colors.textPrimary,
-  },
-  floatingExpandBtn: {
-    position: 'absolute',
-    top: spacing.sm,
-    right: spacing.sm,
-    width: 34,
-    height: 34,
-    borderRadius: radius.full,
-    backgroundColor: colors.surfaceStrong,
-    borderWidth: 1,
-    borderColor: glass.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  // Bus Quick-Action Modal
-  modalOverlay: {
-    flex: 1,
-    justifyContent: 'flex-end',
-  },
-  modalBackdrop: {
-    ...StyleSheet.absoluteFill,
-  },
-  modalSheetContainer: {
-    maxHeight: Math.round(SCREEN_H * 0.78),
-    borderTopLeftRadius: radius.xl,
-    borderTopRightRadius: radius.xl,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: glass.border,
-    backgroundColor: colors.surfaceStrong,
-    ...shadows.lg,
-  },
-  modalSheetInner: {
-    borderTopLeftRadius: radius.xl,
-    borderTopRightRadius: radius.xl,
-    overflow: 'hidden',
-  },
-  modalSheetBody: {
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.lg,
-    paddingBottom: Platform.OS === 'ios' ? spacing.xxl : spacing.lg,
-    gap: spacing.md,
-  },
-  modalHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-  },
-  modalHeaderTitles: {
-    flex: 1,
-    gap: 3,
-  },
-  modalBusTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
-  modalBusNumber: {
-    ...typography.title,
-    color: colors.textPrimary,
-  },
-  modalRouteName: {
-    ...typography.caption,
-    color: colors.textMuted,
-  },
-  modalCloseBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: radius.full,
-    backgroundColor: colors.surfaceStrong,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: glass.border,
-  },
-  modalCloseText: {
-    ...typography.caption,
-    fontSize: 14,
-    fontWeight: '700',
-    color: colors.textMuted,
-  },
-
-  // Conductor Profile in Modal
-  modalConductorCard: {
-    borderRadius: radius.md,
-  },
-  modalConductorInner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
+  noResultsCard: {
+    marginBottom: spacing.md,
     padding: spacing.md,
   },
-  modalAvatar: {
-    width: 44,
-    height: 44,
-    borderRadius: radius.full,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  modalAvatarText: {
-    ...typography.label,
-    color: palette.white,
-    fontWeight: '800',
-  },
-  modalConductorMeta: {
-    gap: 2,
-  },
-  modalConductorName: {
-    ...typography.bodyBold,
-    color: colors.textPrimary,
-  },
-  modalConductorPhone: {
-    ...typography.caption,
-    color: colors.textMuted,
-  },
 
-  // Modal Metrics Row
-  modalMetricsRow: {
+  // Stats Row
+  statsRow: {
     flexDirection: 'row',
     gap: spacing.sm,
+    marginBottom: spacing.md,
   },
-  modalMetricCard: {
+  statTile: {
     flex: 1,
     borderRadius: radius.md,
   },
-  modalMetricInner: {
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.xs,
+  statTileContent: {
+    padding: spacing.md,
     alignItems: 'center',
-    gap: 2,
+    justifyContent: 'center',
   },
-  modalMetricLabel: {
-    ...typography.caption,
-    fontSize: 11,
+  statNumber: {
+    ...typography.title,
+    fontWeight: '800',
+  },
+  statLabel: {
+    ...typography.overline,
     color: colors.textMuted,
-  },
-  modalMetricVal: {
-    ...typography.label,
-    fontSize: 14,
-    fontWeight: '700',
-    color: colors.textPrimary,
-  },
-  modalMetricUnit: {
-    fontSize: 10,
-    fontWeight: '400',
-    color: colors.textMuted,
+    marginTop: 2,
   },
 
-  // Modal Actions Stack
-  modalActionsStack: {
+  // Quick Action Deck
+  deckSection: {
+    marginBottom: spacing.md,
+  },
+  sectionHeading: {
+    ...typography.heading,
+    marginBottom: spacing.sm,
+  },
+  deckGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: spacing.sm,
   },
-  modalActionBtn: {
-    borderRadius: radius.md,
-    overflow: 'hidden',
+  deckTileWrap: {
+    width: '48.5%',
   },
-  modalActionGradient: {
-    flexDirection: 'row',
+  deckTile: {
+    alignItems: 'center',
+    paddingVertical: spacing.md,
+    minHeight: 90,
+    justifyContent: 'center',
+  },
+  deckIconCircle: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: 'rgba(249,115,22,0.12)',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: spacing.sm,
-    paddingVertical: spacing.md,
+    marginBottom: spacing.xs,
   },
-  modalActionTextWhite: {
+  deckLabel: {
     ...typography.label,
-    color: palette.white,
-    fontWeight: '700',
+    fontSize: 13,
+    textAlign: 'center',
+    color: colors.textPrimary,
   },
-  modalActionForceOffline: {
+
+  // Fleet Preview
+  fleetSection: {
+    marginBottom: spacing.md,
+  },
+  fleetHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.sm,
+  },
+  fleetHeaderLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.sm,
-    paddingVertical: spacing.md,
-    backgroundColor: colors.errorBg,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: 'rgba(244,63,94,0.3)',
+    gap: 8,
   },
-  modalActionTextError: {
-    ...typography.label,
-    color: colors.error,
-    fontWeight: '700',
+  countBadge: {
+    backgroundColor: 'rgba(79,70,229,0.12)',
+    borderRadius: radius.full,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
   },
-  modalActionSecondary: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.sm,
-    paddingVertical: spacing.md,
-    backgroundColor: colors.primarySurface,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: 'rgba(79,70,229,0.3)',
-  },
-  modalActionTextPrimary: {
-    ...typography.label,
+  countBadgeText: {
+    ...typography.caption,
     color: colors.primary,
     fontWeight: '700',
   },
-
-  // Manifest Scroll inside modal
-  modalManifestWrap: {
-    gap: spacing.xs,
-    marginTop: spacing.xs,
+  viewAllBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
   },
-  modalManifestTitle: {
-    ...typography.label,
+  viewAllText: {
+    ...typography.bodyBold,
     fontSize: 13,
-    color: colors.textPrimary,
+    color: portalAccents.gateman.from,
   },
-  modalManifestScroll: {
-    maxHeight: 180,
-    borderRadius: radius.md,
+  previewBusList: {
+    gap: spacing.sm,
+  },
+  busPreviewCardWrap: {
+    width: '100%',
+  },
+  busPreviewCard: {
+    padding: spacing.md,
+  },
+  busCardTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  busNumberRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flex: 1,
+  },
+  statusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: radius.full,
+  },
+  headcountRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: spacing.sm,
+    marginBottom: 4,
+  },
+  progressTrack: {
+    height: 5,
+    backgroundColor: colors.divider,
+    borderRadius: radius.full,
+    overflow: 'hidden',
+    marginBottom: spacing.sm,
+  },
+  progressFill: {
+    height: '100%',
+    borderRadius: radius.full,
+  },
+  busCardBottomRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  etaChip: {
+    backgroundColor: 'rgba(79,70,229,0.1)',
+    borderRadius: radius.sm,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+
+  // Modals shared styles
+  modalBusCard: {
+    marginBottom: spacing.sm,
+  },
+  markAtSchoolBtn: {
+    backgroundColor: colors.infoBg,
+    borderColor: colors.infoBorder,
     borderWidth: 1,
-    borderColor: glass.border,
-    padding: spacing.xs,
-    backgroundColor: colors.surface,
+    borderRadius: radius.sm,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 6,
   },
-  modalManifestEmpty: {
+  markAtSchoolBtnText: {
     ...typography.caption,
+    color: colors.info,
+    fontWeight: '700',
+  },
+  modalActionGroup: {
+    marginTop: spacing.md,
+    gap: spacing.sm,
+  },
+  primaryActionBtn: {
+    backgroundColor: portalAccents.gateman.from,
+    borderRadius: radius.md,
+    minHeight: 46,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: spacing.md,
+  },
+  primaryActionBtnText: {
+    ...typography.bodyBold,
+    color: palette.white,
+  },
+  cancelActionBtn: {
+    borderRadius: radius.md,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cancelActionBtnText: {
+    ...typography.bodyBold,
     color: colors.textMuted,
-    textAlign: 'center',
-    paddingVertical: spacing.md,
+  },
+
+  // Fleet modal filter pills
+  filterPillsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginBottom: spacing.md,
+  },
+  filterPill: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: radius.full,
+    backgroundColor: colors.surfaceStrong,
+    borderWidth: 1,
+    borderColor: colors.borderStrong,
+  },
+  filterPillActive: {
+    backgroundColor: portalAccents.gateman.from,
+    borderColor: portalAccents.gateman.from,
+  },
+  filterPillText: {
+    ...typography.caption,
+    fontWeight: '600',
+    color: colors.textSecondary,
+  },
+  filterPillTextActive: {
+    color: palette.white,
+  },
+  fleetModalItemPressable: {
+    marginBottom: spacing.xs,
+  },
+  modalBusItemBottom: {
+    marginTop: spacing.sm,
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+  },
+
+  // Bus Deep Dive Modal
+  deepDiveHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: spacing.sm,
+  },
+  conductorCard: {
+    marginVertical: spacing.sm,
+    borderRadius: radius.md,
+  },
+  conductorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: spacing.sm,
+  },
+  avatarGradient: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarText: {
+    ...typography.bodyBold,
+    color: palette.white,
+  },
+  metricsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+    marginVertical: spacing.sm,
+    paddingVertical: spacing.sm,
+    backgroundColor: colors.surfaceStrong,
+    borderRadius: radius.md,
+  },
+  metricItem: {
+    alignItems: 'center',
+  },
+  metricDivider: {
+    width: 1,
+    height: 30,
+    backgroundColor: colors.divider,
+  },
+  mapContainer: {
+    height: 160,
+    borderRadius: radius.md,
+    overflow: 'hidden',
+    marginVertical: spacing.sm,
+  },
+  mapFill: {
+    flex: 1,
+  },
+  deepDiveActionRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    marginTop: spacing.sm,
+  },
+  primaryDeepDiveBtn: {
+    flex: 1,
+    backgroundColor: colors.infoBg,
+    borderColor: colors.infoBorder,
+    borderWidth: 1,
+    borderRadius: radius.md,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  primaryDeepDiveBtnText: {
+    ...typography.bodyBold,
+    color: colors.info,
+  },
+  secondaryDeepDiveBtn: {
+    flex: 1,
+    backgroundColor: 'rgba(79,70,229,0.1)',
+    borderRadius: radius.md,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  secondaryDeepDiveBtnText: {
+    ...typography.bodyBold,
+    color: colors.primary,
+  },
+  dangerDeepDiveBtn: {
+    marginTop: spacing.sm,
+    backgroundColor: colors.errorBg,
+    borderColor: colors.dangerBorder,
+    borderWidth: 1,
+    borderRadius: radius.md,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dangerDeepDiveBtnText: {
+    ...typography.bodyBold,
+    color: colors.error,
+  },
+  manifestTitle: {
+    marginTop: spacing.lg,
+    marginBottom: spacing.xs,
   },
   manifestRow: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
+    alignItems: 'center',
     paddingVertical: spacing.xs,
-    paddingHorizontal: spacing.sm,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: glass.border,
-  },
-  manifestRowLeft: {
-    flex: 1,
-    gap: 1,
-  },
-  manifestRowName: {
-    ...typography.label,
-    fontSize: 13,
-    color: colors.textPrimary,
-  },
-  manifestRowSub: {
-    ...typography.caption,
-    fontSize: 10,
-    color: colors.textMuted,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.divider,
   },
 
-  // Full Screen Map Modal
-  fullMapSafe: {
-    flex: 1,
-    backgroundColor: colors.background,
+  // Walk-In Modal Inputs
+  inputGroup: {
+    marginBottom: spacing.sm,
   },
-  fullMapHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: glass.border,
-    backgroundColor: colors.surfaceStrong,
-  },
-  fullMapTitle: {
-    ...typography.heading,
+  modalTextInput: {
+    fontSize: typography.body.fontSize,
+    lineHeight: typography.body.lineHeight,
     color: colors.textPrimary,
-  },
-  fullMapSubtitle: {
-    ...typography.caption,
-    color: colors.textMuted,
-  },
-  fullMapCloseBtn: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    marginTop: 4,
+    minHeight: 44,
     borderRadius: radius.sm,
-    backgroundColor: colors.surfaceStrong,
     borderWidth: 1,
-    borderColor: glass.border,
-  },
-  fullMapCloseText: {
-    ...typography.label,
-    fontSize: 13,
-    color: colors.textPrimary,
-  },
-  fullMapView: {
-    flex: 1,
+    borderColor: colors.borderStrong,
+    backgroundColor: colors.surfaceStrong,
+    paddingHorizontal: spacing.sm,
   },
 });

@@ -3,7 +3,7 @@ import { create } from 'zustand';
 export type BusStatus = 'Active' | 'Delayed' | 'Offline' | 'En Route' | 'At School';
 export type RequestStatus = 'Pending' | 'Approved' | 'Rejected';
 export type EntryMethod = 'Bus' | 'Parent Pickup' | 'Self';
-export type NotifCategory = 'critical' | 'parent_action' | 'admin';
+export type NotifCategory = 'bus_fleet' | 'parent_gate' | 'requests' | 'admin';
 export type PickupStatus = 'Pending' | 'Verified' | 'Denied';
 export type LogAction = 'APPROVED' | 'REJECTED' | 'AUTHORIZED' | 'DENIED' | 'ALERT_RESOLVED' | 'SOS_SENT' | 'BUS_OFFLINE' | 'OVERRIDE';
 
@@ -193,7 +193,9 @@ export interface GatemanV2State {
   notifications: GateNotification[];
   shiftLog: ShiftLogEntry[];
   contacts: AdminContact[];
+  gateOpen: boolean;
   gateLockedDown: boolean;
+  adminOverride: { active: boolean; openedBy: string } | null;
 
   // Legacy compatibility fields
   fleet: FleetBus[];
@@ -210,7 +212,14 @@ export interface GatemanV2State {
   denyPickup: (id: string) => void;
   approveRequest: (id: string) => void;
   rejectRequest: (id: string) => void;
+  openGate: () => void;
+  closeGate: () => void;
   toggleGateLock: () => void;
+  /** Returns buses still outside. Empty means the gate closed. */
+  attemptCloseGate: () => GateBus[];
+  forceRecoverAndClose: () => void;
+  markBusAtSchool: (busId: string) => void;
+  adminOverrideGate: (open: boolean, by?: string) => void;
   addShiftLog: (entry: { action: LogAction; description: string }) => void;
   forceBusOffline: (busId: string) => void;
   pingConductor: (busId: string) => void;
@@ -224,6 +233,8 @@ export interface GatemanV2State {
   updateAttendanceStatus: (rosterId: string, status: AttendanceStatus) => void;
   submitModificationRequest: (text: string) => void;
 }
+
+export type GatemanState = GatemanV2State;
 
 // ─── Mock data — Delhi-NCR region ────────────────────────────────
 function minsAgo(m: number) { return new Date(Date.now() - m * 60000).toISOString(); }
@@ -268,12 +279,14 @@ const ROUTING_REQUESTS: RoutingRequest[] = [
 ];
 
 const NOTIFICATIONS: GateNotification[] = [
-  { id: 'n1', category: 'critical',      title: 'Bus Delayed — DL-1PC-4521',         body: 'Ramesh Yadav reports 15-min delay due to traffic near NH-48.',          read: false, timestamp: minsAgo(4),  actionable: true,  referenceId: 'b1' },
-  { id: 'n2', category: 'critical',      title: 'Geofence Breach — UP-85-CN-1187',   body: 'Bus is 1.8 km off designated route near Mathura bypass.',               read: false, timestamp: minsAgo(9),  actionable: true,  referenceId: 'b3' },
-  { id: 'n3', category: 'parent_action', title: 'Early Pickup — Aarav Sharma',        body: 'Neha Sharma requesting early pickup at 10:30 AM. Reason: Medical.',     read: false, timestamp: minsAgo(8),  actionable: true,  referenceId: 'ep1' },
-  { id: 'n4', category: 'parent_action', title: 'Parent Arriving — Sanya Malhotra',   body: 'Amit Malhotra is 5 minutes away for emergency early pickup.',          read: false, timestamp: minsAgo(3),  actionable: true,  referenceId: 'ep2' },
-  { id: 'n5', category: 'admin',         title: 'Admin Broadcast — Early Dismissal',  body: 'School closing at 1 PM today. All buses depart by 1:15 PM. — Principal Rao.', read: true, timestamp: minsAgo(45), actionable: false },
-  { id: 'n6', category: 'admin',         title: 'Transport Circular — Bus 5 Off-Duty',body: 'HR-51-DE-2245 under maintenance today. Students rerouted to DL-1PC-4521.',read: true, timestamp: minsAgo(90), actionable: false },
+  { id: 'n1', category: 'bus_fleet',   title: 'Bus Delayed — DL-1PC-4521',         body: 'Ramesh Yadav reports 15-min delay due to traffic near NH-48.',          read: false, timestamp: minsAgo(4),  actionable: true,  referenceId: 'b1' },
+  { id: 'n2', category: 'bus_fleet',   title: 'Geofence Breach — UP-85-CN-1187',   body: 'Bus is 1.8 km off designated route near Mathura bypass.',               read: false, timestamp: minsAgo(9),  actionable: true,  referenceId: 'b3' },
+  { id: 'n3', category: 'parent_gate', title: 'Early Pickup — Aarav Sharma',        body: 'Neha Sharma requesting early pickup at 10:30 AM. Reason: Medical.',     read: false, timestamp: minsAgo(8),  actionable: true,  referenceId: 'ep1' },
+  { id: 'n4', category: 'parent_gate', title: 'Parent Arriving — Sanya Malhotra',   body: 'Amit Malhotra is 5 minutes away for emergency early pickup.',          read: false, timestamp: minsAgo(3),  actionable: true,  referenceId: 'ep2' },
+  { id: 'n5', category: 'requests',    title: 'Stop Change Request — Aarav Sharma', body: 'Parent requests stop change from Sector 45 to Sector 50, Gurugram.',  read: false, timestamp: minsAgo(12), actionable: true,  referenceId: 'rr1' },
+  { id: 'n6', category: 'requests',    title: 'Bus Transfer Request — Ishita Verma',body: 'Parent requests transfer from UP-80-BT-3312 to DL-1PC-4521.',        read: false, timestamp: minsAgo(35), actionable: true,  referenceId: 'rr2' },
+  { id: 'n7', category: 'admin',       title: 'Admin Broadcast — Early Dismissal',  body: 'School closing at 1 PM today. All buses depart by 1:15 PM. — Principal Rao.', read: true, timestamp: minsAgo(45), actionable: false },
+  { id: 'n8', category: 'admin',       title: 'Transport Circular — Bus 5 Off-Duty',body: 'HR-51-DE-2245 under maintenance today. Students rerouted to DL-1PC-4521.',read: true, timestamp: minsAgo(90), actionable: false },
 ];
 
 const SHIFT_LOG: ShiftLogEntry[] = [
@@ -389,7 +402,9 @@ export const useGatemanStore = create<GatemanV2State>((set, get) => ({
   notifications: NOTIFICATIONS,
   shiftLog: SHIFT_LOG,
   contacts: CONTACTS,
+  gateOpen: true,
   gateLockedDown: false,
+  adminOverride: null,
 
   fleet: INITIAL_FLEET,
   profileApprovals: INITIAL_APPROVALS,
@@ -429,6 +444,12 @@ export const useGatemanStore = create<GatemanV2State>((set, get) => ({
     if (!req) return;
     set((s) => ({
       routingRequests: s.routingRequests.map((r) => r.id === id ? { ...r, status: 'Approved' } : r),
+      students: s.students.map((student) => {
+        if (student.id !== req.studentId) return student;
+        if (req.requestType === 'Stop Change' && req.newStop) return { ...student, assignedStop: req.newStop };
+        if (req.requestType === 'Bus Transfer' && req.toBusId) return { ...student, busId: req.toBusId };
+        return student;
+      }),
       shiftLog: [{ id: `sl-${Date.now()}`, action: 'APPROVED', description: `Approved ${req.requestType} for ${req.studentName}`, timestamp: new Date().toISOString() }, ...s.shiftLog],
     }));
   },
@@ -442,8 +463,62 @@ export const useGatemanStore = create<GatemanV2State>((set, get) => ({
     }));
   },
 
+  openGate: () =>
+    set((s) => ({
+      gateOpen: true,
+      gateLockedDown: false,
+      shiftLog: [{ id: `sl-${Date.now()}`, action: 'OVERRIDE', description: 'Campus gate opened.', timestamp: new Date().toISOString() }, ...s.shiftLog],
+    })),
+
+  closeGate: () =>
+    set((s) => ({
+      gateOpen: false,
+      gateLockedDown: true,
+      shiftLog: [{ id: `sl-${Date.now()}`, action: 'OVERRIDE', description: 'Campus gate closed.', timestamp: new Date().toISOString() }, ...s.shiftLog],
+    })),
+
   toggleGateLock: () =>
-    set((s) => ({ gateLockedDown: !s.gateLockedDown })),
+    set((s) => ({ gateOpen: !s.gateOpen, gateLockedDown: s.gateOpen })),
+
+  attemptCloseGate: () => {
+    const outside = get().buses.filter((b) => b.status !== 'At School' && b.status !== 'Offline');
+    if (outside.length === 0) {
+      set({ gateOpen: false, gateLockedDown: true });
+      get().addShiftLog({ action: 'OVERRIDE', description: 'Gate closed — all buses confirmed at school' });
+    }
+    return outside;
+  },
+
+  forceRecoverAndClose: () => {
+    set((s) => ({
+      buses: s.buses.map((b) => ({ ...b, status: 'At School' as BusStatus, speedKmh: 0, etaMinutes: 0 })),
+      gateOpen: false,
+      gateLockedDown: true,
+    }));
+    get().addShiftLog({ action: 'OVERRIDE', description: 'Gate force-closed — all buses manually placed at school' });
+  },
+
+  markBusAtSchool: (busId) => {
+    const bus = get().buses.find((item) => item.id === busId);
+    if (!bus) return;
+    set((s) => ({
+      buses: s.buses.map((item) => item.id === busId ? { ...item, status: 'At School' as BusStatus, speedKmh: 0, etaMinutes: 0 } : item),
+      shiftLog: [{ id: `sl-${Date.now()}`, action: 'OVERRIDE', description: `Marked ${bus.busNumber} at school after the conductor phone dropped.`, timestamp: new Date().toISOString() }, ...s.shiftLog],
+    }));
+  },
+
+  adminOverrideGate: (open, by = 'Admin') =>
+    set((s) => ({
+      gateOpen: open,
+      gateLockedDown: !open,
+      adminOverride: { active: true, openedBy: by },
+      shiftLog: [{
+        id: `sl-${Date.now()}`,
+        action: 'OVERRIDE',
+        description: open ? `${by} override: Campus gate opened.` : `${by} override: Campus gate closed.`,
+        timestamp: new Date().toISOString(),
+      }, ...s.shiftLog],
+    })),
 
   addShiftLog: (entry) =>
     set((s) => ({ shiftLog: [{ ...entry, id: `sl-${Date.now()}`, timestamp: new Date().toISOString() }, ...s.shiftLog] })),
