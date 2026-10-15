@@ -1,63 +1,65 @@
-# Frontend handoff — continue from here
+# TheMinaker frontend status
 
-Read this file before editing. Work only in `apps/mobile`. Do not change `apps/api`, `apps/web`, or `database/`. Do not add backend calls. Parent, gateman, and teacher screens use Zustand mock data.
+Shared status for all three tools working in this project: Cursor, Antigravity, and Gemini. Read this before editing the mobile app. Update this file when a portal is finished or a rule changes, so the others stay in sync.
 
-The multi-CLI agent folder (`AgentDirectory`) was removed on purpose. Do not recreate it. Do not add wake tickets, a supervisor, or Cursor hooks for agents.
+They share one folder, `C:\Users\ps639\Desktop\TheMinaker`, and they work on different tasks at the same time. Before you edit, run `git status --short` and leave files another session already changed. Do not revert, reformat, or rewrite those paths.
 
-Repo: `C:\Users\ps639\Desktop\TheMinaker`
-Mobile app: `apps/mobile`
-Run from `apps/mobile`: `npx expo start -c`
-Or from the repo root: `start.bat` (Docker, API, web, and Expo). Frontend work only needs the Expo window.
+## Scope
 
-Stack: Expo SDK 57, Expo Router, TypeScript, Reanimated, `expo-blur`, `expo-haptics`, `expo-linear-gradient`, `react-native-svg`, `react-native-maps`, Zustand. Design tokens: `apps/mobile/src/design/tokens.ts`. Import colors, glass, spacing, radius, typography, shadows, palette, and portalAccents from there.
+Frontend work is `apps/mobile` only. Do not change `apps/api`, `apps/web`, or `database/`. Do not add API calls from the phone UI. Screens use Zustand mock data until the user asks to connect the API.
 
-## Do not rebuild these
+`AgentDirectory`, wake tickets, and the agent supervisor were removed. Do not recreate them.
 
-These screens are done. Change them only if the user asks.
+## How to run
 
-- Splash: `apps/mobile/app/(auth)/onboarding.tsx`. Dark hero, bus and school illustration, stars, tagline under the bus, cubic white wave into the white lower panel, Get Started.
-- Portal picker: `apps/mobile/app/(auth)/portal-showcase.tsx`. Four glass tiles (Parent, Gateman, Conductor, Admin) and a carousel. `portal-select.tsx` is the old picker. Leave it unused.
-- Parent login and sign-up under `apps/mobile/app/(auth)/parent/`. A signed-in parent goes to `/(parent)`.
-- Parent portal, four tabs in `apps/mobile/app/(parent)/`:
-  - `index.tsx` Live: one child's bus and stop on the map, ETA card, taking-the-bus switch (confirm before marking absent or resuming), small call-conductor button, proximity banner when the bus is within 600 m.
-  - `attendance.tsx` History: October calendar, day timeline, arrival-alert switch (off requires a warning).
-  - `support.tsx` Actions tab (the label is Actions, the file is still `support.tsx`): four exception rows with switches and confirm dialogs. View details is on the first three only, not on "Remind me before the stop". The details sheet is a month calendar with previous/next and a timeline for the tapped day.
-  - `profile.tsx`: child card with a small stop map (tap opens the pin sheet), gate passes, transport fee, boarding-point change, contact update. No medical card. No bus-change request. No edit-child request.
-- Shared parent UI: `src/components/parent/` and `src/store/parent.store.ts`.
-- Child switcher is a horizontal avatar row with a dashed Add button. A new child is `status: 'Pending'` and Live stays locked behind "Awaiting School Admin Verification".
-- Contact update mock OTP is `4821`.
-- Glass sheets use a solid off-white panel (`GlassModal`) so text behind them does not show through.
+From `apps/mobile`: `npx expo start -c`
+From the repo root, `start.bat` also starts Docker, the API, and the web dashboard. Phone UI work only needs Expo.
+Phone app: Expo Go. `react-native-worklets` stays at `0.10.1`. Do not upgrade it.
 
-## Routing today
+Stack: Expo SDK 57, Expo Router, TypeScript, Reanimated, `expo-blur`, `expo-haptics`, `expo-linear-gradient`, `react-native-svg`, `react-native-maps`, Zustand.
+Tokens: `apps/mobile/src/design/tokens.ts` (`colors`, `glass`, `spacing`, `radius`, `typography`, `shadows`, `palette`, `portalAccents`).
+
+## Done — do not rebuild unless the user asks
+
+- Splash: `apps/mobile/app/(auth)/onboarding.tsx`. Dark hero, bus on the wavy road, school silhouette, stars, tagline under the bus, cubic white wave into the lower white panel, Get Started.
+- Portal picker: `apps/mobile/app/(auth)/portal-showcase.tsx`. Four tiles (Parent, Gateman, Conductor, Admin) and a carousel. `portal-select.tsx` is the old unused picker.
+- Parent auth: `apps/mobile/app/(auth)/parent/`. Signed-in parent opens `/(parent)`.
+- Parent portal, mock store `src/store/parent.store.ts`, components in `src/components/parent/`:
+  - Live `app/(parent)/index.tsx`: selected child's bus and stop, ETA, taking-the-bus switch (confirm before absent or resume), small call-conductor control, proximity banner inside 600 m.
+  - History `app/(parent)/attendance.tsx`: month calendar, day timeline including exception logs, arrival-alert switch (turning off asks first).
+  - Actions `app/(parent)/support.tsx` (tab label Actions, file name `support.tsx`): four exception rows with switches and confirm dialogs. View details is on the first three only, not on "Remind me before the stop". Details sheet has previous/next month and a timeline for the tapped day.
+  - Profile `app/(parent)/profile.tsx`: child card, small stop map (tap opens the pin sheet), gate passes, transport fee, boarding-point change, contact update. No medical card, no bus-change request, no edit-child request.
+- Child row: horizontal avatars plus a dashed Add. A new child is `Pending` and Live stays behind "Awaiting School Admin Verification".
+- Contact update mock code: `4821`.
+- `GlassModal` uses a solid off-white sheet so text behind it does not show through.
+
+## Routing now
 
 `apps/mobile/app/index.tsx`
 
 - Signed out: onboarding.
 - Parent: `/(parent)`.
 - Gateman (`GATEKEEPER`): `/(gateman)`.
-- Teacher, conductor, and school admin: `/(auth)/signed-in` hold screen.
+- Teacher, conductor, school admin: `/(auth)/signed-in`.
 
-Teacher screen files exist under `apps/mobile/app/(teacher)/` and a copy under `apps/mobile/held/teacher-portal/`. They are not the next task. Do not route teachers into that portal unless the user asks. The user will add the teacher portal after the rest of the app.
+Teacher files exist at `apps/mobile/app/(teacher)/` and a spare copy at `apps/mobile/held/teacher-portal/`. Do not route teachers there unless the user asks. Teacher comes after the other portals.
 
-## Next frontend work
+## Not finished
 
-Build the remaining phone portals in the same glass style, still on mock Zustand data, then wire each one from `app/index.tsx` instead of the signed-in hold.
+Still mock UI, same glass system, then point `app/index.tsx` at the portal instead of the hold screen.
 
-1. Conductor. `app/(conductor)/` has a trip screen and a manifest. They are not the finished glass portal.
-2. School admin. `app/(school-admin)/_layout.tsx` lists Dashboard, Attendance, and Students, but only `index.tsx` exists. Attendance and Students tabs will crash until those files exist. Add roster, staff, fleet, and settings only when the user asks. No grades.
-3. Gateman is already a glass portal (fleet, inbox, attendance, settings). Leave it unless the user asks for a change.
+- Conductor: `app/(conductor)/` trip and manifest are early screens, not the finished portal.
+- School admin: `app/(school-admin)/_layout.tsx` expects Attendance and Students tabs, but only `index.tsx` exists. Those missing files will fail if the tabs are opened. No grades.
+- Gateman portal (fleet, inbox, attendance, settings) already exists. Leave it unless the user asks for a change.
 
-## Rules that already bit us
+## Shared UI rules
 
-- Do not call `setState` inside `TextInput` `onFocus`. That makes Android jump focus to the next field. Use `AppTextInput` from `src/components/glass/AppTextInput.tsx`.
-- On Android, do not put `TextInput` inside `BlurView`. `GlassCard` already skips blur on Android.
-- Do not set Android `elevation` on a transparent view. It paints white boxes behind text. Shadows use `boxShadow` with `elevation: 0`.
-- Do not put a Reanimated layout animation (`entering={FadeInDown}`) and an animated `opacity` style on the same view. Wrap one inside the other.
-- Parent toasts must be a solid `View` with the text inside, not a transparent `Text` that doubles the message.
-- Parent tab content needs bottom padding (about 140) so it does not show through the frosted tab bar.
-- `react-native-worklets` must stay at `0.10.1` to match Expo Go. Do not upgrade it.
-- No student QR codes. Attendance is a roster.
-
-## Check your work
-
-From `apps/mobile`: `npx tsc --noEmit`. Reload Expo with `npx expo start -c` after native or cache-sensitive edits. Do not commit or push unless the user asks.
+- Text fields use `src/components/glass/AppTextInput.tsx`. Do not call `setState` inside `onFocus`. That makes Android jump to the next field.
+- On Android, do not put a text field inside `BlurView`. `GlassCard` already skips blur there.
+- Do not set Android `elevation` on a transparent view. It paints white behind text. Use `boxShadow` and `elevation: 0`.
+- Do not put `entering={FadeInDown}` and an animated `opacity` on the same view.
+- Toasts are a solid `View` with the text inside.
+- Parent lists need about 140 of bottom padding so they clear the frosted tab bar.
+- Attendance is a roster. No student QR codes.
+- Do not commit or push unless the user asks.
+- From `apps/mobile`, `npx tsc --noEmit` before you stop.
