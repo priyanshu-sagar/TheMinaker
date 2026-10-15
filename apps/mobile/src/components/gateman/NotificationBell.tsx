@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react';
 import {
+  Alert,
   Dimensions,
+  Linking,
   Modal,
   Pressable,
   ScrollView,
@@ -10,6 +12,7 @@ import {
 } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { Bell, X } from 'lucide-react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { AnimatedPressable } from '@/components/glass/AnimatedPressable';
 import { GlassCard } from '@/components/glass/GlassCard';
 import {
@@ -21,7 +24,11 @@ import {
   spacing,
   typography,
 } from '@/design/tokens';
-import { NotifCategory, useGatemanStore } from '@/store/gateman.store';
+import {
+  GateNotification,
+  NotifCategory,
+  useGatemanStore,
+} from '@/store/gateman.store';
 
 const SCREEN_H = Dimensions.get('window').height;
 
@@ -48,6 +55,19 @@ function getCategoryColor(cat: NotifCategory): string {
   }
 }
 
+function getCategoryLabel(cat: NotifCategory): string {
+  switch (cat) {
+    case 'bus_fleet':
+      return 'Fleet Alert';
+    case 'parent_gate':
+      return 'Parent & Gate';
+    case 'requests':
+      return 'Routing Request';
+    case 'admin':
+      return 'Admin Circular';
+  }
+}
+
 function formatTime(iso: string) {
   try {
     const d = new Date(iso);
@@ -66,9 +86,19 @@ export function NotificationBell() {
   const notifications = useGatemanStore((state) => state.notifications);
   const markNotifRead = useGatemanStore((state) => state.markNotifRead);
   const markAllNotifsRead = useGatemanStore((state) => state.markAllNotifsRead);
+  const earlyPickups = useGatemanStore((state) => state.earlyPickups);
+  const routingRequests = useGatemanStore((state) => state.routingRequests);
+  const buses = useGatemanStore((state) => state.buses);
+  const verifyPickup = useGatemanStore((state) => state.verifyPickup);
+  const denyPickup = useGatemanStore((state) => state.denyPickup);
+  const approveRequest = useGatemanStore((state) => state.approveRequest);
+  const rejectRequest = useGatemanStore((state) => state.rejectRequest);
+  const pingConductor = useGatemanStore((state) => state.pingConductor);
+  const markBusAtSchool = useGatemanStore((state) => state.markBusAtSchool);
 
   const [open, setOpen] = useState(false);
   const [filter, setFilter] = useState<FilterKey>('all');
+  const [selectedNotif, setSelectedNotif] = useState<GateNotification | null>(null);
 
   const unread = notifications.filter((item) => !item.read).length;
 
@@ -76,6 +106,111 @@ export function NotificationBell() {
     if (filter === 'all') return notifications;
     return notifications.filter((item) => item.category === filter);
   }, [notifications, filter]);
+
+  // Resolve linked item
+  const linkedPickup = useMemo(() => {
+    if (!selectedNotif?.referenceId) return null;
+    return earlyPickups.find((p) => p.id === selectedNotif.referenceId) || null;
+  }, [selectedNotif, earlyPickups]);
+
+  const linkedRequest = useMemo(() => {
+    if (!selectedNotif?.referenceId) return null;
+    return routingRequests.find((r) => r.id === selectedNotif.referenceId) || null;
+  }, [selectedNotif, routingRequests]);
+
+  const linkedBus = useMemo(() => {
+    if (!selectedNotif?.referenceId) return null;
+    return buses.find((b) => b.id === selectedNotif.referenceId) || null;
+  }, [selectedNotif, buses]);
+
+  function handleOpenNotif(item: GateNotification) {
+    markNotifRead(item.id);
+    setSelectedNotif(item);
+  }
+
+  function handleDirectVerifyPickup(id: string, notifId: string) {
+    Alert.alert('Confirm Authorization', 'Authorize student early pickup at the gate?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Authorize',
+        onPress: () => {
+          verifyPickup(id);
+          markNotifRead(notifId);
+          setSelectedNotif(null);
+          Alert.alert('Authorized', 'Early pickup successfully authorized and recorded.');
+        },
+      },
+    ]);
+  }
+
+  function handleDirectDenyPickup(id: string, notifId: string) {
+    Alert.alert('Deny Pickup', 'Are you sure you want to deny this pickup?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Deny',
+        style: 'destructive',
+        onPress: () => {
+          denyPickup(id);
+          markNotifRead(notifId);
+          setSelectedNotif(null);
+          Alert.alert('Denied', 'Early pickup request denied.');
+        },
+      },
+    ]);
+  }
+
+  function handleDirectApproveRequest(id: string, notifId: string) {
+    Alert.alert('Approve Request', 'Approve this routing modification request?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Approve',
+        onPress: () => {
+          approveRequest(id);
+          markNotifRead(notifId);
+          setSelectedNotif(null);
+          Alert.alert('Approved', 'Routing modification request approved.');
+        },
+      },
+    ]);
+  }
+
+  function handleDirectRejectRequest(id: string, notifId: string) {
+    Alert.alert('Reject Request', 'Reject this routing modification request?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Reject',
+        style: 'destructive',
+        onPress: () => {
+          rejectRequest(id);
+          markNotifRead(notifId);
+          setSelectedNotif(null);
+          Alert.alert('Rejected', 'Routing request has been rejected.');
+        },
+      },
+    ]);
+  }
+
+  function handleDirectPingConductor(busId: string, notifId: string) {
+    pingConductor(busId);
+    markNotifRead(notifId);
+    setSelectedNotif(null);
+    Alert.alert('Ping Sent', 'High-priority ping dispatched to conductor.');
+  }
+
+  function handleDirectMarkAtSchool(busId: string, notifId: string) {
+    Alert.alert('Mark At School', 'Place this bus at the school gate?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Confirm',
+        onPress: () => {
+          markBusAtSchool(busId);
+          markNotifRead(notifId);
+          setSelectedNotif(null);
+          Alert.alert('Updated', 'Bus marked as At School.');
+        },
+      },
+    ]);
+  }
 
   return (
     <>
@@ -185,7 +320,7 @@ export function NotificationBell() {
                   <GlassCard padded={false} style={shadows.sm}>
                     <AnimatedPressable
                       haptic="light"
-                      onPress={() => markNotifRead(item.id)}
+                      onPress={() => handleOpenNotif(item)}
                       style={styles.cardInner}
                     >
                       {/* Left colored strip: 4px wide, full height */}
@@ -213,10 +348,10 @@ export function NotificationBell() {
                           <View style={styles.actionRow}>
                             <AnimatedPressable
                               haptic="medium"
-                              onPress={() => markNotifRead(item.id)}
+                              onPress={() => handleOpenNotif(item)}
                               style={styles.reviewBtn}
                             >
-                              <Text style={styles.reviewBtnText}>Review →</Text>
+                              <Text style={styles.reviewBtnText}>Review & Resolve →</Text>
                             </AnimatedPressable>
                           </View>
                         ) : null}
@@ -227,6 +362,133 @@ export function NotificationBell() {
               ))}
             </ScrollView>
           </View>
+        </View>
+      </Modal>
+
+      {/* Direct Resolution Detail Modal */}
+      <Modal
+        visible={Boolean(selectedNotif)}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setSelectedNotif(null)}
+      >
+        <View style={styles.detailBackdrop}>
+          <Pressable style={StyleSheet.absoluteFill} onPress={() => setSelectedNotif(null)} />
+          {selectedNotif && (
+            <View style={styles.detailContainer}>
+              <GlassCard style={shadows.lg}>
+                {/* Header */}
+                <View style={styles.detailHeader}>
+                  <View style={[styles.detailCategoryPill, { backgroundColor: getCategoryColor(selectedNotif.category) + '22' }]}>
+                    <Text style={[styles.detailCategoryText, { color: getCategoryColor(selectedNotif.category) }]}>
+                      {getCategoryLabel(selectedNotif.category)}
+                    </Text>
+                  </View>
+                  <AnimatedPressable haptic="light" onPress={() => setSelectedNotif(null)} style={styles.closeBtn}>
+                    <X size={16} color={colors.textMuted} />
+                  </AnimatedPressable>
+                </View>
+
+                <Text style={styles.detailTitle}>{selectedNotif.title}</Text>
+                <Text style={styles.detailTime}>{formatTime(selectedNotif.timestamp)}</Text>
+                <Text style={styles.detailBody}>{selectedNotif.body}</Text>
+
+                {/* Linked Early Pickup Resolution */}
+                {linkedPickup && (
+                  <View style={styles.linkedBlock}>
+                    <Text style={styles.linkedHeader}>Early Pickup Verification Dossier</Text>
+                    <View style={styles.metaRow}><Text style={styles.metaLabel}>Student:</Text><Text style={styles.metaVal}>{linkedPickup.studentName} ({linkedPickup.grade})</Text></View>
+                    <View style={styles.metaRow}><Text style={styles.metaLabel}>Parent:</Text><Text style={styles.metaVal}>{linkedPickup.parentName}</Text></View>
+                    <Pressable onPress={() => Linking.openURL(`tel:${linkedPickup.parentPhone}`)}>
+                      <View style={styles.metaRow}><Text style={styles.metaLabel}>Phone:</Text><Text style={[styles.metaVal, { color: portalAccents.gateman.from }]}>{linkedPickup.parentPhone} 📞</Text></View>
+                    </Pressable>
+                    <View style={styles.metaRow}><Text style={styles.metaLabel}>Reason:</Text><Text style={styles.metaValItalic}>"{linkedPickup.reason}"</Text></View>
+                    <View style={styles.metaRow}><Text style={styles.metaLabel}>Status:</Text><Text style={[styles.metaVal, { fontWeight: '700', color: linkedPickup.status === 'Verified' ? colors.success : linkedPickup.status === 'Denied' ? colors.error : colors.warning }]}>{linkedPickup.status}</Text></View>
+
+                    {linkedPickup.status === 'Pending' && (
+                      <View style={styles.directActionRow}>
+                        <AnimatedPressable haptic="heavy" style={styles.btnPrimary} onPress={() => handleDirectVerifyPickup(linkedPickup.id, selectedNotif.id)}>
+                          <LinearGradient colors={['#10B981', '#34D399']} style={styles.gradientBtn}>
+                            <Text style={styles.btnTextWhite}>✓ Verify & Authorize</Text>
+                          </LinearGradient>
+                        </AnimatedPressable>
+                        <AnimatedPressable haptic="medium" style={styles.btnDanger} onPress={() => handleDirectDenyPickup(linkedPickup.id, selectedNotif.id)}>
+                          <Text style={styles.btnTextDanger}>✕ Deny</Text>
+                        </AnimatedPressable>
+                      </View>
+                    )}
+                  </View>
+                )}
+
+                {/* Linked Routing Request Resolution */}
+                {linkedRequest && (
+                  <View style={styles.linkedBlock}>
+                    <Text style={styles.linkedHeader}>Routing Modification Details</Text>
+                    <View style={styles.metaRow}><Text style={styles.metaLabel}>Student:</Text><Text style={styles.metaVal}>{linkedRequest.studentName} ({linkedRequest.grade})</Text></View>
+                    <View style={styles.metaRow}><Text style={styles.metaLabel}>Request Type:</Text><Text style={styles.metaVal}>{linkedRequest.requestType}</Text></View>
+                    {linkedRequest.requestType === 'Stop Change' ? (
+                      <>
+                        <View style={styles.metaRow}><Text style={styles.metaLabel}>Current Stop:</Text><Text style={styles.metaVal}>{linkedRequest.oldStop}</Text></View>
+                        <View style={styles.metaRow}><Text style={styles.metaLabel}>Requested Stop:</Text><Text style={[styles.metaVal, { color: colors.success, fontWeight: '700' }]}>{linkedRequest.newStop}</Text></View>
+                      </>
+                    ) : (
+                      <View style={styles.metaRow}><Text style={styles.metaLabel}>Transfer:</Text><Text style={styles.metaVal}>{linkedRequest.fromBusNumber} ➔ {linkedRequest.toBusNumber}</Text></View>
+                    )}
+                    <View style={styles.metaRow}><Text style={styles.metaLabel}>Parent Reason:</Text><Text style={styles.metaValItalic}>"{linkedRequest.reason}"</Text></View>
+                    <View style={styles.metaRow}><Text style={styles.metaLabel}>Status:</Text><Text style={[styles.metaVal, { fontWeight: '700', color: linkedRequest.status === 'Approved' ? colors.success : linkedRequest.status === 'Rejected' ? colors.error : colors.warning }]}>{linkedRequest.status}</Text></View>
+
+                    {linkedRequest.status === 'Pending' && (
+                      <View style={styles.directActionRow}>
+                        <AnimatedPressable haptic="heavy" style={styles.btnPrimary} onPress={() => handleDirectApproveRequest(linkedRequest.id, selectedNotif.id)}>
+                          <LinearGradient colors={['#10B981', '#34D399']} style={styles.gradientBtn}>
+                            <Text style={styles.btnTextWhite}>✓ Approve Change</Text>
+                          </LinearGradient>
+                        </AnimatedPressable>
+                        <AnimatedPressable haptic="medium" style={styles.btnDanger} onPress={() => handleDirectRejectRequest(linkedRequest.id, selectedNotif.id)}>
+                          <Text style={styles.btnTextDanger}>✕ Reject</Text>
+                        </AnimatedPressable>
+                      </View>
+                    )}
+                  </View>
+                )}
+
+                {/* Linked Bus Resolution */}
+                {linkedBus && (
+                  <View style={styles.linkedBlock}>
+                    <Text style={styles.linkedHeader}>Vehicle Operational Control</Text>
+                    <View style={styles.metaRow}><Text style={styles.metaLabel}>Bus Number:</Text><Text style={styles.metaVal}>{linkedBus.busNumber}</Text></View>
+                    <View style={styles.metaRow}><Text style={styles.metaLabel}>Route:</Text><Text style={styles.metaVal}>{linkedBus.routeName}</Text></View>
+                    <View style={styles.metaRow}><Text style={styles.metaLabel}>Conductor:</Text><Text style={styles.metaVal}>{linkedBus.conductorName}</Text></View>
+                    <View style={styles.metaRow}><Text style={styles.metaLabel}>Status:</Text><Text style={[styles.metaVal, { fontWeight: '700' }]}>{linkedBus.status}</Text></View>
+
+                    <View style={styles.directActionRow}>
+                      <AnimatedPressable haptic="medium" style={styles.btnPrimary} onPress={() => handleDirectPingConductor(linkedBus.id, selectedNotif.id)}>
+                        <LinearGradient colors={[portalAccents.gateman.from, portalAccents.gateman.to]} style={styles.gradientBtn}>
+                          <Text style={styles.btnTextWhite}>Ping Conductor 📡</Text>
+                        </LinearGradient>
+                      </AnimatedPressable>
+                      {linkedBus.status !== 'At School' && (
+                        <AnimatedPressable haptic="medium" style={styles.btnSecondary} onPress={() => handleDirectMarkAtSchool(linkedBus.id, selectedNotif.id)}>
+                          <Text style={styles.btnTextSecondary}>Mark At School 🏫</Text>
+                        </AnimatedPressable>
+                      )}
+                    </View>
+                  </View>
+                )}
+
+                {/* Dismiss button for general notifs */}
+                {!linkedPickup && !linkedRequest && !linkedBus && (
+                  <View style={{ marginTop: spacing.lg }}>
+                    <AnimatedPressable haptic="medium" onPress={() => { markNotifRead(selectedNotif.id); setSelectedNotif(null); }}>
+                      <LinearGradient colors={[portalAccents.gateman.from, portalAccents.gateman.to]} style={styles.gradientBtn}>
+                        <Text style={styles.btnTextWhite}>✓ Acknowledge & Mark Resolved</Text>
+                      </LinearGradient>
+                    </AnimatedPressable>
+                  </View>
+                )}
+              </GlassCard>
+            </View>
+          )}
         </View>
       </Modal>
     </>
@@ -446,5 +708,138 @@ const styles = StyleSheet.create({
     ...typography.caption,
     fontWeight: '700',
     color: palette.white,
+  },
+  // Detail Modal styles
+  detailBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(15,23,42,0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: spacing.lg,
+  },
+  detailContainer: {
+    width: '100%',
+    maxWidth: 420,
+  },
+  detailHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.sm,
+  },
+  detailCategoryPill: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 3,
+    borderRadius: radius.sm,
+  },
+  detailCategoryText: {
+    ...typography.caption,
+    fontWeight: '700',
+  },
+  detailTitle: {
+    ...typography.title,
+    fontSize: 18,
+    color: colors.textPrimary,
+    marginBottom: 2,
+  },
+  detailTime: {
+    ...typography.caption,
+    color: colors.textMuted,
+    marginBottom: spacing.sm,
+  },
+  detailBody: {
+    ...typography.body,
+    fontSize: 14,
+    color: colors.textSecondary,
+    lineHeight: 20,
+    marginBottom: spacing.md,
+  },
+  linkedBlock: {
+    backgroundColor: 'rgba(0,0,0,0.03)',
+    borderRadius: radius.md,
+    padding: spacing.md,
+    marginTop: spacing.xs,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  linkedHeader: {
+    ...typography.bodyBold,
+    fontSize: 13,
+    color: colors.textPrimary,
+    marginBottom: spacing.sm,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  metaRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 3,
+  },
+  metaLabel: {
+    ...typography.caption,
+    color: colors.textMuted,
+  },
+  metaVal: {
+    ...typography.caption,
+    fontWeight: '600',
+    color: colors.textPrimary,
+  },
+  metaValItalic: {
+    ...typography.caption,
+    fontStyle: 'italic',
+    color: colors.textSecondary,
+    maxWidth: '65%',
+    textAlign: 'right',
+  },
+  directActionRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    marginTop: spacing.md,
+  },
+  btnPrimary: {
+    flex: 1,
+    borderRadius: radius.full,
+    overflow: 'hidden',
+  },
+  btnSecondary: {
+    flex: 1,
+    borderRadius: radius.full,
+    borderWidth: 1,
+    borderColor: colors.borderStrong,
+    backgroundColor: colors.surfaceStrong,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+  },
+  btnDanger: {
+    flex: 1,
+    borderRadius: radius.full,
+    borderWidth: 1,
+    borderColor: colors.error,
+    backgroundColor: 'rgba(244,63,94,0.08)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+  },
+  gradientBtn: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: spacing.md,
+  },
+  btnTextWhite: {
+    ...typography.bodyBold,
+    fontSize: 14,
+    color: palette.white,
+  },
+  btnTextDanger: {
+    ...typography.bodyBold,
+    fontSize: 14,
+    color: colors.error,
+  },
+  btnTextSecondary: {
+    ...typography.bodyBold,
+    fontSize: 13,
+    color: colors.textPrimary,
   },
 });
