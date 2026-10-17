@@ -47,7 +47,7 @@ export default function ShiftScreen() {
             haptic="medium"
             onPress={async () => {
               await signOut();
-              router.replace('/(auth)/portal-select');
+              router.replace('/(auth)/portal-showcase');
             }}
             style={styles.signOut}
           >

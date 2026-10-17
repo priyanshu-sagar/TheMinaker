@@ -3,8 +3,10 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import MapView, { Marker, UrlTile } from 'react-native-maps';
 import { Swipeable } from 'react-native-gesture-handler';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { router } from 'expo-router';
 import { MeshBackground } from '@/components/glass/MeshBackground';
 import { GlassCard } from '@/components/glass/GlassCard';
+import { GlassModal } from '@/components/glass/GlassModal';
 import { AnimatedPressable } from '@/components/glass/AnimatedPressable';
 import { FadeInRow } from '@/components/glass/FadeInList';
 import { ParentChrome } from '@/components/parent/ParentChrome';
@@ -14,6 +16,7 @@ import { StopDraft, StopMapModal } from '@/components/parent/StopMapModal';
 import { StopReasonModal } from '@/components/parent/ContactUpdateModal';
 import { colors, palette, portalAccents, radius, shadows, spacing, typography } from '@/design/tokens';
 import { useActiveChild, useParentStore } from '@/store/parent.store';
+import { useAuthStore } from '@/store/auth.store';
 
 export default function ParentProfileScreen() {
   const child = useActiveChild();
@@ -26,6 +29,9 @@ export default function ParentProfileScreen() {
   const [draft, setDraft] = useState<StopDraft | null>(null);
   const [openId, setOpenId] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  const [signOutOpen, setSignOutOpen] = useState(false);
+  const user = useAuthStore((state) => state.user);
+  const linked = useParentStore((state) => state.children.length);
 
   function statusLine(audience: string, kindLabel: string) {
     return audience === 'Gateman' ? `${kindLabel} — Pending Gateman Approval` : `${kindLabel} — Pending Admin Approval`;
@@ -97,6 +103,16 @@ export default function ParentProfileScreen() {
               </Swipeable>
             </FadeInRow>
           ))}
+          <GlassCard style={[shadows.md, styles.accountCard]}>
+            <Text style={styles.kicker}>Account & session</Text>
+            <Text style={styles.name}>{user?.fullName || 'Parent'}</Text>
+            <Text style={styles.line}>{child?.parentPhone || 'Registered mobile on file'}</Text>
+            <Text style={styles.line}>{linked} {linked === 1 ? 'student' : 'students'} linked · Active session</Text>
+            <Text style={styles.hint}>TheMinaker Campus Transit System</Text>
+            <AnimatedPressable haptic="medium" onPress={() => setSignOutOpen(true)} style={styles.signOut}>
+              <Text style={styles.signOutText}>Sign out of Parent Portal</Text>
+            </AnimatedPressable>
+          </GlassCard>
         </ScrollView>
         <ParentToast message={toast} onDone={() => setToast(null)} />
       </SafeAreaView>
@@ -129,6 +145,15 @@ export default function ParentProfileScreen() {
           setToast('Contact update is pending admin approval.');
         }}
       />
+      <GlassModal visible={signOutOpen} title="Sign out of Parent Portal?" onClose={() => setSignOutOpen(false)}>
+        <Text style={styles.line}>You will be signed out of live tracking and alerts for {child?.name ?? 'your child'}. You can sign back in anytime using your registered phone number.</Text>
+        <AnimatedPressable haptic="light" onPress={() => setSignOutOpen(false)} style={styles.cancel}>
+          <Text style={styles.actionLabel}>Cancel</Text>
+        </AnimatedPressable>
+        <AnimatedPressable haptic="medium" onPress={async () => { setSignOutOpen(false); await useAuthStore.getState().signOut(); router.replace('/(auth)/portal-showcase'); }} style={styles.confirmOut}>
+          <Text style={styles.confirmOutText}>Confirm sign out</Text>
+        </AnimatedPressable>
+      </GlassModal>
     </MeshBackground>
   );
 }
@@ -163,4 +188,10 @@ const styles = StyleSheet.create({
   requestTitle: { ...typography.bodyBold },
   withdraw: { backgroundColor: colors.error, justifyContent: 'center', paddingHorizontal: spacing.lg, borderRadius: radius.md, marginBottom: spacing.sm },
   withdrawText: { ...typography.bodyBold, color: palette.white, backgroundColor: 'transparent' },
+  accountCard: { marginTop: spacing.lg },
+  signOut: { marginTop: spacing.md, minHeight: 48, borderRadius: radius.md, borderWidth: 1, borderColor: colors.error, backgroundColor: 'rgba(244, 63, 94, 0.08)', alignItems: 'center', justifyContent: 'center' },
+  signOutText: { ...typography.bodyBold, color: colors.error, backgroundColor: 'transparent' },
+  cancel: { marginTop: spacing.md, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
+  confirmOut: { minHeight: 48, borderRadius: radius.full, backgroundColor: colors.error, alignItems: 'center', justifyContent: 'center' },
+  confirmOutText: { ...typography.bodyBold, color: palette.white, backgroundColor: 'transparent' },
 });

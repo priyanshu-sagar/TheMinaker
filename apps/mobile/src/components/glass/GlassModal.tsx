@@ -10,30 +10,42 @@ export function GlassModal({
   title,
   onClose,
   maxHeight = '85%',
+  fill = false,
+  scroll = true,
   children,
 }: {
   visible: boolean;
   title: string;
   onClose: () => void;
   maxHeight?: `${number}%`;
+  /** Lock the sheet to maxHeight instead of shrinking to its content. */
+  fill?: boolean;
+  /** Turn off when the sheet body is a virtualized list. */
+  scroll?: boolean;
   children: ReactNode;
 }) {
   const sheet = (
-    <View style={styles.sheet}>
+    <View style={[styles.sheet, fill ? styles.sheetFill : null]}>
       <View style={styles.header}>
         <Text style={styles.title}>{title}</Text>
         <Pressable style={styles.closeBtn} onPress={onClose} hitSlop={8}>
           <Text style={styles.closeText}>✕</Text>
         </Pressable>
       </View>
-      <ScrollView
-        contentContainerStyle={styles.body}
-        keyboardShouldPersistTaps="always"
-        keyboardDismissMode="none"
-        removeClippedSubviews={false}
-      >
-        {children}
-      </ScrollView>
+      {scroll ? (
+        <ScrollView
+          bounces={false}
+          overScrollMode="never"
+          contentContainerStyle={styles.body}
+          keyboardShouldPersistTaps="always"
+          keyboardDismissMode="none"
+          removeClippedSubviews={false}
+        >
+          {children}
+        </ScrollView>
+      ) : (
+        <View style={styles.fillBody}>{children}</View>
+      )}
     </View>
   );
 
@@ -42,11 +54,11 @@ export function GlassModal({
       <View style={styles.overlay}>
         <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
         <BlurView intensity={30} tint="dark" style={StyleSheet.absoluteFill} pointerEvents="none" />
-        <View style={[styles.sheetShadow, { maxHeight }]}>
+        <View style={[styles.sheetShadow, { maxHeight }, fill ? { height: maxHeight } : null]}>
           {Platform.OS === 'android' ? (
-            <View style={styles.sheetBlur}>{sheet}</View>
+            <View style={[styles.sheetBlur, fill ? styles.sheetFill : null]}>{sheet}</View>
           ) : (
-            <BlurView intensity={50} tint="light" style={styles.sheetBlur}>
+            <BlurView intensity={50} tint="light" style={[styles.sheetBlur, fill ? styles.sheetFill : null]}>
               {sheet}
             </BlurView>
           )}
@@ -77,6 +89,8 @@ const styles = StyleSheet.create({
     borderColor: glass.border,
   },
   sheet: { backgroundColor: palette.offWhite, maxHeight: '100%' },
+  sheetFill: { flex: 1 },
+  fillBody: { flex: 1, paddingHorizontal: spacing.lg, paddingBottom: spacing.md },
   header: {
     flexDirection: 'row',
     alignItems: 'center',

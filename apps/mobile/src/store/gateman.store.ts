@@ -1,14 +1,25 @@
 import { create } from 'zustand';
 
-export type BusStatus = 'Active' | 'Delayed' | 'Offline' | 'En Route' | 'At School';
+export type BusStatus = 'Active' | 'Delayed' | 'Offline' | 'En Route' | 'At School' | 'Standby';
 export type RequestStatus = 'Pending' | 'Approved' | 'Rejected';
 export type EntryMethod = 'Bus' | 'Parent Pickup' | 'Self';
 export type NotifCategory = 'bus_fleet' | 'parent_gate' | 'requests' | 'admin';
 export type PickupStatus = 'Pending' | 'Verified' | 'Denied';
 export type LogAction = 'APPROVED' | 'REJECTED' | 'AUTHORIZED' | 'DENIED' | 'ALERT_RESOLVED' | 'SOS_SENT' | 'BUS_OFFLINE' | 'OVERRIDE';
-
 export type FleetStatus = 'Online' | 'Offline';
 export type Coordinates = { lat: number; lng: number };
+export type RunPhase = 'morning' | 'afternoon';
+export type AuditCategory =
+  | 'gate_entry'
+  | 'bus_movement'
+  | 'boarding'
+  | 'off_location'
+  | 'delay'
+  | 'self_pickup'
+  | 'visitor'
+  | 'gate_control'
+  | 'handover';
+export type ReportSpan = '1d' | '7d' | '15d' | '30d';
 
 export interface FleetBus {
   id: string;
@@ -87,16 +98,18 @@ export interface GateBus {
   id: string;
   busNumber: string;
   routeName: string;
+  areaName: string;
   conductorName: string;
   conductorPhone: string;
   status: BusStatus;
-  coordinates: { lat: number; lng: number };
+  coordinates: Coordinates;
   speedKmh: number;
   etaMinutes: number;
-  departureTime: string; // e.g. '07:15'
+  departureTime: string;
   totalStudents: number;
   boardedCount: number;
-  lastPing: string; // ISO timestamp
+  lastPing: string;
+  delayReason?: string;
 }
 
 export interface GateStudent {
@@ -105,10 +118,20 @@ export interface GateStudent {
   grade: string;
   busId: string | null;
   currentStatus: 'On Bus' | 'At School' | 'Picked Up' | 'Absent' | 'In Transit';
-  lastSeen?: string; // ISO
+  lastSeen?: string;
   parentName: string;
   parentPhone: string;
   assignedStop: string;
+  absentToday?: boolean;
+  selfDropOff?: boolean;
+  earlyPickup?: boolean;
+  boardedAt?: string;
+  droppedAt?: string;
+  offLocation?: boolean;
+  offLocationKind?: 'boarding' | 'dropping';
+  offLocationNote?: string;
+  offLocationVerified?: boolean;
+  siblingGroup?: string;
 }
 
 export interface GateEntry {
@@ -117,9 +140,10 @@ export interface GateEntry {
   studentId: string;
   type: 'Arrival' | 'Departure';
   method: EntryMethod;
-  time: string; // ISO
+  time: string;
   authorizedBy?: string;
   busNumber?: string;
+  gatemanName?: string;
 }
 
 export interface EarlyPickup {
@@ -131,8 +155,11 @@ export interface EarlyPickup {
   parentPhone: string;
   reason: string;
   status: PickupStatus;
-  requestedAt: string; // ISO
+  requestedAt: string;
   verifiedAt?: string;
+  kind: 'Early Pickup' | 'Self Drop-off';
+  siblingGroup?: string;
+  gatemanName?: string;
 }
 
 export interface RoutingRequest {
@@ -143,19 +170,17 @@ export interface RoutingRequest {
   parentName: string;
   parentPhone: string;
   requestType: 'Stop Change' | 'Bus Transfer';
-  // Stop change
   oldStop?: string;
-  oldCoords?: { lat: number; lng: number };
+  oldCoords?: Coordinates;
   newStop?: string;
-  newCoords?: { lat: number; lng: number };
-  // Bus transfer
+  newCoords?: Coordinates;
   fromBusId?: string;
   fromBusNumber?: string;
   toBusId?: string;
   toBusNumber?: string;
   reason: string;
   status: RequestStatus;
-  submittedAt: string; // ISO
+  submittedAt: string;
 }
 
 export interface GateNotification {
@@ -164,24 +189,382 @@ export interface GateNotification {
   title: string;
   body: string;
   read: boolean;
-  timestamp: string; // ISO
+  timestamp: string;
   actionable: boolean;
   referenceId?: string;
+  action?: 'bus' | 'pickup' | 'request' | 'directive' | 'student';
 }
 
 export interface ShiftLogEntry {
   id: string;
   action: LogAction;
   description: string;
-  timestamp: string; // ISO
+  timestamp: string;
+  gatemanName?: string;
 }
 
 export interface AdminContact {
   id: string;
   name: string;
-  role: 'Conductor' | 'School Admin' | 'Principal' | 'Transport Office';
+  role: 'Conductor' | 'School Admin' | 'Principal' | 'Transport Office' | 'Reception';
   phone: string;
   available: boolean;
+}
+
+export interface FleetArea {
+  id: string;
+  name: string;
+  busIds: string[];
+}
+
+export interface AuditLog {
+  id: string;
+  category: AuditCategory;
+  title: string;
+  detail: string;
+  timestamp: string;
+  gatemanName: string;
+  subject?: string;
+}
+
+export interface VisitorPass {
+  id: string;
+  name: string;
+  kind: 'Visitor' | 'Vendor' | 'Walk-in student';
+  purpose: string;
+  time: string;
+  gatemanName: string;
+  category?: string;
+  destination?: string;
+  phone?: string;
+  badge?: string;
+  exitedAt?: string;
+}
+
+export interface AdminDirective {
+  id: string;
+  title: string;
+  body: string;
+  from: string;
+  acknowledged: boolean;
+  timestamp: string;
+}
+
+export interface HandoverReport {
+  id: string;
+  gatemanName: string;
+  incomingOfficer?: string;
+  answers: string[];
+  notes?: string;
+  timestamp: string;
+}
+
+const DAY = 24 * 60 * 60 * 1000;
+const RETENTION_MS = 30 * DAY;
+
+export function isBusOnCampus(status: BusStatus) {
+  return status === 'At School' || status === 'Standby';
+}
+
+export function minutesOfDay(clockOverride: number | null) {
+  if (clockOverride != null) return clockOverride;
+  const now = new Date();
+  return now.getHours() * 60 + now.getMinutes();
+}
+
+export function runPhaseOf(input: {
+  morningArrivalsClosed: boolean;
+  gateOpen: boolean;
+  clockOverride: number | null;
+  afternoonThresholdMinutes: number;
+}): RunPhase {
+  const now = minutesOfDay(input.clockOverride);
+  if (input.morningArrivalsClosed && input.gateOpen && now >= input.afternoonThresholdMinutes) return 'afternoon';
+  return 'morning';
+}
+
+let uniqueSeq = 0;
+export function generateUniqueId(prefix: string): string {
+  uniqueSeq += 1;
+  return `${prefix}-${Date.now()}-${uniqueSeq}-${Math.random().toString(36).slice(2, 7)}`;
+}
+
+function retain<T extends { timestamp: string }>(rows: T[]) {
+  const cutoff = Date.now() - RETENTION_MS;
+  return rows.filter((row) => new Date(row.timestamp).getTime() >= cutoff);
+}
+
+function mulberry32(seed: number) {
+  let value = seed;
+  return () => {
+    value |= 0;
+    value = (value + 0x6d2b79f5) | 0;
+    let t = Math.imul(value ^ (value >>> 15), 1 | value);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+const FIRST = ['Aarav', 'Vivaan', 'Aditya', 'Vihaan', 'Arjun', 'Ishaan', 'Kabir', 'Anaya', 'Diya', 'Myra', 'Sara', 'Anika', 'Navya', 'Kiara', 'Meher', 'Riya', 'Saanvi', 'Pari', 'Rohan', 'Dev', 'Yash', 'Kunal', 'Neel', 'Tara', 'Ishita', 'Sanya', 'Kavya', 'Aanya', 'Reyansh', 'Zara'];
+const LAST = ['Sharma', 'Verma', 'Nair', 'Kapoor', 'Iyer', 'Gupta', 'Malhotra', 'Reddy', 'Singh', 'Patel', 'Joshi', 'Mehta', 'Chaudhary', 'Agarwal', 'Bose', 'Khan', 'Das', 'Rao'];
+const CONDUCTORS = ['Ramesh Yadav', 'Suresh Kumar', 'Deepak Chaudhary', 'Vikram Singh', 'Manoj Tiwari', 'Arvind Mehta', 'Imran Qureshi', 'Harish Pal', 'Nitin Joshi', 'Prakash Das', 'Sunil Rao', 'Ajay Khan'];
+const AREAS = ['Sector 45', 'North Zone', 'Highway Route', 'Noida', 'Faridabad', 'South Delhi', 'Dwarka', 'Rohini'];
+const GATEMEN = ['Sunita Devi', 'Rakesh Pal', 'Meena Joshi'];
+const DELAYS = ['Mechanical fault', 'Heavy traffic on the approach', 'Flat tyre', 'Route blockage'];
+
+function buildSchool() {
+  const rand = mulberry32(45);
+  const pick = <T,>(rows: T[]) => rows[Math.floor(rand() * rows.length)]!;
+  const buses: GateBus[] = [];
+  const plan: BusStatus[] = [
+    ...Array(18).fill('En Route'),
+    ...Array(14).fill('At School'),
+    ...Array(6).fill('Delayed'),
+    ...Array(5).fill('Offline'),
+    ...Array(5).fill('Standby'),
+  ] as BusStatus[];
+
+  plan.forEach((status, index) => {
+    const area = AREAS[index % AREAS.length]!;
+    const moving = status === 'En Route' || status === 'Active';
+    buses.push({
+      id: `b${index + 1}`,
+      busNumber: `DL-1P-${String(1200 + index)}`,
+      routeName: `${area} Route ${index + 1}`,
+      areaName: area,
+      conductorName: CONDUCTORS[index % CONDUCTORS.length]!,
+      conductorPhone: `+91981${String(1000000 + index * 97).slice(0, 7)}`,
+      status,
+      coordinates: { lat: 28.45 + (index % 8) * 0.03, lng: 77.02 + (index % 6) * 0.04 },
+      speedKmh: moving ? 18 + (index % 25) : 0,
+      etaMinutes: moving ? 4 + (index % 28) : status === 'Delayed' ? 20 + (index % 15) : 0,
+      departureTime: `0${6 + (index % 2)}:${index % 2 === 0 ? '10' : '40'}`,
+      totalStudents: 0,
+      boardedCount: 0,
+      lastPing: new Date(Date.now() - (status === 'Offline' ? 50 : 2) * 60000).toISOString(),
+      delayReason: status === 'Delayed' ? DELAYS[index % DELAYS.length] : undefined,
+    });
+  });
+
+  const students: GateStudent[] = [];
+  const routeBuses = buses.filter((bus) => bus.status !== 'Standby');
+  for (let index = 0; index < 720; index += 1) {
+    const bus = routeBuses[index % routeBuses.length]!;
+    const absent = index % 19 === 0;
+    const selfDrop = !absent && index % 27 === 0;
+    const early = !absent && !selfDrop && index % 31 === 0;
+    const boarded = !absent && !selfDrop && !early && bus.status !== 'Offline' && index % 4 !== 0;
+    const offLocation = boarded && index % 47 === 0;
+    const boardedAt = boarded ? new Date(Date.now() - index * 20000).toISOString() : undefined;
+    students.push({
+      id: `s${index + 1}`,
+      name: `${FIRST[index % FIRST.length]} ${LAST[index % LAST.length]}`,
+      grade: `${1 + (index % 10)}-${['A', 'B', 'C'][index % 3]}`,
+      busId: bus.id,
+      currentStatus: absent ? 'Absent' : selfDrop || early ? 'Picked Up' : boarded ? 'On Bus' : 'In Transit',
+      lastSeen: boardedAt,
+      parentName: `${pick(FIRST)} ${LAST[index % LAST.length]}`,
+      parentPhone: `+91982${String(2000000 + index).slice(0, 7)}`,
+      assignedStop: `${bus.areaName} Stop ${(index % 6) + 1}`,
+      absentToday: absent,
+      selfDropOff: selfDrop,
+      earlyPickup: early,
+      boardedAt,
+      offLocation,
+      offLocationKind: offLocation ? 'boarding' : undefined,
+      siblingGroup: index % 53 === 0 ? `fam-${index}` : index % 53 === 1 ? `fam-${index - 1}` : undefined,
+    });
+  }
+
+  buses.forEach((bus) => {
+    const mine = students.filter((student) => student.busId === bus.id);
+    bus.totalStudents = mine.length;
+    bus.boardedCount = mine.filter((student) => student.boardedAt).length;
+  });
+
+  const earlyPickups: EarlyPickup[] = students
+    .filter((student) => student.earlyPickup || student.selfDropOff)
+    .slice(0, 18)
+    .map((student, index) => ({
+      id: `ep${index + 1}`,
+      studentName: student.name,
+      studentId: student.id,
+      grade: student.grade,
+      parentName: student.parentName,
+      parentPhone: student.parentPhone,
+      reason: student.selfDropOff ? 'Parent is dropping the child at the gate' : 'Early pickup requested by the parent',
+      status: index < 10 ? 'Pending' : 'Verified',
+      requestedAt: new Date(Date.now() - (index + 3) * 60000).toISOString(),
+      kind: student.selfDropOff ? 'Self Drop-off' : 'Early Pickup',
+      siblingGroup: student.siblingGroup,
+    }));
+  if (earlyPickups[0] && earlyPickups[1]) {
+    earlyPickups[0].siblingGroup = 'fam-gate';
+    earlyPickups[1].siblingGroup = 'fam-gate';
+  }
+
+  const routingRequests: RoutingRequest[] = students.slice(0, 14).map((student, index) => {
+    const bus = buses.find((item) => item.id === student.busId)!;
+    const other = buses[(index + 3) % buses.length]!;
+    const stopChange = index % 2 === 0;
+    return {
+      id: `rr${index + 1}`,
+      studentName: student.name,
+      studentId: student.id,
+      grade: student.grade,
+      parentName: student.parentName,
+      parentPhone: student.parentPhone,
+      requestType: stopChange ? 'Stop Change' : 'Bus Transfer',
+      oldStop: student.assignedStop,
+      oldCoords: bus.coordinates,
+      newStop: stopChange ? `${bus.areaName} Stop 9` : undefined,
+      newCoords: stopChange ? { lat: bus.coordinates.lat + 0.02, lng: bus.coordinates.lng + 0.02 } : undefined,
+      fromBusId: stopChange ? undefined : bus.id,
+      fromBusNumber: stopChange ? undefined : bus.busNumber,
+      toBusId: stopChange ? undefined : other.id,
+      toBusNumber: stopChange ? undefined : other.busNumber,
+      reason: stopChange ? 'Family moved within the same zone' : 'Parent shift changed and the earlier bus is needed',
+      status: index < 8 ? 'Pending' : 'Approved',
+      submittedAt: new Date(Date.now() - (index + 8) * 60000).toISOString(),
+    };
+  });
+
+  const gateEntries: GateEntry[] = students
+    .filter((student) => student.boardedAt)
+    .slice(0, 40)
+    .map((student, index) => ({
+      id: `ge${index + 1}`,
+      studentName: student.name,
+      studentId: student.id,
+      type: 'Arrival' as const,
+      method: 'Bus' as const,
+      time: student.boardedAt!,
+      busNumber: buses.find((bus) => bus.id === student.busId)?.busNumber,
+      gatemanName: 'Sunita Devi',
+    }));
+
+  const notifications: GateNotification[] = [
+    ...buses.filter((bus) => bus.status === 'Delayed' || bus.status === 'Offline').slice(0, 4).map((bus, index) => ({
+      id: `n-bus-${bus.id}`,
+      category: 'bus_fleet' as const,
+      title: `${bus.status === 'Offline' ? 'No signal' : 'Delayed'} — ${bus.busNumber}`,
+      body: bus.delayReason ?? 'Conductor phone stopped reporting on the way back.',
+      read: false,
+      timestamp: new Date(Date.now() - (index + 2) * 60000).toISOString(),
+      actionable: true,
+      referenceId: bus.id,
+      action: 'bus' as const,
+    })),
+    ...earlyPickups.filter((item) => item.status === 'Pending').slice(0, 3).map((item, index) => ({
+      id: `n-ep-${item.id}`,
+      category: 'parent_gate' as const,
+      title: `${item.kind} — ${item.studentName}`,
+      body: item.reason,
+      read: false,
+      timestamp: item.requestedAt,
+      actionable: true,
+      referenceId: item.id,
+      action: 'pickup' as const,
+    })),
+    ...students.filter((student) => student.offLocation).slice(0, 3).map((student) => ({
+      id: `n-off-${student.id}`,
+      category: 'parent_gate' as const,
+      title: `Off-location boarding — ${student.name}`,
+      body: `${student.name} was boarded away from ${student.assignedStop}.`,
+      read: false,
+      timestamp: student.boardedAt ?? new Date().toISOString(),
+      actionable: true,
+      referenceId: student.id,
+      action: 'student' as const,
+    })),
+    ...routingRequests.filter((item) => item.status === 'Pending').slice(0, 3).map((item) => ({
+      id: `n-rr-${item.id}`,
+      category: 'requests' as const,
+      title: `${item.requestType} — ${item.studentName}`,
+      body: item.reason,
+      read: false,
+      timestamp: item.submittedAt,
+      actionable: true,
+      referenceId: item.id,
+      action: 'request' as const,
+    })),
+    {
+      id: 'n-admin-1',
+      category: 'admin' as const,
+      title: 'Afternoon gate opens at 13:00',
+      body: 'School Admin: do not reopen the gate for dismissal before the threshold.',
+      read: false,
+      timestamp: new Date(Date.now() - 20 * 60000).toISOString(),
+      actionable: true,
+      referenceId: 'd1',
+      action: 'directive' as const,
+    },
+  ];
+
+  const areas: FleetArea[] = AREAS.slice(0, 3).map((name) => ({
+    id: `area-${name.toLowerCase().replace(/\s+/g, '-')}`,
+    name,
+    busIds: buses.filter((bus) => bus.areaName === name).map((bus) => bus.id),
+  }));
+
+  const auditLogs: AuditLog[] = [];
+  const categories: AuditCategory[] = ['gate_entry', 'bus_movement', 'boarding', 'off_location', 'delay', 'self_pickup', 'visitor', 'gate_control', 'handover'];
+  for (let index = 0; index < 90; index += 1) {
+    const category = categories[index % categories.length]!;
+    auditLogs.push({
+      id: `log-${index + 1}`,
+      category,
+      title: category.replace('_', ' '),
+      detail: `Recorded by the gate desk for ${buses[index % buses.length]!.busNumber}.`,
+      subject: buses[index % buses.length]!.busNumber,
+      timestamp: new Date(Date.now() - index * 6 * 60 * 60 * 1000).toISOString(),
+      gatemanName: GATEMEN[index % GATEMEN.length]!,
+    });
+  }
+  auditLogs.push({
+    id: 'log-expired',
+    category: 'gate_control',
+    title: 'Expired sample',
+    detail: 'This row is older than 30 days and must not remain.',
+    timestamp: new Date(Date.now() - 40 * DAY).toISOString(),
+    gatemanName: 'Rakesh Pal',
+  });
+
+  const visitors: VisitorPass[] = [
+    { id: 'v1', name: 'Anil Books', kind: 'Vendor', purpose: 'Library delivery', time: new Date(Date.now() - 30 * 60000).toISOString(), gatemanName: 'Sunita Devi' },
+    { id: 'v2', name: 'Parent of Riya Bose', kind: 'Visitor', purpose: 'Fee counter', time: new Date(Date.now() - 50 * 60000).toISOString(), gatemanName: 'Sunita Devi' },
+  ];
+
+  const directives: AdminDirective[] = [
+    { id: 'd1', title: 'Afternoon gate opens at 13:00', body: 'Do not reopen the gate for dismissal before the configured threshold.', from: 'School Admin', acknowledged: false, timestamp: new Date(Date.now() - 20 * 60000).toISOString() },
+    { id: 'd2', title: 'Hold highway buses', body: 'Heavy traffic on the main approach. Hold departure until the office confirms.', from: 'Principal Rao', acknowledged: true, timestamp: new Date(Date.now() - 80 * 60000).toISOString() },
+  ];
+
+  return {
+    buses,
+    students,
+    earlyPickups,
+    routingRequests,
+    gateEntries,
+    notifications,
+    areas,
+    auditLogs: retain(auditLogs),
+    expiredLogCount: 1,
+    visitors,
+    directives,
+  };
+}
+
+const SCHOOL = buildSchool();
+
+const CONTACTS: AdminContact[] = [
+  { id: 'c-reception', name: 'Reception', role: 'Reception', phone: '+911141230001', available: true },
+  { id: 'c-principal', name: 'Principal Sunita Rao', role: 'Principal', phone: '+919900011122', available: true },
+  { id: 'c-admin', name: 'Rajeev Bhatia', role: 'School Admin', phone: '+919900022233', available: true },
+];
+
+function audit(category: AuditCategory, title: string, detail: string, gatemanName: string, subject?: string): AuditLog {
+  return { id: generateUniqueId('log'), category, title, detail, timestamp: new Date().toISOString(), gatemanName, subject };
 }
 
 export interface GatemanV2State {
@@ -196,8 +579,17 @@ export interface GatemanV2State {
   gateOpen: boolean;
   gateLockedDown: boolean;
   adminOverride: { active: boolean; openedBy: string } | null;
-
-  // Legacy compatibility fields
+  areas: FleetArea[];
+  pinnedBusIds: string[];
+  auditLogs: AuditLog[];
+  expiredLogCount: number;
+  visitors: VisitorPass[];
+  directives: AdminDirective[];
+  handovers: HandoverReport[];
+  signedInGateman: string;
+  morningArrivalsClosed: boolean;
+  afternoonThresholdMinutes: number;
+  clockOverride: number | null;
   fleet: FleetBus[];
   profileApprovals: ProfileApproval[];
   editRequests: EditRequest[];
@@ -205,25 +597,39 @@ export interface GatemanV2State {
   roster: RosterEntry[];
   directory: DirectoryContact[];
   modificationRequests: string[];
-
   markNotifRead: (id: string) => void;
   markAllNotifsRead: () => void;
   verifyPickup: (id: string) => void;
+  verifyMultiplePickups: (ids: string[]) => void;
   denyPickup: (id: string) => void;
+  denyMultiplePickups: (ids: string[]) => void;
+  verifySiblingGroup: (group: string) => void;
   approveRequest: (id: string) => void;
-  rejectRequest: (id: string) => void;
+  rejectRequest: (id: string, reason?: string) => void;
+  reopenRequest: (id: string) => void;
   openGate: () => void;
   closeGate: () => void;
   toggleGateLock: () => void;
-  /** Returns buses still outside. Empty means the gate closed. */
   attemptCloseGate: () => GateBus[];
   forceRecoverAndClose: () => void;
   markBusAtSchool: (busId: string) => void;
+  markBusesArrived: (busIds: string[]) => void;
   adminOverrideGate: (open: boolean, by?: string) => void;
   addShiftLog: (entry: { action: LogAction; description: string }) => void;
   forceBusOffline: (busId: string) => void;
   pingConductor: (busId: string) => void;
-
+  verifyOffLocation: (studentId: string, note: string) => void;
+  createArea: (name: string, busIds: string[]) => void;
+  updateArea: (id: string, name: string, busIds: string[]) => void;
+  togglePin: (busId: string) => void;
+  logVisitor: (entry: { name: string; kind: VisitorPass['kind']; purpose: string; category?: string; destination?: string; phone?: string; badge?: string; time?: string }) => void;
+  markVisitorExited: (id: string) => void;
+  acknowledgeDirective: (id: string) => void;
+  sendBroadcast: (message: string, areaId: string | 'all') => void;
+  setAfternoonThreshold: (minutes: number) => void;
+  setClockOverride: (minutes: number | null) => void;
+  submitHandover: (answers: string[], notes?: string, incomingOfficer?: string) => void;
+  canEndShift: () => { ok: boolean; reason: string };
   approveProfile: (id: string) => void;
   rejectProfile: (id: string) => void;
   resubmitProfile: (id: string) => void;
@@ -236,331 +642,355 @@ export interface GatemanV2State {
 
 export type GatemanState = GatemanV2State;
 
-// ─── Mock data — Delhi-NCR region ────────────────────────────────
-function minsAgo(m: number) { return new Date(Date.now() - m * 60000).toISOString(); }
-
-const BUSES: GateBus[] = [
-  { id: 'b1', busNumber: 'DL-1PC-4521', routeName: 'Gurugram Sector 45 Loop', conductorName: 'Ramesh Yadav',    conductorPhone: '+919810022334', status: 'En Route',  coordinates: { lat: 28.4595, lng: 77.0266 }, speedKmh: 32, etaMinutes: 8,  departureTime: '07:00', totalStudents: 24, boardedCount: 21, lastPing: minsAgo(1) },
-  { id: 'b2', busNumber: 'UP-80-BT-3312',routeName: 'Agra Cantt – Sadar Route', conductorName: 'Suresh Kumar',  conductorPhone: '+919811044556', status: 'Active',    coordinates: { lat: 27.1767, lng: 78.0081 }, speedKmh: 28, etaMinutes: 14, departureTime: '07:15', totalStudents: 18, boardedCount: 18, lastPing: minsAgo(2) },
-  { id: 'b3', busNumber: 'UP-85-CN-1187',routeName: 'Mathura Junction – Vrindavan', conductorName: 'Deepak Chaudhary', conductorPhone: '+919812066778', status: 'Delayed',   coordinates: { lat: 27.4924, lng: 77.6737 }, speedKmh: 0,  etaMinutes: 22, departureTime: '07:10', totalStudents: 20, boardedCount: 17, lastPing: minsAgo(8) },
-  { id: 'b4', busNumber: 'DL-1PB-9087',  routeName: 'Noida Sector 62 Express',  conductorName: 'Vikram Singh',   conductorPhone: '+919813088990', status: 'At School', coordinates: { lat: 28.5355, lng: 77.3910 }, speedKmh: 0,  etaMinutes: 0,  departureTime: '06:45', totalStudents: 22, boardedCount: 22, lastPing: minsAgo(3) },
-  { id: 'b5', busNumber: 'HR-51-DE-2245',routeName: 'Faridabad NIT Route',       conductorName: 'Manoj Tiwari',  conductorPhone: '+919814099001', status: 'Offline',   coordinates: { lat: 28.4089, lng: 77.3178 }, speedKmh: 0,  etaMinutes: 0,  departureTime: '07:30', totalStudents: 16, boardedCount: 0,  lastPing: minsAgo(45) },
-  { id: 'b6', busNumber: 'DL-1RT-7734',  routeName: 'South Delhi Ring Route',    conductorName: 'Arvind Mehta',  conductorPhone: '+919815011223', status: 'En Route',  coordinates: { lat: 28.6139, lng: 77.2090 }, speedKmh: 41, etaMinutes: 5,  departureTime: '06:50', totalStudents: 19, boardedCount: 19, lastPing: minsAgo(1) },
-];
-
-const STUDENTS: GateStudent[] = [
-  { id: 's1', name: 'Aarav Sharma',   grade: '6-B', busId: 'b1', currentStatus: 'On Bus',    lastSeen: minsAgo(5),  parentName: 'Neha Sharma',    parentPhone: '+919820011122', assignedStop: 'Sector 45, Gurugram' },
-  { id: 's2', name: 'Ishita Verma',   grade: '4-A', busId: 'b2', currentStatus: 'On Bus',    lastSeen: minsAgo(12), parentName: 'Rohit Verma',    parentPhone: '+919820022233', assignedStop: 'Sadar Bazaar, Agra' },
-  { id: 's3', name: 'Kabir Chaudhary',grade: '8-C', busId: 'b3', currentStatus: 'In Transit', lastSeen: minsAgo(22), parentName: 'Priya Chaudhary',parentPhone: '+919820033344', assignedStop: 'Vrindavan Road, Mathura' },
-  { id: 's4', name: 'Sanya Malhotra', grade: '3-B', busId: 'b1', currentStatus: 'On Bus',    lastSeen: minsAgo(5),  parentName: 'Amit Malhotra',  parentPhone: '+919820044455', assignedStop: 'Sector 45, Gurugram' },
-  { id: 's5', name: 'Vivaan Nair',    grade: '7-A', busId: 'b4', currentStatus: 'At School', lastSeen: minsAgo(0),  parentName: 'Renu Nair',      parentPhone: '+919820055566', assignedStop: 'Sector 62, Noida' },
-  { id: 's6', name: 'Riya Kapoor',    grade: '5-C', busId: null, currentStatus: 'Picked Up', lastSeen: minsAgo(15), parentName: 'Suneel Kapoor',  parentPhone: '+919820066677', assignedStop: 'South Delhi Ring' },
-  { id: 's7', name: 'Arjun Nair',     grade: '9-A', busId: 'b1', currentStatus: 'Absent',    lastSeen: undefined,   parentName: 'Deepa Nair',     parentPhone: '+919820077788', assignedStop: 'Sector 45, Gurugram' },
-  { id: 's8', name: 'Dev Agarwal',    grade: '2-B', busId: 'b2', currentStatus: 'At School', lastSeen: minsAgo(3),  parentName: 'Sumit Agarwal',  parentPhone: '+919820088899', assignedStop: 'Sadar Bazaar, Agra' },
-];
-
-const GATE_ENTRIES: GateEntry[] = [
-  { id: 'ge1', studentName: 'Vivaan Nair',  studentId: 's5', type: 'Arrival',   method: 'Bus',           time: minsAgo(3),  busNumber: 'DL-1PB-9087' },
-  { id: 'ge2', studentName: 'Dev Agarwal',  studentId: 's8', type: 'Arrival',   method: 'Bus',           time: minsAgo(5),  busNumber: 'UP-80-BT-3312' },
-  { id: 'ge3', studentName: 'Riya Kapoor',  studentId: 's6', type: 'Departure', method: 'Parent Pickup', time: minsAgo(15), authorizedBy: 'Gate Sunita' },
-  { id: 'ge4', studentName: 'Ananya Mehta', studentId: 's9', type: 'Arrival',   method: 'Self',          time: minsAgo(20) },
-];
-
-const EARLY_PICKUPS: EarlyPickup[] = [
-  { id: 'ep1', studentName: 'Aarav Sharma',    studentId: 's1', grade: '6-B', parentName: 'Neha Sharma',   parentPhone: '+919820011122', reason: 'Medical appointment at 11 AM', status: 'Pending', requestedAt: minsAgo(8) },
-  { id: 'ep2', studentName: 'Sanya Malhotra',  studentId: 's4', grade: '3-B', parentName: 'Amit Malhotra', parentPhone: '+919820044455', reason: 'Family emergency', status: 'Pending', requestedAt: minsAgo(3) },
-  { id: 'ep3', studentName: 'Kabir Chaudhary', studentId: 's3', grade: '8-C', parentName: 'Priya Chaudhary', parentPhone: '+919820033344', reason: 'Already picked up — notifying school', status: 'Verified', requestedAt: minsAgo(30), verifiedAt: minsAgo(25) },
-];
-
-const ROUTING_REQUESTS: RoutingRequest[] = [
-  { id: 'rr1', studentName: 'Aarav Sharma',    studentId: 's1', grade: '6-B', parentName: 'Neha Sharma',    parentPhone: '+919820011122', requestType: 'Stop Change',  oldStop: 'Sector 45, Gurugram', oldCoords: { lat: 28.4595, lng: 77.0266 }, newStop: 'Sector 50, Gurugram', newCoords: { lat: 28.4382, lng: 77.0723 }, reason: 'Moved to new apartment', status: 'Pending', submittedAt: minsAgo(12) },
-  { id: 'rr2', studentName: 'Ishita Verma',    studentId: 's2', grade: '4-A', parentName: 'Rohit Verma',    parentPhone: '+919820022233', requestType: 'Bus Transfer', fromBusId: 'b2', fromBusNumber: 'UP-80-BT-3312', toBusId: 'b1', toBusNumber: 'DL-1PC-4521', reason: 'New shift timings at work, need earlier bus', status: 'Pending', submittedAt: minsAgo(35) },
-  { id: 'rr3', studentName: 'Dev Agarwal',     studentId: 's8', grade: '2-B', parentName: 'Sumit Agarwal',  parentPhone: '+919820088899', requestType: 'Stop Change',  oldStop: 'Sadar Bazaar, Agra', oldCoords: { lat: 27.1767, lng: 78.0081 }, newStop: 'Civil Lines, Agra', newCoords: { lat: 27.1892, lng: 78.0051 }, reason: 'Grandmother lives nearby, easier pickup', status: 'Approved', submittedAt: minsAgo(120) },
-];
-
-const NOTIFICATIONS: GateNotification[] = [
-  { id: 'n1', category: 'bus_fleet',   title: 'Bus Delayed — DL-1PC-4521',         body: 'Ramesh Yadav reports 15-min delay due to traffic near NH-48.',          read: false, timestamp: minsAgo(4),  actionable: true,  referenceId: 'b1' },
-  { id: 'n2', category: 'bus_fleet',   title: 'Geofence Breach — UP-85-CN-1187',   body: 'Bus is 1.8 km off designated route near Mathura bypass.',               read: false, timestamp: minsAgo(9),  actionable: true,  referenceId: 'b3' },
-  { id: 'n3', category: 'parent_gate', title: 'Early Pickup — Aarav Sharma',        body: 'Neha Sharma requesting early pickup at 10:30 AM. Reason: Medical.',     read: false, timestamp: minsAgo(8),  actionable: true,  referenceId: 'ep1' },
-  { id: 'n4', category: 'parent_gate', title: 'Parent Arriving — Sanya Malhotra',   body: 'Amit Malhotra is 5 minutes away for emergency early pickup.',          read: false, timestamp: minsAgo(3),  actionable: true,  referenceId: 'ep2' },
-  { id: 'n5', category: 'requests',    title: 'Stop Change Request — Aarav Sharma', body: 'Parent requests stop change from Sector 45 to Sector 50, Gurugram.',  read: false, timestamp: minsAgo(12), actionable: true,  referenceId: 'rr1' },
-  { id: 'n6', category: 'requests',    title: 'Bus Transfer Request — Ishita Verma',body: 'Parent requests transfer from UP-80-BT-3312 to DL-1PC-4521.',        read: false, timestamp: minsAgo(35), actionable: true,  referenceId: 'rr2' },
-  { id: 'n7', category: 'admin',       title: 'Admin Broadcast — Early Dismissal',  body: 'School closing at 1 PM today. All buses depart by 1:15 PM. — Principal Rao.', read: true, timestamp: minsAgo(45), actionable: false },
-  { id: 'n8', category: 'admin',       title: 'Transport Circular — Bus 5 Off-Duty',body: 'HR-51-DE-2245 under maintenance today. Students rerouted to DL-1PC-4521.',read: true, timestamp: minsAgo(90), actionable: false },
-];
-
-const SHIFT_LOG: ShiftLogEntry[] = [
-  { id: 'sl1', action: 'AUTHORIZED',     description: 'Authorized early pickup for Riya Kapoor — Parent: Suneel Kapoor', timestamp: minsAgo(15) },
-  { id: 'sl2', action: 'APPROVED',       description: 'Approved stop change request for Dev Agarwal — Sadar Bazaar → Civil Lines', timestamp: minsAgo(50) },
-  { id: 'sl3', action: 'ALERT_RESOLVED', description: 'Resolved geofence alert — Bus UP-85-CN-1187 back on route', timestamp: minsAgo(60) },
-  { id: 'sl4', action: 'BUS_OFFLINE',    description: 'Marked HR-51-DE-2245 (Bus 5) offline — maintenance', timestamp: minsAgo(95) },
-];
-
-const CONTACTS: AdminContact[] = [
-  { id: 'c1', name: 'Transport Office',      role: 'Transport Office', phone: '+911141234567', available: true },
-  { id: 'c2', name: 'Principal Sunita Rao', role: 'Principal',        phone: '+919900011122', available: true },
-  { id: 'c3', name: 'Rajeev Bhatia (Admin)',role: 'School Admin',     phone: '+919900022233', available: false },
-  { id: 'c4', name: 'Ramesh Yadav',         role: 'Conductor',        phone: '+919810022334', available: true },
-  { id: 'c5', name: 'Suresh Kumar',         role: 'Conductor',        phone: '+919811044556', available: true },
-  { id: 'c6', name: 'Deepak Chaudhary',     role: 'Conductor',        phone: '+919812066778', available: false },
-  { id: 'c7', name: 'Vikram Singh',         role: 'Conductor',        phone: '+919813088990', available: true },
-  { id: 'c8', name: 'Manoj Tiwari',         role: 'Conductor',        phone: '+919814099001', available: false },
-  { id: 'c9', name: 'Arvind Mehta',         role: 'Conductor',        phone: '+919815011223', available: true },
-];
-
-const INITIAL_FLEET: FleetBus[] = [
-  { id: 'b1', busNumber: 'DL-1PC-4521', routeName: 'Gurugram Sector 45 Loop', conductorName: 'Ramesh Yadav', conductorPhone: '+919810022334', status: 'Online', coordinates: { lat: 28.4595, lng: 77.0266 } },
-  { id: 'b2', busNumber: 'UP-80-BT-3312', routeName: 'Agra Cantt – Sadar Route', conductorName: 'Suresh Kumar', conductorPhone: '+919811044556', status: 'Online', coordinates: { lat: 27.1767, lng: 78.0081 } },
-  { id: 'b3', busNumber: 'UP-85-CN-1187', routeName: 'Mathura Junction – Vrindavan Route', conductorName: 'Deepak Chaudhary', conductorPhone: '+919812066778', status: 'Offline', coordinates: { lat: 27.4924, lng: 77.6737 } },
-  { id: 'b4', busNumber: 'DL-1PB-9087', routeName: 'Noida Sector 62 Express', conductorName: 'Vikram Singh', conductorPhone: '+919813088990', status: 'Online', coordinates: { lat: 28.5355, lng: 77.3910 } },
-  { id: 'b5', busNumber: 'HR-51-DE-2245', routeName: 'Faridabad NIT Route', conductorName: 'Manoj Tiwari', conductorPhone: '+919814099001', status: 'Offline', coordinates: { lat: 28.4089, lng: 77.3178 } },
-  { id: 'b6', busNumber: 'DL-1RT-7734', routeName: 'South Delhi Ring Route', conductorName: 'Arvind Mehta', conductorPhone: '+919815011223', status: 'Online', coordinates: { lat: 28.6139, lng: 77.2090 } },
-];
-
-const INITIAL_APPROVALS: ProfileApproval[] = [
-  { id: 'approval-1', studentName: 'Aarav Sharma', parentName: 'Neha Sharma', phone: '+919820011122', assignedStop: 'Sector 45, Gurugram', grade: '6-B', address: 'H-204, Sector 45, Gurugram', emergencyContact: '+919820011199' },
-  { id: 'approval-2', studentName: 'Ishita Verma', parentName: 'Rohit Verma', phone: '+919820022233', assignedStop: 'Sadar Bazaar, Agra', grade: '4-A', address: '12, Sadar Bazaar, Agra', emergencyContact: '+919820022299' },
-  { id: 'approval-3', studentName: 'Kabir Chaudhary', parentName: 'Priya Chaudhary', phone: '+919820033344', assignedStop: 'Vrindavan Road, Mathura', grade: '8-C', address: '45, Vrindavan Road, Mathura', emergencyContact: '+919820033399' },
-  { id: 'approval-4', studentName: 'Sanya Malhotra', parentName: 'Amit Malhotra', phone: '+919820044455', assignedStop: 'Sector 62, Noida', grade: '3-B', address: 'B-88, Sector 62, Noida', emergencyContact: '+919820044499' },
-];
-
-const INITIAL_EDITS: EditRequest[] = [
-  {
-    id: 'edit-1',
-    target: 'Aarav Sharma — Pickup Address',
-    oldData: { Address: 'Sector 45, Gurugram', Landmark: 'Near City Park' },
-    newData: { Address: 'Sector 50, Gurugram', Landmark: 'Near Metro Station' },
-    newCoordinates: { lat: 28.4382, lng: 77.0723 },
-  },
-  {
-    id: 'edit-2',
-    target: 'Ishita Verma — Emergency Contact',
-    oldData: { Phone: '+919820022233' },
-    newData: { Phone: '+919820099887' },
-    newCoordinates: { lat: 27.1767, lng: 78.0081 },
-  },
-  {
-    id: 'edit-3',
-    target: 'Kabir Chaudhary — Assigned Stop',
-    oldData: { Stop: 'Vrindavan Road, Mathura' },
-    newData: { Stop: 'Krishna Nagar, Mathura' },
-    newCoordinates: { lat: 27.5023, lng: 77.6836 },
-  },
-];
-
-const INITIAL_ALERTS: GeofenceAlert[] = [
-  {
-    id: 'alert-1',
-    conductorName: 'Suresh Kumar',
-    studentName: 'Ishita Verma',
-    distanceAwayM: 640,
-    timestamp: minsAgo(6),
-    stopCoordinates: { lat: 27.1767, lng: 78.0081 },
-    pingedCoordinates: { lat: 27.1822, lng: 78.0134 },
-  },
-  {
-    id: 'alert-2',
-    conductorName: 'Deepak Chaudhary',
-    studentName: 'Kabir Chaudhary',
-    distanceAwayM: 1180,
-    timestamp: minsAgo(22),
-    stopCoordinates: { lat: 27.4924, lng: 77.6737 },
-    pingedCoordinates: { lat: 27.5041, lng: 77.6602 },
-  },
-];
-
-const INITIAL_ROSTER: RosterEntry[] = [
-  { id: 'roster-1', busId: 'b1', studentName: 'Aarav Sharma', attendanceStatus: 'Boarded', statusUpdatedAt: minsAgo(45) },
-  { id: 'roster-2', busId: 'b1', studentName: 'Sanya Malhotra', attendanceStatus: 'Pending' },
-  { id: 'roster-3', busId: 'b1', studentName: 'Riya Kapoor', attendanceStatus: 'Dropped', statusUpdatedAt: minsAgo(10) },
-  { id: 'roster-4', busId: 'b1', studentName: 'Arjun Nair', attendanceStatus: 'Absent' },
-  { id: 'roster-5', busId: 'b2', studentName: 'Ishita Verma', attendanceStatus: 'Boarded', statusUpdatedAt: minsAgo(30) },
-  { id: 'roster-6', busId: 'b2', studentName: 'Dev Agarwal', attendanceStatus: 'Checked Out', statusUpdatedAt: minsAgo(5) },
-  { id: 'roster-7', busId: 'b2', studentName: 'Meher Kapoor', attendanceStatus: 'Absent' },
-  { id: 'roster-8', busId: 'b3', studentName: 'Kabir Chaudhary', attendanceStatus: 'Pending' },
-  { id: 'roster-9', busId: 'b3', studentName: 'Ananya Gupta', attendanceStatus: 'Pending' },
-  { id: 'roster-10', busId: 'b4', studentName: 'Vivaan Nair', attendanceStatus: 'Boarded', statusUpdatedAt: minsAgo(50) },
-];
-
-const INITIAL_DIRECTORY: DirectoryContact[] = [
-  { id: 'contact-b1', name: 'Ramesh Yadav', role: 'Conductor', phone: '+919810022334' },
-  { id: 'contact-b2', name: 'Suresh Kumar', role: 'Conductor', phone: '+919811044556' },
-  { id: 'contact-b3', name: 'Deepak Chaudhary', role: 'Conductor', phone: '+919812066778' },
-  { id: 'contact-b4', name: 'Vikram Singh', role: 'Conductor', phone: '+919813088990' },
-  { id: 'contact-b5', name: 'Manoj Tiwari', role: 'Conductor', phone: '+919814099001' },
-  { id: 'contact-b6', name: 'Arvind Mehta', role: 'Conductor', phone: '+919815011223' },
-  { id: 'contact-admin-1', name: 'Sunita Rao (School Admin)', role: 'School Admin', phone: '+919900011122' },
-  { id: 'contact-admin-2', name: 'Rajeev Bhatia (School Admin)', role: 'School Admin', phone: '+919900022233' },
-];
-
 export const useGatemanStore = create<GatemanV2State>((set, get) => ({
-  buses: BUSES,
-  students: STUDENTS,
-  gateEntries: GATE_ENTRIES,
-  earlyPickups: EARLY_PICKUPS,
-  routingRequests: ROUTING_REQUESTS,
-  notifications: NOTIFICATIONS,
-  shiftLog: SHIFT_LOG,
+  buses: SCHOOL.buses,
+  students: SCHOOL.students,
+  gateEntries: SCHOOL.gateEntries,
+  earlyPickups: SCHOOL.earlyPickups,
+  routingRequests: SCHOOL.routingRequests,
+  notifications: SCHOOL.notifications,
+  shiftLog: [{ id: 'sl1', action: 'AUTHORIZED', description: 'Shift opened at the main gate', timestamp: new Date().toISOString(), gatemanName: 'Sunita Devi' }],
   contacts: CONTACTS,
   gateOpen: true,
   gateLockedDown: false,
   adminOverride: null,
-
-  fleet: INITIAL_FLEET,
-  profileApprovals: INITIAL_APPROVALS,
-  editRequests: INITIAL_EDITS,
-  geofenceAlerts: INITIAL_ALERTS,
-  roster: INITIAL_ROSTER,
-  directory: INITIAL_DIRECTORY,
+  areas: SCHOOL.areas,
+  pinnedBusIds: [SCHOOL.buses[0]!.id],
+  auditLogs: SCHOOL.auditLogs,
+  expiredLogCount: SCHOOL.expiredLogCount,
+  visitors: SCHOOL.visitors,
+  directives: SCHOOL.directives,
+  handovers: [],
+  signedInGateman: 'Sunita Devi',
+  morningArrivalsClosed: false,
+  afternoonThresholdMinutes: 13 * 60,
+  clockOverride: null,
+  fleet: SCHOOL.buses.map((bus) => ({
+    id: bus.id,
+    busNumber: bus.busNumber,
+    routeName: bus.routeName,
+    conductorName: bus.conductorName,
+    conductorPhone: bus.conductorPhone,
+    status: bus.status === 'Offline' ? 'Offline' : 'Online',
+    coordinates: bus.coordinates,
+  })),
+  profileApprovals: SCHOOL.students.slice(0, 4).map((student) => ({
+    id: `approval-${student.id}`,
+    studentName: student.name,
+    parentName: student.parentName,
+    phone: student.parentPhone,
+    assignedStop: student.assignedStop,
+    grade: student.grade,
+    address: student.assignedStop,
+    emergencyContact: student.parentPhone,
+  })),
+  editRequests: [],
+  geofenceAlerts: [],
+  roster: SCHOOL.students.slice(0, 24).map((student) => ({
+    id: `roster-${student.id}`,
+    busId: student.busId ?? 'b1',
+    studentName: student.name,
+    attendanceStatus: student.absentToday ? 'Absent' : student.boardedAt ? 'Boarded' : 'Pending',
+    statusUpdatedAt: student.boardedAt,
+  })),
+  directory: [
+    ...SCHOOL.buses.slice(0, 12).map((bus) => ({ id: `dir-${bus.id}`, name: bus.conductorName, role: 'Conductor' as const, phone: bus.conductorPhone })),
+    { id: 'dir-admin', name: 'Rajeev Bhatia (School Admin)', role: 'School Admin' as const, phone: '+919900022233' },
+  ],
   modificationRequests: [],
 
-  markNotifRead: (id) =>
-    set((s) => ({ notifications: s.notifications.map((n) => n.id === id ? { ...n, read: true } : n) })),
+  markNotifRead: (id) => set((state) => ({ notifications: state.notifications.map((item) => item.id === id ? { ...item, read: true } : item) })),
+  markAllNotifsRead: () => set((state) => ({ notifications: state.notifications.map((item) => ({ ...item, read: true })) })),
 
-  markAllNotifsRead: () =>
-    set((s) => ({ notifications: s.notifications.map((n) => ({ ...n, read: true })) })),
+  verifyPickup: (id) => get().verifyMultiplePickups([id]),
 
-  verifyPickup: (id) => {
-    const pickup = get().earlyPickups.find((p) => p.id === id);
-    if (!pickup) return;
-    set((s) => ({
-      earlyPickups: s.earlyPickups.map((p) => p.id === id ? { ...p, status: 'Verified', verifiedAt: new Date().toISOString() } : p),
-      gateEntries: [{ id: `ge-${Date.now()}`, studentName: pickup.studentName, studentId: pickup.studentId, type: 'Departure', method: 'Parent Pickup', time: new Date().toISOString(), authorizedBy: 'Gateman' }, ...s.gateEntries],
-      shiftLog: [{ id: `sl-${Date.now()}`, action: 'AUTHORIZED', description: `Authorized early pickup for ${pickup.studentName} — Parent: ${pickup.parentName}`, timestamp: new Date().toISOString() }, ...s.shiftLog],
+  verifyMultiplePickups: (ids) => {
+    const wanted = new Set(ids);
+    const targets = get().earlyPickups.filter((item) => wanted.has(item.id) && item.status === 'Pending');
+    if (targets.length === 0) return;
+    const name = get().signedInGateman;
+    const now = new Date().toISOString();
+    set((state) => ({
+      earlyPickups: state.earlyPickups.map((item) => wanted.has(item.id) && item.status === 'Pending' ? { ...item, status: 'Verified', verifiedAt: now, gatemanName: name } : item),
+      gateEntries: [
+        ...targets.map((pickup) => ({
+          id: generateUniqueId('ge'),
+          studentName: pickup.studentName,
+          studentId: pickup.studentId,
+          type: pickup.kind === 'Self Drop-off' ? 'Arrival' as const : 'Departure' as const,
+          method: pickup.kind === 'Self Drop-off' ? 'Self' as const : 'Parent Pickup' as const,
+          time: now,
+          authorizedBy: name,
+          gatemanName: name,
+        })),
+        ...state.gateEntries,
+      ],
+      auditLogs: retain([...targets.map((pickup) => audit('self_pickup', pickup.kind, `${name} verified ${pickup.studentName}`, name, pickup.studentName)), ...state.auditLogs]),
+      shiftLog: [...targets.map((pickup) => ({ id: generateUniqueId('sl'), action: 'AUTHORIZED' as const, description: `Verified ${pickup.kind} for ${pickup.studentName}`, timestamp: now, gatemanName: name })), ...state.shiftLog],
     }));
   },
 
-  denyPickup: (id) => {
-    const pickup = get().earlyPickups.find((p) => p.id === id);
-    if (!pickup) return;
-    set((s) => ({
-      earlyPickups: s.earlyPickups.map((p) => p.id === id ? { ...p, status: 'Denied' } : p),
-      shiftLog: [{ id: `sl-${Date.now()}`, action: 'DENIED', description: `Denied early pickup for ${pickup.studentName}`, timestamp: new Date().toISOString() }, ...s.shiftLog],
+  denyPickup: (id) => get().denyMultiplePickups([id]),
+
+  denyMultiplePickups: (ids) => {
+    const wanted = new Set(ids);
+    const targets = get().earlyPickups.filter((item) => wanted.has(item.id) && item.status === 'Pending');
+    if (targets.length === 0) return;
+    const name = get().signedInGateman;
+    const now = new Date().toISOString();
+    set((state) => ({
+      earlyPickups: state.earlyPickups.map((item) => wanted.has(item.id) && item.status === 'Pending' ? { ...item, status: 'Denied', gatemanName: name } : item),
+      auditLogs: retain([...targets.map((pickup) => audit('self_pickup', `Denied ${pickup.kind}`, `${name} denied ${pickup.studentName}`, name, pickup.studentName)), ...state.auditLogs]),
+      shiftLog: [...targets.map((pickup) => ({ id: generateUniqueId('sl'), action: 'DENIED' as const, description: `Denied ${pickup.kind} for ${pickup.studentName}`, timestamp: now, gatemanName: name })), ...state.shiftLog],
     }));
+  },
+
+  verifySiblingGroup: (group) => {
+    get().verifyMultiplePickups(get().earlyPickups.filter((item) => item.siblingGroup === group && item.status === 'Pending').map((item) => item.id));
   },
 
   approveRequest: (id) => {
-    const req = get().routingRequests.find((r) => r.id === id);
+    const req = get().routingRequests.find((item) => item.id === id);
     if (!req) return;
-    set((s) => ({
-      routingRequests: s.routingRequests.map((r) => r.id === id ? { ...r, status: 'Approved' } : r),
-      students: s.students.map((student) => {
+    const name = get().signedInGateman;
+    set((state) => ({
+      routingRequests: state.routingRequests.map((item) => item.id === id ? { ...item, status: 'Approved' } : item),
+      students: state.students.map((student) => {
         if (student.id !== req.studentId) return student;
         if (req.requestType === 'Stop Change' && req.newStop) return { ...student, assignedStop: req.newStop };
         if (req.requestType === 'Bus Transfer' && req.toBusId) return { ...student, busId: req.toBusId };
         return student;
       }),
-      shiftLog: [{ id: `sl-${Date.now()}`, action: 'APPROVED', description: `Approved ${req.requestType} for ${req.studentName}`, timestamp: new Date().toISOString() }, ...s.shiftLog],
+      notifications: state.notifications.map((item) => item.referenceId === id ? { ...item, read: true } : item),
+      auditLogs: retain([audit('boarding', `Approved ${req.requestType}`, `${name} approved ${req.studentName}`, name), ...state.auditLogs]),
+      shiftLog: [{ id: generateUniqueId('sl'), action: 'APPROVED', description: `Approved ${req.requestType} for ${req.studentName}`, timestamp: new Date().toISOString(), gatemanName: name }, ...state.shiftLog],
     }));
   },
 
-  rejectRequest: (id) => {
-    const req = get().routingRequests.find((r) => r.id === id);
+  rejectRequest: (id, reason) => {
+    const req = get().routingRequests.find((item) => item.id === id);
     if (!req) return;
-    set((s) => ({
-      routingRequests: s.routingRequests.map((r) => r.id === id ? { ...r, status: 'Rejected' } : r),
-      shiftLog: [{ id: `sl-${Date.now()}`, action: 'REJECTED', description: `Rejected ${req.requestType} for ${req.studentName}`, timestamp: new Date().toISOString() }, ...s.shiftLog],
+    const name = get().signedInGateman;
+    const why = reason ? ` Reason: ${reason}` : '';
+    set((state) => ({
+      routingRequests: state.routingRequests.map((item) => item.id === id ? { ...item, status: 'Rejected' } : item),
+      notifications: state.notifications.map((item) => item.referenceId === id ? { ...item, read: true } : item),
+      auditLogs: retain([audit('boarding', `Rejected ${req.requestType}`, `${name} rejected ${req.studentName}.${why}`, name, req.studentName), ...state.auditLogs]),
+      shiftLog: [{ id: generateUniqueId('sl'), action: 'REJECTED', description: `Rejected ${req.requestType} for ${req.studentName}.${why}`, timestamp: new Date().toISOString(), gatemanName: name }, ...state.shiftLog],
     }));
   },
 
-  openGate: () =>
-    set((s) => ({
+  reopenRequest: (id) => {
+    const req = get().routingRequests.find((item) => item.id === id);
+    if (!req || req.status === 'Pending') return;
+    const name = get().signedInGateman;
+    set((state) => ({
+      routingRequests: state.routingRequests.map((item) => item.id === id ? { ...item, status: 'Pending' } : item),
+      students: req.status === 'Approved'
+        ? state.students.map((student) => {
+            if (student.id !== req.studentId) return student;
+            if (req.requestType === 'Stop Change' && req.oldStop) return { ...student, assignedStop: req.oldStop };
+            if (req.requestType === 'Bus Transfer' && req.fromBusId) return { ...student, busId: req.fromBusId };
+            return student;
+          })
+        : state.students,
+      auditLogs: retain([audit('boarding', 'Decision reopened', `${name} reopened ${req.requestType} for ${req.studentName}`, name, req.studentName), ...state.auditLogs]),
+    }));
+  },
+
+  openGate: () => {
+    const name = get().signedInGateman;
+    set((state) => ({
       gateOpen: true,
       gateLockedDown: false,
-      shiftLog: [{ id: `sl-${Date.now()}`, action: 'OVERRIDE', description: 'Campus gate opened.', timestamp: new Date().toISOString() }, ...s.shiftLog],
-    })),
+      auditLogs: retain([audit('gate_control', 'Gate opened', `${name} opened the campus gate`, name), ...state.auditLogs]),
+      shiftLog: [{ id: generateUniqueId('sl'), action: 'OVERRIDE', description: 'Campus gate opened.', timestamp: new Date().toISOString(), gatemanName: name }, ...state.shiftLog],
+    }));
+  },
 
-  closeGate: () =>
-    set((s) => ({
-      gateOpen: false,
-      gateLockedDown: true,
-      shiftLog: [{ id: `sl-${Date.now()}`, action: 'OVERRIDE', description: 'Campus gate closed.', timestamp: new Date().toISOString() }, ...s.shiftLog],
-    })),
+  closeGate: () => {
+    get().attemptCloseGate();
+  },
 
-  toggleGateLock: () =>
-    set((s) => ({ gateOpen: !s.gateOpen, gateLockedDown: s.gateOpen })),
+  toggleGateLock: () => {
+    if (get().gateOpen) get().attemptCloseGate();
+    else get().openGate();
+  },
 
   attemptCloseGate: () => {
-    const outside = get().buses.filter((b) => b.status !== 'At School' && b.status !== 'Offline');
-    if (outside.length === 0) {
-      set({ gateOpen: false, gateLockedDown: true });
-      get().addShiftLog({ action: 'OVERRIDE', description: 'Gate closed — all buses confirmed at school' });
-    }
-    return outside;
+    const outside = get().buses.filter((bus) => !isBusOnCampus(bus.status));
+    if (outside.length > 0) return outside;
+    const name = get().signedInGateman;
+    set((state) => ({
+      gateOpen: false,
+      gateLockedDown: true,
+      morningArrivalsClosed: true,
+      auditLogs: retain([audit('gate_control', 'Gate closed', `${name} closed the gate. Tracking paused.`, name), ...state.auditLogs]),
+      shiftLog: [{ id: generateUniqueId('sl'), action: 'OVERRIDE', description: 'Campus gate closed. Tracking paused.', timestamp: new Date().toISOString(), gatemanName: name }, ...state.shiftLog],
+    }));
+    return [];
   },
 
   forceRecoverAndClose: () => {
-    set((s) => ({
-      buses: s.buses.map((b) => ({ ...b, status: 'At School' as BusStatus, speedKmh: 0, etaMinutes: 0 })),
+    const name = get().signedInGateman;
+    set((state) => ({
+      buses: state.buses.map((bus) => isBusOnCampus(bus.status) ? bus : { ...bus, status: 'At School', speedKmh: 0, etaMinutes: 0 }),
       gateOpen: false,
       gateLockedDown: true,
+      morningArrivalsClosed: true,
+      auditLogs: retain([audit('gate_control', 'Buses placed at school', `${name} marked outstanding buses at school and closed the gate`, name), ...state.auditLogs]),
+      shiftLog: [{ id: generateUniqueId('sl'), action: 'OVERRIDE', description: 'Outstanding buses marked at school and the gate closed.', timestamp: new Date().toISOString(), gatemanName: name }, ...state.shiftLog],
     }));
-    get().addShiftLog({ action: 'OVERRIDE', description: 'Gate force-closed — all buses manually placed at school' });
   },
 
   markBusAtSchool: (busId) => {
     const bus = get().buses.find((item) => item.id === busId);
     if (!bus) return;
-    set((s) => ({
-      buses: s.buses.map((item) => item.id === busId ? { ...item, status: 'At School' as BusStatus, speedKmh: 0, etaMinutes: 0 } : item),
-      shiftLog: [{ id: `sl-${Date.now()}`, action: 'OVERRIDE', description: `Marked ${bus.busNumber} at school after the conductor phone dropped.`, timestamp: new Date().toISOString() }, ...s.shiftLog],
+    const name = get().signedInGateman;
+    set((state) => ({
+      buses: state.buses.map((item) => item.id === busId ? { ...item, status: 'At School', speedKmh: 0, etaMinutes: 0 } : item),
+      auditLogs: retain([audit('bus_movement', 'Bus at school', `${name} marked ${bus.busNumber} at school`, name), ...state.auditLogs]),
+      shiftLog: [{ id: generateUniqueId('sl'), action: 'OVERRIDE', description: `Marked ${bus.busNumber} at school.`, timestamp: new Date().toISOString(), gatemanName: name }, ...state.shiftLog],
     }));
   },
 
-  adminOverrideGate: (open, by = 'Admin') =>
-    set((s) => ({
+  markBusesArrived: (busIds) => {
+    busIds.forEach((id) => get().markBusAtSchool(id));
+  },
+
+  adminOverrideGate: (open, by = 'School Admin') =>
+    set((state) => ({
       gateOpen: open,
       gateLockedDown: !open,
+      morningArrivalsClosed: open ? state.morningArrivalsClosed : true,
       adminOverride: { active: true, openedBy: by },
-      shiftLog: [{
-        id: `sl-${Date.now()}`,
-        action: 'OVERRIDE',
-        description: open ? `${by} override: Campus gate opened.` : `${by} override: Campus gate closed.`,
-        timestamp: new Date().toISOString(),
-      }, ...s.shiftLog],
+      auditLogs: retain([audit('gate_control', open ? 'Admin opened the gate' : 'Admin closed the gate', `${by} overrode the gateman`, state.signedInGateman), ...state.auditLogs]),
+      shiftLog: [{ id: generateUniqueId('sl'), action: 'OVERRIDE', description: open ? `${by} override: gate opened.` : `${by} override: gate closed.`, timestamp: new Date().toISOString(), gatemanName: by }, ...state.shiftLog],
     })),
 
-  addShiftLog: (entry) =>
-    set((s) => ({ shiftLog: [{ ...entry, id: `sl-${Date.now()}`, timestamp: new Date().toISOString() }, ...s.shiftLog] })),
+  addShiftLog: (entry) => {
+    const name = get().signedInGateman;
+    set((state) => ({
+      shiftLog: [{ ...entry, id: generateUniqueId('sl'), timestamp: new Date().toISOString(), gatemanName: name }, ...state.shiftLog],
+    }));
+  },
 
   forceBusOffline: (busId) => {
-    const bus = get().buses.find((b) => b.id === busId);
+    const bus = get().buses.find((item) => item.id === busId);
     if (!bus) return;
-    set((s) => ({
-      buses: s.buses.map((b) => b.id === busId ? { ...b, status: 'Offline' } : b),
-      fleet: s.fleet.map((b) => b.id === busId ? { ...b, status: 'Offline' } : b),
-      shiftLog: [{ id: `sl-${Date.now()}`, action: 'BUS_OFFLINE', description: `Forced ${bus.busNumber} offline`, timestamp: new Date().toISOString() }, ...s.shiftLog],
+    const name = get().signedInGateman;
+    set((state) => ({
+      buses: state.buses.map((item) => item.id === busId ? { ...item, status: 'Offline', speedKmh: 0 } : item),
+      fleet: state.fleet.map((item) => item.id === busId ? { ...item, status: 'Offline' } : item),
+      auditLogs: retain([audit('delay', 'Bus offline', `${name} marked ${bus.busNumber} offline`, name), ...state.auditLogs]),
+      shiftLog: [{ id: generateUniqueId('sl'), action: 'BUS_OFFLINE', description: `Marked ${bus.busNumber} offline`, timestamp: new Date().toISOString(), gatemanName: name }, ...state.shiftLog],
     }));
   },
 
   pingConductor: (busId) => {
-    const bus = get().buses.find((b) => b.id === busId);
+    const bus = get().buses.find((item) => item.id === busId);
     if (!bus) return;
-    set((s) => ({ shiftLog: [{ id: `sl-${Date.now()}`, action: 'OVERRIDE', description: `Pinged conductor ${bus.conductorName} on ${bus.busNumber}`, timestamp: new Date().toISOString() }, ...s.shiftLog] }));
+    const name = get().signedInGateman;
+    set((state) => ({
+      auditLogs: retain([audit('delay', 'Conductor pinged', `${name} pinged ${bus.conductorName} on ${bus.busNumber}`, name), ...state.auditLogs]),
+      shiftLog: [{ id: generateUniqueId('sl'), action: 'OVERRIDE', description: `Pinged ${bus.conductorName} on ${bus.busNumber}`, timestamp: new Date().toISOString(), gatemanName: name }, ...state.shiftLog],
+    }));
   },
 
-  approveProfile: (id) =>
-    set((state) => ({ profileApprovals: state.profileApprovals.filter((item) => item.id !== id) })),
-  rejectProfile: (id) =>
-    set((state) => ({ profileApprovals: state.profileApprovals.filter((item) => item.id !== id) })),
-  resubmitProfile: (id) =>
-    set((state) => ({ profileApprovals: state.profileApprovals.filter((item) => item.id !== id) })),
-
-  approveEdit: (id) => set((state) => ({ editRequests: state.editRequests.filter((item) => item.id !== id) })),
-  rejectEdit: (id) => set((state) => ({ editRequests: state.editRequests.filter((item) => item.id !== id) })),
-
-  resolveGeofenceAlert: (id) =>
-    set((state) => ({ geofenceAlerts: state.geofenceAlerts.filter((item) => item.id !== id) })),
-
-  updateAttendanceStatus: (rosterId, status) =>
+  verifyOffLocation: (studentId, note) => {
+    const student = get().students.find((item) => item.id === studentId);
+    if (!student) return;
+    const name = get().signedInGateman;
     set((state) => ({
-      roster: state.roster.map((entry) =>
-        entry.id === rosterId
-          ? { ...entry, attendanceStatus: status, statusUpdatedAt: new Date().toISOString() }
-          : entry,
-      ),
+      students: state.students.map((item) => item.id === studentId ? { ...item, offLocationVerified: true, offLocationNote: note } : item),
+      notifications: state.notifications.map((item) => item.referenceId === studentId ? { ...item, read: true } : item),
+      auditLogs: retain([audit('off_location', 'Off-location verified', `${name} verified ${student.name}: ${note}`, name), ...state.auditLogs]),
+    }));
+  },
+
+  createArea: (name, busIds) =>
+    set((state) => ({ areas: [...state.areas, { id: generateUniqueId('area'), name, busIds }] })),
+
+  updateArea: (id, name, busIds) =>
+    set((state) => ({ areas: state.areas.map((area) => area.id === id ? { ...area, name, busIds } : area) })),
+
+  togglePin: (busId) =>
+    set((state) => ({
+      pinnedBusIds: state.pinnedBusIds.includes(busId)
+        ? state.pinnedBusIds.filter((id) => id !== busId)
+        : [busId, ...state.pinnedBusIds],
     })),
 
-  submitModificationRequest: (text) =>
-    set((state) => ({ modificationRequests: [...state.modificationRequests, text] })),
+  logVisitor: (entry) => {
+    const name = get().signedInGateman;
+    const row: VisitorPass = { ...entry, id: generateUniqueId('v'), time: entry.time ?? new Date().toISOString(), gatemanName: name };
+    const where = [entry.category, entry.destination, entry.badge].filter(Boolean).join(' · ');
+    set((state) => ({
+      visitors: [row, ...state.visitors],
+      auditLogs: retain([audit('visitor', entry.kind, `${name} logged ${entry.name}: ${entry.purpose}${where ? ` · ${where}` : ''}`, name, entry.name), ...state.auditLogs]),
+    }));
+  },
+
+  markVisitorExited: (id) => {
+    const row = get().visitors.find((item) => item.id === id);
+    if (!row || row.exitedAt) return;
+    const name = get().signedInGateman;
+    set((state) => ({
+      visitors: state.visitors.map((item) => item.id === id ? { ...item, exitedAt: new Date().toISOString() } : item),
+      auditLogs: retain([audit('visitor', 'Visitor exited', `${name} marked ${row.name} as exited`, name, row.name), ...state.auditLogs]),
+    }));
+  },
+
+  acknowledgeDirective: (id) => {
+    const name = get().signedInGateman;
+    const row = get().directives.find((item) => item.id === id);
+    set((state) => ({
+      directives: state.directives.map((item) => item.id === id ? { ...item, acknowledged: true } : item),
+      notifications: state.notifications.map((item) => item.referenceId === id ? { ...item, read: true } : item),
+      auditLogs: retain([audit('gate_control', 'Directive acknowledged', `${name} acknowledged ${row?.title ?? 'a directive'}`, name), ...state.auditLogs]),
+    }));
+  },
+
+  sendBroadcast: (message, areaId) => {
+    const name = get().signedInGateman;
+    const area = get().areas.find((item) => item.id === areaId);
+    const target = area ? area.name : 'all conductors';
+    set((state) => ({
+      notifications: [{ id: generateUniqueId('n'), category: 'bus_fleet', title: 'Broadcast sent', body: `${message} → ${target}`, read: true, timestamp: new Date().toISOString(), actionable: false }, ...state.notifications],
+      auditLogs: retain([audit('delay', 'Broadcast', `${name} sent "${message}" to ${target}`, name), ...state.auditLogs]),
+    }));
+  },
+
+  setAfternoonThreshold: (minutes) => set({ afternoonThresholdMinutes: minutes }),
+  setClockOverride: (minutes) => set({ clockOverride: minutes }),
+
+  submitHandover: (answers, notes, incomingOfficer) => {
+    const name = get().signedInGateman;
+    const report: HandoverReport = { id: generateUniqueId('ho'), gatemanName: name, incomingOfficer, answers, notes, timestamp: new Date().toISOString() };
+    const detail = `${name} handed the gate to ${incomingOfficer ?? 'the next officer'}. ${answers.join(' | ')}${notes ? ` Notes: ${notes}` : ''}`;
+    set((state) => ({
+      handovers: [report, ...state.handovers],
+      auditLogs: retain([audit('handover', 'Shift handover', detail, name, incomingOfficer), ...state.auditLogs]),
+    }));
+  },
+
+  canEndShift: () => {
+    const state = get();
+    if (state.gateOpen) return { ok: false, reason: 'Close the school gate before ending the shift.' };
+    const outside = state.buses.filter((bus) => !isBusOnCampus(bus.status));
+    if (outside.length > 0) return { ok: false, reason: `${outside.length} buses are still not marked at school.` };
+    return { ok: true, reason: '' };
+  },
+
+  approveProfile: (id) => set((state) => ({ profileApprovals: state.profileApprovals.filter((item) => item.id !== id) })),
+  rejectProfile: (id) => set((state) => ({ profileApprovals: state.profileApprovals.filter((item) => item.id !== id) })),
+  resubmitProfile: (id) => set((state) => ({ profileApprovals: state.profileApprovals.filter((item) => item.id !== id) })),
+  approveEdit: (id) => set((state) => ({ editRequests: state.editRequests.filter((item) => item.id !== id) })),
+  rejectEdit: (id) => set((state) => ({ editRequests: state.editRequests.filter((item) => item.id !== id) })),
+  resolveGeofenceAlert: (id) => set((state) => ({ geofenceAlerts: state.geofenceAlerts.filter((item) => item.id !== id) })),
+  updateAttendanceStatus: (rosterId, status) =>
+    set((state) => ({
+      roster: state.roster.map((entry) => entry.id === rosterId ? { ...entry, attendanceStatus: status, statusUpdatedAt: new Date().toISOString() } : entry),
+    })),
+  submitModificationRequest: (text) => set((state) => ({ modificationRequests: [...state.modificationRequests, text] })),
 }));

@@ -38,7 +38,7 @@ export function ProvisionedSetPasswordScreen() {
   }, []);
 
   useEffect(() => {
-    if (!pending) router.replace('/(auth)/portal-select');
+    if (!pending) router.replace('/(auth)/portal-showcase');
   }, [pending]);
 
   if (!pending) return null;

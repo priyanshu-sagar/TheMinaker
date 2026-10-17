@@ -22,7 +22,7 @@ Tokens: `apps/mobile/src/design/tokens.ts` (`colors`, `glass`, `spacing`, `radiu
 ## Done — do not rebuild unless the user asks
 
 - Splash: `apps/mobile/app/(auth)/onboarding.tsx`. Dark hero, bus on the wavy road, school silhouette, stars, tagline under the bus, cubic white wave into the lower white panel, Get Started.
-- Portal picker: `apps/mobile/app/(auth)/portal-showcase.tsx`. Four tiles (Parent, Gateman, Conductor, Admin) and a carousel. `portal-select.tsx` is the old unused picker.
+- Portal picker: `apps/mobile/app/(auth)/portal-showcase.tsx`. Four tiles (Parent, Gateman, Conductor, Admin) and a carousel. `portal-select.tsx` only redirects there. Sign-out returns to the showcase.
 - Parent auth: `apps/mobile/app/(auth)/parent/`. Signed-in parent opens `/(parent)`.
 - Parent portal, mock store `src/store/parent.store.ts`, components in `src/components/parent/`:
   - Live `app/(parent)/index.tsx`: selected child's bus and stop, ETA, taking-the-bus switch (confirm before absent or resume), small call-conductor control, proximity banner inside 600 m.
@@ -50,7 +50,7 @@ Still mock UI, same glass system, then point `app/index.tsx` at the portal inste
 
 - Conductor: `app/(conductor)/` trip and manifest are early screens, not the finished portal.
 - School admin: `app/(school-admin)/_layout.tsx` expects Attendance and Students tabs, but only `index.tsx` exists. Those missing files will fail if the tabs are opened. No grades.
-- Gateman portal has five tabs: Command Hub, Gate access, Parent requests, Directory, and Shift. The open/close gate control sits on Command Hub. Closing is blocked while buses are still out; a bus can be marked at school if the conductor phone died. School admin override can open or close anyway. Tracking is paused while the gate is closed. Search covers students, buses, and conductors. The bell opens a 75% sheet with Bus & emergency, Parent actions, and School updates. Old inbox, attendance, and settings files stay in the folder but are hidden from the tab bar.
+- Gateman portal has six tabs: Hub, Fleet, Access, Approvals, Admin, and Logs. The mock school is about 48 buses and 720 students. Search, quick actions, areas, approvals, broadcasts, and logs open 88–90% solid sheets. The gate closes only when every bus is at school or on standby. Logs keep 30 days, name the gateman on each row, and sign-out requires a 10-question handover after the gate is closed. Old inbox, attendance, and settings files stay in the folder but are hidden from the tab bar.
 
 ## Shared UI rules
 

@@ -54,7 +54,7 @@ export default function SignedInScreen() {
           </GlassCard>
 
           <PrimaryButton label="Sign Out" onPress={onSignOut} />
-          <LinkButton label="Back to portal selection" onPress={() => router.replace('/(auth)/portal-select')} />
+          <LinkButton label="Back to portal selection" onPress={() => router.replace('/(auth)/portal-showcase')} />
         </View>
       </SafeAreaView>
     </MeshBackground>
