@@ -27,6 +27,9 @@ export function ApprovalsPanel() {
   const approveRequest = useGatemanStore((state) => state.approveRequest);
   const rejectRequest = useGatemanStore((state) => state.rejectRequest);
   const reopenRequest = useGatemanStore((state) => state.reopenRequest);
+  const busChanges = useGatemanStore((state) => state.conductorBusChangeRequests);
+  const approveBusChange = useGatemanStore((state) => state.approveBusChange);
+  const rejectBusChange = useGatemanStore((state) => state.rejectBusChange);
   const [filter, setFilter] = useState<Filter>('Pending');
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState<string[]>([]);
@@ -34,6 +37,7 @@ export function ApprovalsPanel() {
   const [ask, setAsk] = useState<ConfirmRequest | null>(null);
 
   const pending = requests.filter((item) => item.status === 'Pending');
+  const pendingBusChanges = useMemo(() => busChanges.filter((item) => item.status === 'Pending'), [busChanges]);
   const rows = useMemo(() => requests.filter((item) => {
     if (filter === 'Pending' && item.status !== 'Pending') return false;
     if (filter === 'Resolved' && item.status === 'Pending') return false;
@@ -60,6 +64,16 @@ export function ApprovalsPanel() {
         contentContainerStyle={styles.list}
         ListHeaderComponent={
           <View>
+            {pendingBusChanges.map((item) => (
+              <View key={item.id} style={styles.card}>
+                <View style={styles.main}>
+                  <Text style={styles.body}>{item.conductorName} ({item.busNumber}) to {item.toBusNumber}</Text>
+                  <Text style={styles.meta}>{item.reason}</Text>
+                </View>
+                <AnimatedPressable haptic="medium" onPress={() => setAsk({ tone: 'approve', title: 'Approve bus change', summary: `${item.conductorName} moves from ${item.fromBusNumber} to ${item.toBusNumber}.`, confirmLabel: 'Approve', onConfirm: () => approveBusChange(item.id) })}><Text style={styles.link}>Approve</Text></AnimatedPressable>
+                <AnimatedPressable haptic="medium" onPress={() => setAsk({ tone: 'reject', title: 'Reject bus change', summary: item.reason, confirmLabel: 'Reject', reasons: ['Bus is full', 'Route does not match', 'Try again tomorrow'], onConfirm: (reason) => rejectBusChange(item.id, reason ?? 'Rejected') })}><Text style={styles.noText}>Reject</Text></AnimatedPressable>
+              </View>
+            ))}
             <View style={styles.kpis}>
               <Kpi label="Pending" value={pending.length} />
               <Kpi label="Stop changes" value={pending.filter((item) => item.requestType === 'Stop Change').length} />

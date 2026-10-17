@@ -250,6 +250,33 @@ export interface AdminDirective {
   timestamp: string;
 }
 
+export interface GatemanOffLocationItem {
+  id: string;
+  conductorName: string;
+  busNumber: string;
+  studentName: string;
+  stopName: string;
+  distanceMeters: number;
+  status: 'Pending' | 'Verified' | 'Rejected';
+  flaggedAt: string;
+  verifiedAt: string | null;
+  gatemanNote: string | null;
+}
+
+export interface ConductorBusChangeRequest {
+  id: string;
+  conductorName: string;
+  busNumber: string;
+  fromBusId: string;
+  fromBusNumber: string;
+  toBusId: string;
+  toBusNumber: string;
+  reason: string;
+  status: 'Pending' | 'Approved' | 'Rejected';
+  requestedAt: string;
+  resolvedAt: string | null;
+}
+
 export interface HandoverReport {
   id: string;
   gatemanName: string;
@@ -586,6 +613,9 @@ export interface GatemanV2State {
   visitors: VisitorPass[];
   directives: AdminDirective[];
   handovers: HandoverReport[];
+  offLocationFlags: GatemanOffLocationItem[];
+  conductorBusChangeRequests: ConductorBusChangeRequest[];
+  homeConfirmationPings: Array<{ id: string; studentId: string; studentName: string; sentAt: string }>;
   signedInGateman: string;
   morningArrivalsClosed: boolean;
   afternoonThresholdMinutes: number;
@@ -619,6 +649,10 @@ export interface GatemanV2State {
   forceBusOffline: (busId: string) => void;
   pingConductor: (busId: string) => void;
   verifyOffLocation: (studentId: string, note: string) => void;
+  rejectOffLocation: (id: string, reason: string) => void;
+  approveBusChange: (id: string) => void;
+  rejectBusChange: (id: string, reason: string) => void;
+  pingParentForHomeConfirmation: (studentId: string, studentName: string) => void;
   createArea: (name: string, busIds: string[]) => void;
   updateArea: (id: string, name: string, busIds: string[]) => void;
   togglePin: (busId: string) => void;
@@ -661,6 +695,15 @@ export const useGatemanStore = create<GatemanV2State>((set, get) => ({
   visitors: SCHOOL.visitors,
   directives: SCHOOL.directives,
   handovers: [],
+  offLocationFlags: [
+    { id: 'gol-1', conductorName: 'Ranjit Singh', busNumber: 'Bus 7', studentName: 'Priya Mehta', stopName: 'Sector 17', distanceMeters: 340, status: 'Pending', flaggedAt: new Date(Date.now() - 12 * 60000).toISOString(), verifiedAt: null, gatemanNote: null },
+    { id: 'gol-2', conductorName: 'Suresh Kumar', busNumber: 'Bus 3', studentName: 'Arjun Das', stopName: 'Sector 9', distanceMeters: 720, status: 'Verified', flaggedAt: new Date(Date.now() - 80 * 60000).toISOString(), verifiedAt: new Date(Date.now() - 70 * 60000).toISOString(), gatemanNote: 'Parent confirmed' },
+  ],
+  conductorBusChangeRequests: [
+    { id: 'gbc-1', conductorName: 'Ranjit Singh', busNumber: 'Bus 7', fromBusId: 'b-c1', fromBusNumber: 'Bus 7', toBusId: 'b-12', toBusNumber: 'Bus 12', reason: 'Bus 12 is closer to my home route', status: 'Pending', requestedAt: new Date(Date.now() - 18 * 60000).toISOString(), resolvedAt: null },
+    { id: 'gbc-2', conductorName: 'Vikram Singh', busNumber: 'Bus 4', fromBusId: 'b4', fromBusNumber: 'Bus 4', toBusId: 'b-2', toBusNumber: 'Bus 2', reason: 'Bus 4 is delayed by a mechanical fault', status: 'Pending', requestedAt: new Date(Date.now() - 40 * 60000).toISOString(), resolvedAt: null },
+  ],
+  homeConfirmationPings: [],
   signedInGateman: 'Sunita Devi',
   morningArrivalsClosed: false,
   afternoonThresholdMinutes: 13 * 60,
@@ -898,6 +941,17 @@ export const useGatemanStore = create<GatemanV2State>((set, get) => ({
   },
 
   verifyOffLocation: (studentId, note) => {
+    const flag = get().offLocationFlags.find((item) => item.id === studentId);
+    if (flag) {
+      const name = get().signedInGateman;
+      const now = new Date().toISOString();
+      set((state) => ({
+        offLocationFlags: state.offLocationFlags.map((item) => item.id === studentId ? { ...item, status: 'Verified', verifiedAt: now, gatemanNote: note } : item),
+        notifications: [{ id: generateUniqueId('n'), category: 'parent_gate', title: 'Home confirmation ping', body: `Verified off-location for ${flag.studentName}. Parent pinged to confirm they are home.`, read: false, timestamp: now, actionable: false }, ...state.notifications],
+        auditLogs: retain([audit('off_location', 'Conductor flag verified', `${name} verified ${flag.studentName}: ${note}`, name, flag.studentName), ...state.auditLogs]),
+      }));
+      return;
+    }
     const student = get().students.find((item) => item.id === studentId);
     if (!student) return;
     const name = get().signedInGateman;
@@ -905,6 +959,48 @@ export const useGatemanStore = create<GatemanV2State>((set, get) => ({
       students: state.students.map((item) => item.id === studentId ? { ...item, offLocationVerified: true, offLocationNote: note } : item),
       notifications: state.notifications.map((item) => item.referenceId === studentId ? { ...item, read: true } : item),
       auditLogs: retain([audit('off_location', 'Off-location verified', `${name} verified ${student.name}: ${note}`, name), ...state.auditLogs]),
+    }));
+  },
+
+  rejectOffLocation: (id, reason) => {
+    const flag = get().offLocationFlags.find((item) => item.id === id);
+    if (!flag) return;
+    const name = get().signedInGateman;
+    set((state) => ({
+      offLocationFlags: state.offLocationFlags.map((item) => item.id === id ? { ...item, status: 'Rejected', gatemanNote: reason } : item),
+      auditLogs: retain([audit('off_location', 'Conductor flag dismissed', `${name} dismissed ${flag.studentName}: ${reason}`, name, flag.studentName), ...state.auditLogs]),
+    }));
+  },
+
+  approveBusChange: (id) => {
+    const row = get().conductorBusChangeRequests.find((item) => item.id === id);
+    if (!row) return;
+    const name = get().signedInGateman;
+    const now = new Date().toISOString();
+    set((state) => ({
+      conductorBusChangeRequests: state.conductorBusChangeRequests.map((item) => item.id === id ? { ...item, status: 'Approved', resolvedAt: now } : item),
+      auditLogs: retain([audit('bus_movement', 'Bus change approved', `${name} approved ${row.conductorName} moving to ${row.toBusNumber}`, name, row.conductorName), ...state.auditLogs]),
+    }));
+  },
+
+  rejectBusChange: (id, reason) => {
+    const row = get().conductorBusChangeRequests.find((item) => item.id === id);
+    if (!row) return;
+    const name = get().signedInGateman;
+    const now = new Date().toISOString();
+    set((state) => ({
+      conductorBusChangeRequests: state.conductorBusChangeRequests.map((item) => item.id === id ? { ...item, status: 'Rejected', resolvedAt: now } : item),
+      auditLogs: retain([audit('bus_movement', 'Bus change rejected', `${name} rejected ${row.conductorName}: ${reason}`, name, row.conductorName), ...state.auditLogs]),
+    }));
+  },
+
+  pingParentForHomeConfirmation: (studentId, studentName) => {
+    const name = get().signedInGateman;
+    const now = new Date().toISOString();
+    set((state) => ({
+      homeConfirmationPings: [{ id: generateUniqueId('home'), studentId, studentName, sentAt: now }, ...state.homeConfirmationPings],
+      notifications: [{ id: generateUniqueId('n'), category: 'parent_gate', title: 'Home confirmation ping sent', body: `Pinged the parent of ${studentName} to confirm arrival home.`, read: false, timestamp: now, actionable: false }, ...state.notifications],
+      auditLogs: retain([audit('self_pickup', 'Home ping', `${name} pinged the parent of ${studentName}`, name, studentName), ...state.auditLogs]),
     }));
   },
 

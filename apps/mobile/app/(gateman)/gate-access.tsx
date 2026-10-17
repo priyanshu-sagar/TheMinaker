@@ -52,6 +52,7 @@ export default function GateAccessScreen() {
   const students = useGatemanStore((state) => state.students);
   const verifyMultiplePickups = useGatemanStore((state) => state.verifyMultiplePickups);
   const denyMultiplePickups = useGatemanStore((state) => state.denyMultiplePickups);
+  const pingParentForHomeConfirmation = useGatemanStore((state) => state.pingParentForHomeConfirmation);
   const [segment, setSegment] = useState<Segment>('gate');
   const [filter, setFilter] = useState<Filter>('All');
   const [query, setQuery] = useState('');
@@ -59,6 +60,7 @@ export default function GateAccessScreen() {
   const [openId, setOpenId] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
   const [ask, setAsk] = useState<ConfirmRequest | null>(null);
+  const [homePing, setHomePing] = useState<string | null>(null);
 
   const studentMap = useMemo(() => new Map(students.map((student) => [student.id, student])), [students]);
 
@@ -267,6 +269,10 @@ export default function GateAccessScreen() {
               <Text style={styles.body}>Duty officer on the record</Text>
               <Text style={styles.meta}>Main front gate · {open.detail}</Text>
               <Text style={styles.meta}>{formatWhen(open.time)} · {open.kind}</Text>
+              <AnimatedPressable haptic="light" onPress={() => setAsk({ tone: 'info', title: 'Ping parent for home confirmation', summary: `Ask ${open.name}'s parent to confirm the child has arrived home safely?`, confirmLabel: 'Send ping', onConfirm: () => { pingParentForHomeConfirmation(open.studentId, open.name); setHomePing('Ping sent to the parent'); } })}>
+                <Text style={styles.link}>Ping parent to confirm the child is home</Text>
+              </AnimatedPressable>
+              {homePing ? <Text style={styles.meta}>{homePing}</Text> : null}
               <Text style={styles.kicker}>Security note</Text>
               <View style={styles.noteRow}>
                 {NOTES.map((item) => (

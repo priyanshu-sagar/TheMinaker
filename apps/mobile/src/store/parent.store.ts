@@ -89,6 +89,28 @@ export interface ParentRequest {
   createdAt: string;
 }
 
+export type ConductorPing = {
+  id: string;
+  conductorName: string;
+  busNumber: string;
+  studentName: string;
+  message: string;
+  sentAt: string;
+  replied: boolean;
+  reply: 'Coming' | 'NotComing' | 'AlreadyHome' | 'Other' | null;
+  replyNote: string | null;
+};
+
+export type GatemanHomePing = {
+  id: string;
+  gatemanName: string;
+  studentName: string;
+  message: string;
+  sentAt: string;
+  replied: boolean;
+  confirmed: boolean | null;
+};
+
 interface ParentState {
   children: ParentChild[];
   activeChildId: string;
@@ -98,6 +120,8 @@ interface ParentState {
   availableBuses: FleetBusOption[];
   exceptionLogs: ExceptionLog[];
   notices: ParentNotice[];
+  conductorPings: ConductorPing[];
+  gatemanHomePings: GatemanHomePing[];
   setActiveChildId: (id: string) => void;
   addChild: (input: { name: string; grade: string }) => void;
   setAbsentToday: (childId: string, on: boolean) => void;
@@ -109,6 +133,8 @@ interface ParentState {
   requestContactUpdate: (input: { channel: 'phone' | 'email'; nextValue: string; reason: string }) => void;
   withdrawRequest: (id: string) => void;
   markNoticesRead: (channel: 'school' | 'transit') => void;
+  replyToConductorPing: (pingId: string, reply: ConductorPing['reply'], note?: string) => void;
+  replyToGatemanHomePing: (pingId: string, confirmed: boolean) => void;
 }
 
 const TRANSIT: Record<string, LiveTransit> = {
@@ -395,9 +421,26 @@ export const useParentStore = create<ParentState>((set, get) => ({
       pendingRequests: state.pendingRequests.filter((item) => item.id !== id),
     })),
 
+  conductorPings: [
+    { id: 'cp-1', conductorName: 'Ranjit Singh', busNumber: 'Bus 7', studentName: 'Arjun', message: 'Is Arjun coming to school today?', sentAt: new Date().toISOString(), replied: false, reply: null, replyNote: null },
+  ],
+  gatemanHomePings: [
+    { id: 'gh-1', gatemanName: 'Ramesh Kumar', studentName: 'Arjun', message: 'Please confirm Arjun has arrived home safely after an off-route drop.', sentAt: new Date().toISOString(), replied: false, confirmed: null },
+  ],
+
   markNoticesRead: (channel) =>
     set((state) => ({
       notices: state.notices.map((notice) => (notice.channel === channel ? { ...notice, read: true } : notice)),
+    })),
+
+  replyToConductorPing: (pingId, reply, note) =>
+    set((state) => ({
+      conductorPings: state.conductorPings.map((item) => item.id === pingId ? { ...item, replied: true, reply, replyNote: note ?? null } : item),
+    })),
+
+  replyToGatemanHomePing: (pingId, confirmed) =>
+    set((state) => ({
+      gatemanHomePings: state.gatemanHomePings.map((item) => item.id === pingId ? { ...item, replied: true, confirmed } : item),
     })),
 }));
 

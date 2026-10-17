@@ -1,15 +1,5 @@
-import { UserRole } from '@minaker/shared-types';
-import { ProvisionedLoginScreen } from '@/components/auth/ProvisionedLoginScreen';
+import { Redirect } from 'expo-router';
 
-export default function ConductorLoginScreen() {
-  return (
-    <ProvisionedLoginScreen
-      role={UserRole.CONDUCTOR}
-      title="Conductor Login"
-      idLabel="Conductor ID"
-      idPlaceholder="Your staff ID"
-      setPasswordHref="/(auth)/conductor/set-password"
-      forgotPasswordHref="/(auth)/conductor/forgot-password"
-    />
-  );
+export default function ConductorLogin() {
+  return <Redirect href="/(conductor)" />;
 }

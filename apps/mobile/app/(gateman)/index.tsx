@@ -56,6 +56,8 @@ export default function CommandHubScreen() {
   const approveRequest = useGatemanStore((state) => state.approveRequest);
   const rejectRequest = useGatemanStore((state) => state.rejectRequest);
   const setAfternoonThreshold = useGatemanStore((state) => state.setAfternoonThreshold);
+  const offLocationFlags = useGatemanStore((state) => state.offLocationFlags);
+  const rejectOffLocation = useGatemanStore((state) => state.rejectOffLocation);
 
   const [tile, setTile] = useState<Tile | 'search' | 'blocked' | null>(null);
   const [query, setQuery] = useState('');
@@ -75,6 +77,7 @@ export default function CommandHubScreen() {
   const notDropped = expected.filter((student) => !student.droppedAt);
   const offStop = students.filter((student) => student.offLocation && !student.offLocationVerified);
   const holds = pickups.filter((item) => item.status === 'Pending');
+  const pendingFlags = useMemo(() => offLocationFlags.filter((item) => item.status === 'Pending'), [offLocationFlags]);
   const counts: Record<string, number> = {
     enroute: buses.filter((bus) => bus.status === 'En Route' || bus.status === 'Active').length,
     school: buses.filter((bus) => bus.status === 'At School' || bus.status === 'Standby').length,
@@ -157,6 +160,22 @@ export default function CommandHubScreen() {
             <View style={styles.banner}>
               <Text style={styles.meta}>Traffic delay on the main approach. {counts.delayed} buses are running late.</Text>
               <AnimatedPressable haptic="selection" onPress={() => setBanner(false)}><Text style={styles.link}>Dismiss</Text></AnimatedPressable>
+            </View>
+          ) : null}
+
+          {pendingFlags.length > 0 ? (
+            <View>
+              <Text style={styles.section}>Off-location flags ({pendingFlags.length})</Text>
+              {pendingFlags.map((flag) => (
+                <GlassCard key={flag.id} style={styles.flagCard}>
+                  <Text style={styles.body}>{flag.studentName}</Text>
+                  <Text style={styles.meta}>{flag.conductorName} · {flag.busNumber} · {flag.distanceMeters}m from {flag.stopName}</Text>
+                  <View style={styles.sectionRow}>
+                    <AnimatedPressable haptic="medium" onPress={() => setAsk({ tone: 'override', title: 'Verify off-location attendance', summary: `${flag.conductorName} flagged ${flag.studentName} at ${flag.stopName}, ${flag.distanceMeters}m from the official stop. Verify this and ping the parent?`, confirmLabel: 'Verify and ping parent', onConfirm: () => verifyOffLocation(flag.id, 'Verified by the gateman') })}><Text style={styles.link}>Verify</Text></AnimatedPressable>
+                    <AnimatedPressable haptic="light" onPress={() => rejectOffLocation(flag.id, 'Dismissed by the gateman')}><Text style={styles.meta}>Dismiss</Text></AnimatedPressable>
+                  </View>
+                </GlassCard>
+              ))}
             </View>
           ) : null}
 
@@ -476,6 +495,7 @@ const styles = StyleSheet.create({
   pillOn: { borderColor: portalAccents.gateman.from, backgroundColor: colors.warningBg },
   pillText: { ...typography.caption, color: colors.textPrimary },
   busCard: { marginBottom: spacing.sm },
+  flagCard: { marginBottom: spacing.sm, borderWidth: 1, borderColor: colors.warning, padding: spacing.md },
   line: { paddingVertical: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.divider },
   dense: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.divider },
   badge: { ...typography.caption, color: portalAccents.gateman.from, backgroundColor: colors.warningBg, overflow: 'hidden', borderRadius: radius.full, paddingHorizontal: spacing.sm, paddingVertical: 2 },

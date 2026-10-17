@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+import { AppTextInput } from '@/components/glass/AppTextInput';
 import MapView, { Marker, UrlTile } from 'react-native-maps';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated, { FadeInDown, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
@@ -23,6 +24,14 @@ export default function ParentLiveScreen() {
   const confirmWaitingAtStop = useParentStore((state) => state.confirmWaitingAtStop);
   const [note, setNote] = useState<string | null>(null);
   const [askAbsent, setAskAbsent] = useState(false);
+  const conductorPings = useParentStore((state) => state.conductorPings);
+  const gatemanHomePings = useParentStore((state) => state.gatemanHomePings);
+  const replyToConductorPing = useParentStore((state) => state.replyToConductorPing);
+  const replyToGatemanHomePing = useParentStore((state) => state.replyToGatemanHomePing);
+  const [otherId, setOtherId] = useState<string | null>(null);
+  const [otherText, setOtherText] = useState('');
+  const openPings = useMemo(() => conductorPings.filter((item) => !item.replied), [conductorPings]);
+  const openHome = useMemo(() => gatemanHomePings.filter((item) => !item.replied), [gatemanHomePings]);
 
   const nearby = child?.status === 'Active' && !child.absentToday && transit.status === 'En route' && transit.distanceToStop <= 600;
   const pulse = useSharedValue(0.45);
@@ -43,6 +52,33 @@ export default function ParentLiveScreen() {
       <SafeAreaView style={styles.safe} edges={['top']}>
         <ParentChrome />
         <View style={styles.stage}>
+        {openPings.map((ping) => (
+          <GlassCard key={ping.id} style={[shadows.md, styles.pingCard]}>
+            <Text style={styles.route}>{ping.conductorName} ({ping.busNumber}) is asking about {ping.studentName}</Text>
+            <Text style={styles.quote}>{ping.message}</Text>
+            <View style={styles.pingActions}>
+              <AnimatedPressable haptic="medium" onPress={() => replyToConductorPing(ping.id, 'Coming')} style={styles.coming}><Text style={styles.primaryText}>Coming</Text></AnimatedPressable>
+              <AnimatedPressable haptic="medium" onPress={() => replyToConductorPing(ping.id, 'NotComing')} style={styles.notComing}><Text style={styles.primaryText}>Not coming</Text></AnimatedPressable>
+              <AnimatedPressable haptic="light" onPress={() => setOtherId(ping.id)} style={styles.other}><Text style={styles.secondaryText}>Other</Text></AnimatedPressable>
+            </View>
+            {otherId === ping.id ? (
+              <View>
+                <AppTextInput value={otherText} onChangeText={setOtherText} placeholder="Type your reason" placeholderTextColor={colors.textPlaceholder} style={styles.otherInput} />
+                <AnimatedPressable haptic="medium" onPress={() => { replyToConductorPing(ping.id, 'Other', otherText); setOtherId(null); setOtherText(''); }} style={styles.secondary}><Text style={styles.secondaryText}>Send</Text></AnimatedPressable>
+              </View>
+            ) : null}
+          </GlassCard>
+        ))}
+        {openHome.map((ping) => (
+          <GlassCard key={ping.id} style={[shadows.md, styles.homeCard]}>
+            <Text style={styles.route}>Gateman {ping.gatemanName} is asking about {ping.studentName}</Text>
+            <Text style={styles.homeQuote}>{ping.message}</Text>
+            <View style={styles.pingActions}>
+              <AnimatedPressable haptic="medium" onPress={() => replyToGatemanHomePing(ping.id, true)} style={styles.coming}><Text style={styles.primaryText}>Home safe</Text></AnimatedPressable>
+              <AnimatedPressable haptic="light" onPress={() => replyToGatemanHomePing(ping.id, false)} style={styles.notComing}><Text style={styles.primaryText}>Not yet</Text></AnimatedPressable>
+            </View>
+          </GlassCard>
+        ))}
         {nearby ? (
           <Animated.View entering={FadeInDown.duration(320)}>
             <Animated.View style={[styles.banner, glow]}>
@@ -185,4 +221,13 @@ const styles = StyleSheet.create({
   },
   lockTitle: { ...typography.heading, color: colors.warning, backgroundColor: 'transparent' },
   lockBody: { ...typography.body, marginTop: spacing.sm },
+  pingCard: { marginHorizontal: spacing.lg, marginBottom: spacing.sm, borderWidth: 1.5, borderColor: colors.warning, padding: spacing.md },
+  homeCard: { marginHorizontal: spacing.lg, marginBottom: spacing.sm, borderWidth: 1.5, borderColor: colors.success, padding: spacing.md },
+  quote: { ...typography.body, fontStyle: 'italic', backgroundColor: colors.warningBg, borderRadius: radius.sm, padding: spacing.sm, marginTop: spacing.sm },
+  homeQuote: { ...typography.body, fontStyle: 'italic', backgroundColor: colors.successBg, borderRadius: radius.sm, padding: spacing.sm, marginTop: spacing.sm },
+  pingActions: { flexDirection: 'row', gap: spacing.xs, marginTop: spacing.sm },
+  coming: { flex: 1, minHeight: 36, borderRadius: radius.full, backgroundColor: colors.success, alignItems: 'center', justifyContent: 'center' },
+  notComing: { flex: 1, minHeight: 36, borderRadius: radius.full, backgroundColor: colors.error, alignItems: 'center', justifyContent: 'center' },
+  other: { flex: 1, minHeight: 36, borderRadius: radius.full, borderWidth: 1, borderColor: colors.borderStrong, alignItems: 'center', justifyContent: 'center' },
+  otherInput: { minHeight: 40, borderWidth: 1, borderColor: colors.borderStrong, borderRadius: radius.md, paddingHorizontal: spacing.sm, marginTop: spacing.sm, color: colors.textPrimary, backgroundColor: palette.white },
 });
