@@ -1,10 +1,8 @@
 import { ReactNode } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { BlurView } from 'expo-blur';
 import { MeshBackground } from '@/components/glass/MeshBackground';
-import { GlassCard } from '@/components/glass/GlassCard';
-import { glass, radius, shadows, spacing, typography } from '@/design/tokens';
+import { colors, palette, radius, spacing, typography } from '@/design/tokens';
 import { BackRow } from './BackRow';
 
 export function AuthScreen({
@@ -28,11 +26,6 @@ export function AuthScreen({
 
   return (
     <MeshBackground>
-      {/* Decorative floating orbs */}
-      <View style={[styles.orb, styles.orb1]} pointerEvents="none" />
-      <View style={[styles.orb, styles.orb2]} pointerEvents="none" />
-      <View style={[styles.orb, styles.orb3]} pointerEvents="none" />
-
       <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
         <KeyboardAvoidingView
           style={styles.flex}
@@ -48,24 +41,20 @@ export function AuthScreen({
             {showBack ? <BackRow /> : null}
 
             {hasHeader ? (
-              <GlassCard style={[styles.headerCard, shadows.sm]} padded={false}>
+              <View style={styles.headerCard}>
                 <View style={styles.headerInner}>
                   {headerIcon ? <View style={styles.headerIconWrap}>{headerIcon}</View> : null}
                   {headerContent}
                   {title ? <Text style={styles.title}>{title}</Text> : null}
                   {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
                 </View>
-              </GlassCard>
+              </View>
             ) : null}
 
             <View style={styles.body}>{children}</View>
           </ScrollView>
 
-          {footer ? (
-            <BlurView intensity={glass.blurModal} tint="light" style={styles.footerBlur}>
-              <View style={styles.footerInner}>{footer}</View>
-            </BlurView>
-          ) : null}
+          {footer ? <View style={styles.footerInner}>{footer}</View> : null}
         </KeyboardAvoidingView>
       </SafeAreaView>
     </MeshBackground>
@@ -82,6 +71,10 @@ const styles = StyleSheet.create({
   },
   headerCard: {
     marginBottom: spacing.lg,
+    backgroundColor: palette.white,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.borderStrong,
   },
   headerInner: {
     padding: spacing.lg,
@@ -101,42 +94,23 @@ const styles = StyleSheet.create({
   body: {
     marginBottom: spacing.md,
   },
-  footerBlur: {
-    borderTopWidth: 1,
-    borderTopColor: glass.border,
-    backgroundColor: 'rgba(255, 255, 255, 0.65)',
-  },
   footerInner: {
     paddingHorizontal: spacing.xl,
     paddingBottom: spacing.lg,
     paddingTop: spacing.md,
+    backgroundColor: palette.offWhite,
+    borderTopWidth: 1,
+    borderTopColor: colors.borderStrong,
   },
-  orb: {
-    position: 'absolute',
-    borderRadius: radius.full,
-  },
-  orb1: {
-    width: 240,
-    height: 240,
-    top: -50,
-    right: -60,
-    backgroundColor: glass.orb1,
-    opacity: 0.6,
-  },
-  orb2: {
-    width: 280,
-    height: 280,
-    bottom: 80,
-    left: -80,
-    backgroundColor: glass.orb2,
-    opacity: 0.5,
-  },
-  orb3: {
-    width: 180,
-    height: 180,
-    top: '40%',
-    left: -60,
-    backgroundColor: glass.orb3,
-    opacity: 0.35,
+  panel: {
+    backgroundColor: palette.white,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.borderStrong,
+    padding: spacing.lg,
   },
 });
+
+export function AuthPanel({ children }: { children: ReactNode }) {
+  return <View style={styles.panel}>{children}</View>;
+}

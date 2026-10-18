@@ -18,6 +18,9 @@ export default function Index() {
     if (role === UserRole.PARENT) {
       return <Redirect href={'/(parent)' as never} />;
     }
+    if (role === UserRole.CONDUCTOR) {
+      return <Redirect href={'/(conductor)' as never} />;
+    }
     return <Redirect href="/(auth)/signed-in" />;
   }
 

@@ -6,10 +6,9 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Banner } from '@/components/auth/Banner';
 import { LinkButton, PrimaryButton } from '@/components/auth/Buttons';
 import { FormField } from '@/components/auth/FormField';
-import { AuthScreen } from '@/components/auth/Screen';
+import { AuthPanel, AuthScreen } from '@/components/auth/Screen';
 import { SegmentedToggle } from '@/components/auth/SegmentedToggle';
-import { GlassCard } from '@/components/glass/GlassCard';
-import { portalAccents, radius, shadows, spacing } from '@/design/tokens';
+import { palette, portalAccents, radius, spacing, typography } from '@/design/tokens';
 import { AuthMockError, parentLogin } from '@/auth/mock-auth-api';
 import { saveMockSession } from '@/auth/session';
 
@@ -58,12 +57,12 @@ export default function ParentLoginScreen() {
           end={{ x: 1, y: 1 }}
           style={styles.iconCircle}
         >
-          <Text style={styles.iconEmoji}>{accent.icon}</Text>
+          <Text style={styles.iconMark}>P</Text>
         </LinearGradient>
       }
-      footer={<LinkButton label="New here? Create an account" onPress={() => router.push('/(auth)/parent/signup-step1')} />}
+      footer={<LinkButton label="New here? Create an account" color={accent.from} onPress={() => router.push('/(auth)/parent/signup-step1')} />}
     >
-      <GlassCard style={shadows.lg}>
+      <AuthPanel>
         <View style={styles.formContent}>
           <SegmentedToggle
             value={method}
@@ -86,10 +85,10 @@ export default function ParentLoginScreen() {
           />
           <FormField label="Password" value={password} onChangeText={setPassword} placeholder="Password" secureTextEntry />
           {error ? <Banner tone="error">{error}</Banner> : null}
-          <PrimaryButton label="Log In" onPress={onLogin} loading={loading} />
-          <LinkButton label="Forgot password?" onPress={() => router.push('/(auth)/parent/forgot-password')} />
+          <PrimaryButton label="Log in" onPress={onLogin} loading={loading} color={accent.from} />
+          <LinkButton label="Forgot password?" color={accent.from} onPress={() => router.push('/(auth)/parent/forgot-password')} />
         </View>
-      </GlassCard>
+      </AuthPanel>
     </AuthScreen>
   );
 }
@@ -102,9 +101,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  iconEmoji: {
-    fontSize: 24,
-  },
+  iconMark: { ...typography.heading, color: palette.white, backgroundColor: 'transparent' },
   formContent: {
     marginBottom: spacing.sm,
   },

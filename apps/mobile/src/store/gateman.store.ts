@@ -652,6 +652,8 @@ export interface GatemanV2State {
   rejectOffLocation: (id: string, reason: string) => void;
   approveBusChange: (id: string) => void;
   rejectBusChange: (id: string, reason: string) => void;
+  enqueueConductorBusRequest: (entry: ConductorBusChangeRequest) => void;
+  dropConductorBusRequest: (id: string) => void;
   pingParentForHomeConfirmation: (studentId: string, studentName: string) => void;
   createArea: (name: string, busIds: string[]) => void;
   updateArea: (id: string, name: string, busIds: string[]) => void;
@@ -950,6 +952,10 @@ export const useGatemanStore = create<GatemanV2State>((set, get) => ({
         notifications: [{ id: generateUniqueId('n'), category: 'parent_gate', title: 'Home confirmation ping', body: `Verified off-location for ${flag.studentName}. Parent pinged to confirm they are home.`, read: false, timestamp: now, actionable: false }, ...state.notifications],
         auditLogs: retain([audit('off_location', 'Conductor flag verified', `${name} verified ${flag.studentName}: ${note}`, name, flag.studentName), ...state.auditLogs]),
       }));
+      const conductor = require('@/store/conductor.store') as typeof import('@/store/conductor.store');
+      if (conductor.useConductorStore.getState().offLocationFlags.some((item) => item.id === studentId)) {
+        conductor.useConductorStore.getState().receiveGatemanVerification(studentId, note);
+      }
       return;
     }
     const student = get().students.find((item) => item.id === studentId);
@@ -970,8 +976,21 @@ export const useGatemanStore = create<GatemanV2State>((set, get) => ({
       offLocationFlags: state.offLocationFlags.map((item) => item.id === id ? { ...item, status: 'Rejected', gatemanNote: reason } : item),
       auditLogs: retain([audit('off_location', 'Conductor flag dismissed', `${name} dismissed ${flag.studentName}: ${reason}`, name, flag.studentName), ...state.auditLogs]),
     }));
+    const conductor = require('@/store/conductor.store') as typeof import('@/store/conductor.store');
+    if (conductor.useConductorStore.getState().offLocationFlags.some((item) => item.id === id)) {
+      conductor.useConductorStore.setState((current) => ({
+        offLocationFlags: current.offLocationFlags.map((item) => item.id === id ? { ...item, status: 'Rejected' as const, gatemanNote: reason } : item),
+        notifications: [{ id: generateUniqueId('cn'), category: 'Gateman' as const, title: 'Off-location dismissed', body: reason, isRead: false, actionable: false, timestamp: new Date().toISOString() }, ...current.notifications],
+      }));
+    }
   },
 
+  enqueueConductorBusRequest: (entry) => set((state) => ({
+    conductorBusChangeRequests: [entry, ...state.conductorBusChangeRequests.filter((item) => item.id !== entry.id)],
+  })),
+  dropConductorBusRequest: (id) => set((state) => ({
+    conductorBusChangeRequests: state.conductorBusChangeRequests.filter((item) => item.id !== id),
+  })),
   approveBusChange: (id) => {
     const row = get().conductorBusChangeRequests.find((item) => item.id === id);
     if (!row) return;
@@ -981,6 +1000,8 @@ export const useGatemanStore = create<GatemanV2State>((set, get) => ({
       conductorBusChangeRequests: state.conductorBusChangeRequests.map((item) => item.id === id ? { ...item, status: 'Approved', resolvedAt: now } : item),
       auditLogs: retain([audit('bus_movement', 'Bus change approved', `${name} approved ${row.conductorName} moving to ${row.toBusNumber}`, name, row.conductorName), ...state.auditLogs]),
     }));
+    const conductor = require('@/store/conductor.store') as typeof import('@/store/conductor.store');
+    conductor.useConductorStore.getState().receiveBusChangeDecision(id, true, `${name} approved the move to ${row.toBusNumber}.`);
   },
 
   rejectBusChange: (id, reason) => {
@@ -992,6 +1013,8 @@ export const useGatemanStore = create<GatemanV2State>((set, get) => ({
       conductorBusChangeRequests: state.conductorBusChangeRequests.map((item) => item.id === id ? { ...item, status: 'Rejected', resolvedAt: now } : item),
       auditLogs: retain([audit('bus_movement', 'Bus change rejected', `${name} rejected ${row.conductorName}: ${reason}`, name, row.conductorName), ...state.auditLogs]),
     }));
+    const conductor = require('@/store/conductor.store') as typeof import('@/store/conductor.store');
+    conductor.useConductorStore.getState().receiveBusChangeDecision(id, false, reason);
   },
 
   pingParentForHomeConfirmation: (studentId, studentName) => {

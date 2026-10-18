@@ -16,7 +16,7 @@ export type ConfirmRequest = {
 const TONE = {
   approve: { mark: '✓', bg: colors.successBg, fg: colors.success, button: colors.success },
   reject: { mark: '!', bg: colors.errorBg, fg: colors.error, button: colors.error },
-  override: { mark: '!', bg: colors.warningBg, fg: colors.warning, button: portalAccents.gateman.from },
+  override: { mark: '!', bg: colors.warningBg, fg: colors.warning, button: portalAccents.conductor.from },
   info: { mark: 'i', bg: colors.infoBg, fg: colors.info, button: colors.info },
 } as const;
 

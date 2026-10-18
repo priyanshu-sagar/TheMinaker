@@ -433,10 +433,15 @@ export const useParentStore = create<ParentState>((set, get) => ({
       notices: state.notices.map((notice) => (notice.channel === channel ? { ...notice, read: true } : notice)),
     })),
 
-  replyToConductorPing: (pingId, reply, note) =>
+  replyToConductorPing: (pingId, reply, note) => {
     set((state) => ({
       conductorPings: state.conductorPings.map((item) => item.id === pingId ? { ...item, replied: true, reply, replyNote: note ?? null } : item),
-    })),
+    }));
+    if (pingId.startsWith('ping-')) {
+      const conductor = require('@/store/conductor.store') as typeof import('@/store/conductor.store');
+      conductor.useConductorStore.getState().receiveParentPingReply(pingId.slice('ping-'.length), reply, note);
+    }
+  },
 
   replyToGatemanHomePing: (pingId, confirmed) =>
     set((state) => ({

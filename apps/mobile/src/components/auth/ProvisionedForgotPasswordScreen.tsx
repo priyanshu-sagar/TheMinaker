@@ -1,12 +1,12 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Alert, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { Banner } from './Banner';
 import { LinkButton, PrimaryButton, SecondaryButton } from './Buttons';
 import { FormField } from './FormField';
 import { AuthScreen } from './Screen';
-import { GlassCard } from '@/components/glass/GlassCard';
-import { shadows, spacing } from '@/design/tokens';
+import { AuthPanel } from './Screen';
+import { colors, spacing } from '@/design/tokens';
 import { AuthMockError, setNewPassword, staffRequestPasswordResetOtp } from '@/auth/mock-auth-api';
 
 type Mode = 'choose' | 'otp';
@@ -15,7 +15,7 @@ type Mode = 'choose' | 'otp';
  * Shared "forgot password" flow for teacher, gateman, and conductor:
  * either send a one-time code, or fall back to contacting the school admin.
  */
-export function ProvisionedForgotPasswordScreen({ loginHref }: { loginHref: string }) {
+export function ProvisionedForgotPasswordScreen({ loginHref, color = colors.primary }: { loginHref: string; color?: string }) {
   const [mode, setMode] = useState<Mode>('choose');
   const [otp, setOtp] = useState<string | null>(null);
   const [enteredOtp, setEnteredOtp] = useState('');
@@ -46,7 +46,6 @@ export function ProvisionedForgotPasswordScreen({ loginHref }: { loginHref: stri
     setLoading(true);
     try {
       await setNewPassword({ newPassword, confirmPassword });
-      Alert.alert('Password updated', 'Please log in with your new password.');
       router.replace(loginHref as never);
     } catch (err) {
       setError(err instanceof AuthMockError ? err.message : 'Something went wrong. Please try again.');
@@ -58,25 +57,25 @@ export function ProvisionedForgotPasswordScreen({ loginHref }: { loginHref: stri
   if (mode === 'otp') {
     return (
       <AuthScreen title="Reset Password" subtitle="Enter the code we sent and choose a new password.">
-        <GlassCard style={shadows.lg}>
+        <AuthPanel>
           <View style={styles.formContent}>
             <Banner tone="warning">{`Development OTP: ${otp}`}</Banner>
             <FormField label="6-digit code" value={enteredOtp} onChangeText={setEnteredOtp} placeholder="000000" keyboardType="number-pad" maxLength={6} />
             <FormField label="New Password" value={newPassword} onChangeText={setNewPasswordValue} placeholder="At least 8 characters" secureTextEntry />
             <FormField label="Confirm Password" value={confirmPassword} onChangeText={setConfirmPassword} placeholder="Re-enter new password" secureTextEntry />
             {error ? <Banner tone="error">{error}</Banner> : null}
-            <PrimaryButton label="Update Password" onPress={onReset} loading={loading} />
+            <PrimaryButton label="Update password" onPress={onReset} loading={loading} color={color} />
           </View>
-        </GlassCard>
+        </AuthPanel>
       </AuthScreen>
     );
   }
 
   return (
     <AuthScreen title="Forgot Password" subtitle="Choose how you'd like to reset your password.">
-      <GlassCard style={shadows.lg}>
+      <AuthPanel>
         <View style={styles.formContent}>
-          <PrimaryButton label="Send a reset code to my registered contact" onPress={onSendCode} loading={loading} />
+          <PrimaryButton label="Send a reset code" onPress={onSendCode} loading={loading} color={color} />
           <SecondaryButton label="Contact your school admin instead" onPress={() => setShowContact(true)} />
           {showContact ? (
             <Banner tone="info">
@@ -86,7 +85,7 @@ export function ProvisionedForgotPasswordScreen({ loginHref }: { loginHref: stri
           ) : null}
           <LinkButton label="Back to login" onPress={() => router.replace(loginHref as never)} />
         </View>
-      </GlassCard>
+      </AuthPanel>
     </AuthScreen>
   );
 }

@@ -21,7 +21,7 @@ function StudentManifestRowComponent({ student, onBoarded, onAbsent, onPing, onO
   const showActions = !marked || editing;
 
   function board() {
-    if (student.distanceMeters > 650 && !routeChangeModeActive) onOffLocation(student.id);
+    if (student.distanceMeters > 650) onOffLocation(student.id);
     else onBoarded(student.id);
     setEditing(false);
   }
@@ -33,7 +33,7 @@ function StudentManifestRowComponent({ student, onBoarded, onAbsent, onPing, onO
       </LinearGradient>
       <View style={styles.main}>
         <Text style={styles.name}>{student.name}</Text>
-        <Text style={styles.meta}>Roll {student.rollNumber}{showStop ? ` · ${student.stopName}` : ''}</Text>
+        <Text style={styles.meta}>{student.grade} · Roll {student.rollNumber} · {student.scheduledTime}</Text>
         {showActions ? (
           <View style={styles.actions}>
             <AnimatedPressable haptic="medium" onPress={board} style={styles.board}><Text style={styles.white}>Boarded</Text></AnimatedPressable>

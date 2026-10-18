@@ -1,12 +1,11 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Alert, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { Banner } from '@/components/auth/Banner';
 import { PrimaryButton } from '@/components/auth/Buttons';
 import { FormField } from '@/components/auth/FormField';
-import { AuthScreen } from '@/components/auth/Screen';
-import { GlassCard } from '@/components/glass/GlassCard';
-import { shadows, spacing } from '@/design/tokens';
+import { AuthPanel, AuthScreen } from '@/components/auth/Screen';
+import { portalAccents, spacing } from '@/design/tokens';
 import { AuthMockError, setNewPassword, staffRequestPasswordResetOtp } from '@/auth/mock-auth-api';
 
 /**
@@ -47,7 +46,6 @@ export default function SchoolAdminForgotPasswordScreen() {
     setLoading(true);
     try {
       await setNewPassword({ newPassword, confirmPassword });
-      Alert.alert('Password updated', 'Please log in with your new password.');
       router.replace('/(auth)/school-admin/login');
     } catch (err) {
       setError(err instanceof AuthMockError ? err.message : 'Something went wrong. Please try again.');
@@ -58,7 +56,7 @@ export default function SchoolAdminForgotPasswordScreen() {
 
   return (
     <AuthScreen title="Reset Password" subtitle="We'll email a code to your registered administrative address.">
-      <GlassCard style={shadows.lg}>
+      <AuthPanel>
         <View style={styles.formContent}>
           <FormField
             label="Administrative Email"
@@ -69,19 +67,19 @@ export default function SchoolAdminForgotPasswordScreen() {
             editable={!otp}
           />
           {!otp ? (
-            <PrimaryButton label="Send Reset Code" onPress={onSendCode} loading={loading} />
+            <PrimaryButton label="Send reset code" onPress={onSendCode} loading={loading} color={portalAccents.schoolAdmin.from} />
           ) : (
             <>
               <Banner tone="warning">{`Development OTP: ${otp}`}</Banner>
               <FormField label="6-digit code" value={enteredOtp} onChangeText={setEnteredOtp} placeholder="000000" keyboardType="number-pad" maxLength={6} />
               <FormField label="New Password" value={newPassword} onChangeText={setNewPasswordValue} placeholder="At least 8 characters" secureTextEntry />
               <FormField label="Confirm Password" value={confirmPassword} onChangeText={setConfirmPassword} placeholder="Re-enter new password" secureTextEntry />
-              <PrimaryButton label="Update Password" onPress={onReset} loading={loading} />
+              <PrimaryButton label="Update password" onPress={onReset} loading={loading} color={portalAccents.schoolAdmin.from} />
             </>
           )}
           {error ? <Banner tone="error">{error}</Banner> : null}
         </View>
-      </GlassCard>
+      </AuthPanel>
     </AuthScreen>
   );
 }

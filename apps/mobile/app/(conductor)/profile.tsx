@@ -3,63 +3,124 @@ import { ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { AnimatedPressable } from '@/components/glass/AnimatedPressable';
-import { GlassCard } from '@/components/glass/GlassCard';
 import { MeshBackground } from '@/components/glass/MeshBackground';
+import { BusDecisionBanner } from '@/components/conductor/BusDecisionBanner';
 import { ConfirmRequest, GlassConfirmModal } from '@/components/conductor/GlassConfirmModal';
-import { colors, palette, portalAccents, radius, shadows, spacing, typography } from '@/design/tokens';
+import { colors, palette, portalAccents, radius, spacing, typography } from '@/design/tokens';
 import { useAuthStore } from '@/store/auth.store';
 import { useConductorStore } from '@/store/conductor.store';
 
+const DAY = 24 * 60 * 60 * 1000;
+const TABS = ['All', 'Boarding', 'Dropping', 'Detours'] as const;
+
 export default function ConductorProfileScreen() {
   const bus = useConductorStore((state) => state.assignedBus);
+  const fleet = useConductorStore((state) => state.fleetBuses);
+  const source = useConductorStore((state) => state.assignmentSource);
   const students = useConductorStore((state) => state.studentManifest);
-  const pings = useConductorStore((state) => state.pingRecords);
-  const flags = useConductorStore((state) => state.offLocationFlags);
   const logs = useConductorStore((state) => state.shiftLogs);
-  const sound = useConductorStore((state) => state.soundAlertsEnabled);
-  const routeMode = useConductorStore((state) => state.routeChangeModeActive);
-  const toggleSound = useConductorStore((state) => state.toggleSoundAlerts);
-  const toggleRoute = useConductorStore((state) => state.toggleRouteChangeMode);
+  const alertsOn = useConductorStore((state) => state.soundAlertsEnabled && state.vibrationEnabled);
+  const tripLive = useConductorStore((state) => state.tripLive);
+  const toggleAlerts = useConductorStore((state) => state.toggleAlerts);
+  const submitBusChangeRequest = useConductorStore((state) => state.submitBusChangeRequest);
   const endShift = useConductorStore((state) => state.endShift);
   const signOut = useAuthStore((state) => state.signOut);
   const [ask, setAsk] = useState<ConfirmRequest | null>(null);
-  const boarded = useMemo(() => students.filter((item) => item.boardingStatus === 'Boarded').length, [students]);
-  const absent = useMemo(() => students.filter((item) => item.boardingStatus === 'Absent').length, [students]);
-  const recent = useMemo(() => logs.slice(0, 12), [logs]);
+  const [logTab, setLogTab] = useState<(typeof TABS)[number]>('All');
+  const openBuses = fleet.filter((item) => !item.conductorName && item.status !== 'Maintenance' && item.busNumber !== bus.busNumber).map((item) => item.busNumber);
+  const onBus = useMemo(() => students.filter((item) => item.boardingStatus === 'Boarded').length, [students]);
+  const recent = useMemo(() => logs.filter((item) => {
+    if (Date.now() - new Date(item.timestamp).getTime() >= 30 * DAY) return false;
+    if (logTab === 'Boarding') return item.action.toLowerCase().includes('board');
+    if (logTab === 'Dropping') return item.action.toLowerCase().includes('drop');
+    if (logTab === 'Detours') return item.action.toLowerCase().includes('detour') || item.action.toLowerCase().includes('flag') || item.action.toLowerCase().includes('swap') || item.action.toLowerCase().includes('phone');
+    return true;
+  }).slice(0, 16), [logs, logTab]);
+  const completion = Math.round(((bus.currentStopIndex + 1) / bus.totalStops) * 100);
+
+  function requestSwap() {
+    if (!openBuses.length) {
+      setAsk({ tone: 'info', title: 'No open bus', summary: 'Every other bus already has a conductor.', confirmLabel: 'OK', onConfirm: () => undefined });
+      return;
+    }
+    setAsk({ tone: 'approve', title: 'Request a bus swap', summary: 'Pick an open bus. The gateman has 2 minutes to approve it.', confirmLabel: 'Send request', reasons: openBuses, onConfirm: (picked) => { if (picked) submitBusChangeRequest(picked, picked, 'Requested from shift'); } });
+  }
+
+  function signOutShift() {
+    if (onBus > 0) {
+      setAsk({ tone: 'override', title: 'Students are still on the bus', summary: `${onBus} students are still on ${bus.busNumber}. Finish the ${tripLive ? 'live ' : ''}run before you sign out.`, confirmLabel: 'OK', onConfirm: () => undefined });
+      return;
+    }
+    setAsk({
+      tone: 'reject',
+      title: 'Sign out of this shift',
+      summary: tripLive ? 'This also takes the empty bus offline. The 30-day log stays on this phone.' : 'The 30-day log stays on this phone. You will return to the portal picker.',
+      confirmLabel: 'Sign out',
+      onConfirm: async () => {
+        if (tripLive) useConductorStore.getState().setTripLive(false);
+        endShift();
+        await signOut();
+        router.replace('/(auth)/portal-showcase');
+      },
+    });
+  }
 
   return (
     <MeshBackground>
-      <ScrollView bounces={false} contentContainerStyle={styles.list}>
-        <GlassCard style={[shadows.lg, styles.card]}>
-          <LinearGradient colors={[portalAccents.conductor.from, portalAccents.conductor.to]} style={styles.avatar}><Text style={styles.avatarText}>R</Text></LinearGradient>
-          <Text style={styles.heading}>{bus.conductorName}</Text>
-          <Text style={styles.meta}>Bus conductor · EMP-2847</Text>
-          <Text style={styles.badge}>{bus.busNumber} · Route A</Text>
-        </GlassCard>
-        <Text style={styles.section}>Shift summary</Text>
-        <GlassCard style={styles.card}>
-          <View style={styles.grid}>
-            <Cell label="Start" value="06:15 AM" />
-            <Cell label="Stop" value={`${bus.currentStopIndex + 1} of ${bus.totalStops}`} />
-            <Cell label="Boarded" value={String(boarded)} />
-            <Cell label="Absent" value={String(absent)} />
-            <Cell label="Pings" value={String(pings.length)} />
-            <Cell label="Flags" value={String(flags.length)} />
+      <ScrollView bounces={false} contentContainerStyle={styles.list} showsVerticalScrollIndicator={false}>
+        <View style={styles.idCard}>
+          <LinearGradient colors={[portalAccents.conductor.from, portalAccents.conductor.to]} style={styles.avatar}><Text style={styles.avatarText}>{bus.conductorName.slice(0, 1)}</Text></LinearGradient>
+          <View style={styles.flex}>
+            <Text style={styles.heading} numberOfLines={1}>{bus.conductorName}</Text>
+            <Text style={styles.meta}>EMP-2847 · Licence valid</Text>
+            <Text style={styles.meta} numberOfLines={1}>{bus.busNumber} · {bus.routeName}</Text>
+            <Text style={styles.meta}>{source}</Text>
           </View>
-        </GlassCard>
-        <Text style={styles.section}>Shift log</Text>
-        {recent.map((item) => (
-          <View key={item.id} style={styles.log}>
-            <Text style={styles.time}>{new Date(item.timestamp).toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' })}</Text>
-            <Text style={styles.meta}>{item.action}</Text>
+        </View>
+        <BusDecisionBanner flush />
+        <AnimatedPressable haptic="selection" onPress={requestSwap} style={styles.swapBtn}><Text style={styles.white}>Request a bus swap</Text></AnimatedPressable>
+
+        <Text style={styles.section}>This shift</Text>
+        <View style={styles.grid}>
+          <Stat label="Started" value="06:15 AM" />
+          <Stat label="Route done" value={`${completion}%`} />
+          <Stat label="On the bus" value={String(onBus)} />
+          <Stat label="On time" value="96%" />
+        </View>
+
+        <Text style={styles.section}>30-day log</Text>
+        <View style={styles.pills}>
+          {TABS.map((item) => (
+            <AnimatedPressable key={item} haptic="selection" onPress={() => setLogTab(item)} style={[styles.pill, logTab === item ? styles.pillOn : null]}>
+              <Text style={[styles.pillText, logTab === item ? styles.pillTextOn : null]}>{item}</Text>
+            </AnimatedPressable>
+          ))}
+        </View>
+        <View style={styles.table}>
+          <View style={styles.tableHead}>
+            <Text style={[styles.colTime, styles.headText]}>When</Text>
+            <Text style={[styles.colEvent, styles.headText]}>What happened</Text>
           </View>
-        ))}
-        <Text style={styles.section}>Settings</Text>
-        <View style={styles.setting}><Text style={styles.body}>Sound alerts</Text><Switch value={sound} onValueChange={toggleSound} trackColor={{ false: colors.borderStrong, true: portalAccents.conductor.from }} /></View>
-        <View style={styles.setting}><Text style={styles.body}>Route change mode</Text><Switch value={routeMode} onValueChange={toggleRoute} trackColor={{ false: colors.borderStrong, true: portalAccents.conductor.from }} /></View>
-        <Text style={styles.section}>Account</Text>
-        <AnimatedPressable haptic="medium" onPress={() => setAsk({ tone: 'reject', title: 'End shift and sign out', summary: 'The shift summary stays in the log. Sign out of this conductor session?', confirmLabel: 'Sign out', onConfirm: async () => { endShift(); await signOut(); router.replace('/(auth)/portal-showcase'); } })}>
-          <Text style={styles.signOut}>Sign out</Text>
+          {recent.length === 0 ? <Text style={styles.empty}>No rows in this filter.</Text> : recent.map((item, index) => (
+            <View key={item.id} style={[styles.tableRow, index % 2 === 1 ? styles.tableAlt : null]}>
+              <Text style={styles.colTime}>{new Date(item.timestamp).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })}</Text>
+              <Text style={styles.colEvent}>{item.action}</Text>
+            </View>
+          ))}
+        </View>
+        <Text style={styles.footnote}>Kept on this phone for 30 days. The gateman issues the official PDF.</Text>
+
+        <Text style={styles.section}>Alerts</Text>
+        <View style={styles.setting}>
+          <View style={styles.flex}>
+            <Text style={styles.body}>Sound and vibration</Text>
+            <Text style={styles.meta}>One switch. Stops and parent pings ring and vibrate together.</Text>
+          </View>
+          <Switch value={alertsOn} onValueChange={toggleAlerts} trackColor={{ false: colors.borderStrong, true: portalAccents.conductor.from }} />
+        </View>
+
+        <AnimatedPressable haptic="medium" onPress={signOutShift} style={styles.signOut}>
+          <Text style={styles.signOutText}>Sign out</Text>
         </AnimatedPressable>
       </ScrollView>
       <GlassConfirmModal request={ask} onClose={() => setAsk(null)} />
@@ -67,24 +128,45 @@ export default function ConductorProfileScreen() {
   );
 }
 
-function Cell({ label, value }: { label: string; value: string }) {
-  return <View style={styles.cell}><Text style={styles.body}>{value}</Text><Text style={styles.meta}>{label}</Text></View>;
+function Stat({ label, value }: { label: string; value: string }) {
+  return (
+    <View style={styles.stat}>
+      <Text style={styles.statValue}>{value}</Text>
+      <Text style={styles.meta}>{label}</Text>
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({
-  list: { padding: spacing.lg, paddingBottom: 140 },
-  card: { padding: spacing.md, marginBottom: spacing.sm },
-  avatar: { width: 72, height: 72, borderRadius: 36, alignItems: 'center', justifyContent: 'center' },
-  avatarText: { ...typography.hero, color: palette.white, backgroundColor: 'transparent' },
-  heading: { ...typography.heading, marginTop: spacing.sm },
+  list: { paddingHorizontal: spacing.lg, paddingTop: spacing.sm, paddingBottom: 150 },
+  flex: { flex: 1 },
+  idCard: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, padding: spacing.md, borderRadius: radius.lg, backgroundColor: palette.white, borderWidth: 1, borderColor: colors.borderStrong },
+  avatar: { width: 52, height: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center' },
+  avatarText: { ...typography.heading, color: palette.white, backgroundColor: 'transparent' },
+  heading: { ...typography.heading },
   meta: { ...typography.caption, marginTop: 2 },
-  badge: { alignSelf: 'flex-start', marginTop: spacing.sm, ...typography.caption, color: colors.success, backgroundColor: colors.successBg, overflow: 'hidden', borderRadius: radius.full, paddingHorizontal: spacing.sm, paddingVertical: 4, fontWeight: '700' },
-  section: { ...typography.overline, marginTop: spacing.lg, marginBottom: spacing.sm },
-  grid: { flexDirection: 'row', flexWrap: 'wrap' },
-  cell: { width: '33%', paddingVertical: spacing.sm },
   body: { ...typography.bodyBold },
-  log: { flexDirection: 'row', gap: spacing.sm, paddingVertical: spacing.xs, borderLeftWidth: 2, borderLeftColor: portalAccents.conductor.from, paddingLeft: spacing.sm, marginLeft: spacing.xs },
-  time: { ...typography.caption, width: 72, fontWeight: '700', color: colors.textPrimary },
-  setting: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: spacing.sm },
-  signOut: { ...typography.bodyBold, color: colors.error, backgroundColor: 'transparent' },
+  swapBtn: { minHeight: 44, borderRadius: radius.full, backgroundColor: portalAccents.conductor.from, alignItems: 'center', justifyContent: 'center', marginTop: spacing.md },
+  white: { ...typography.bodyBold, color: palette.white, backgroundColor: 'transparent' },
+  section: { ...typography.overline, marginTop: spacing.lg, marginBottom: spacing.sm },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  stat: { width: '48%', backgroundColor: palette.white, borderRadius: radius.md, borderWidth: 1, borderColor: colors.borderStrong, paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
+  statValue: { ...typography.heading },
+  pills: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs, marginBottom: spacing.sm },
+  pill: { borderWidth: 1, borderColor: colors.borderStrong, borderRadius: radius.full, paddingHorizontal: spacing.md, minHeight: 32, justifyContent: 'center', backgroundColor: palette.white },
+  pillOn: { borderColor: portalAccents.conductor.from, backgroundColor: colors.successBg },
+  pillText: { ...typography.caption, color: colors.textPrimary },
+  pillTextOn: { color: portalAccents.conductor.from, fontWeight: '700' },
+  table: { borderWidth: 1, borderColor: colors.borderStrong, borderRadius: radius.md, backgroundColor: palette.white },
+  tableHead: { flexDirection: 'row', backgroundColor: colors.neutralBg, paddingVertical: spacing.sm, paddingHorizontal: spacing.sm },
+  tableRow: { flexDirection: 'row', alignItems: 'flex-start', paddingVertical: spacing.sm, paddingHorizontal: spacing.sm, borderTopWidth: 1, borderTopColor: colors.divider },
+  tableAlt: { backgroundColor: colors.surfaceStrong },
+  headText: { ...typography.caption, color: colors.textPrimary, fontWeight: '700', marginTop: 0 },
+  colTime: { width: 108, ...typography.caption, color: colors.textPrimary, fontWeight: '600' },
+  colEvent: { flex: 1, ...typography.caption, color: colors.textPrimary },
+  empty: { ...typography.caption, padding: spacing.md },
+  footnote: { ...typography.caption, marginTop: spacing.sm },
+  setting: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, padding: spacing.md, borderRadius: radius.md, backgroundColor: palette.white, borderWidth: 1, borderColor: colors.borderStrong },
+  signOut: { marginTop: spacing.lg, minHeight: 48, borderRadius: radius.full, borderWidth: 1, borderColor: colors.error, backgroundColor: colors.errorBg, alignItems: 'center', justifyContent: 'center' },
+  signOutText: { ...typography.bodyBold, color: colors.error, backgroundColor: 'transparent' },
 });

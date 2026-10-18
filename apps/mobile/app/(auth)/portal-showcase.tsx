@@ -82,7 +82,7 @@ const PORTALS: Portal[] = [
     icon: 'M4 16c0 .88.39 1.67 1 2.22V20c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h8v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1.78c.61-.55 1-1.34 1-2.22V6c0-4-4-4-8-4s-8 0-8 4v10zm3.5 1c-.83 0-1.5-.67-1.5-1.5S6.67 14 7.5 14s1.5.67 1.5 1.5S8.33 17 7.5 17zm9 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM6 10V6h12v4H6z',
     from: palette.emerald,
     to: palette.emeraldLight,
-    href: '/(conductor)',
+    href: '/(auth)/conductor/login',
     tagline: 'Drive Smart, Track Live',
     description: 'Start your trip, broadcast your live GPS location, and manage your student manifest in real-time. Mark boarding, alighting, and attendance — all offline-capable with background sync.',
     features: ['One-tap trip start/end', 'Automatic GPS broadcasting', 'Live student manifest', 'Offline attendance sync'],

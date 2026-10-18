@@ -1,13 +1,12 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Alert, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { Banner } from '@/components/auth/Banner';
 import { LinkButton, PrimaryButton } from '@/components/auth/Buttons';
 import { FormField } from '@/components/auth/FormField';
-import { AuthScreen } from '@/components/auth/Screen';
+import { AuthPanel, AuthScreen } from '@/components/auth/Screen';
 import { SegmentedToggle } from '@/components/auth/SegmentedToggle';
-import { GlassCard } from '@/components/glass/GlassCard';
-import { shadows, spacing } from '@/design/tokens';
+import { portalAccents, spacing } from '@/design/tokens';
 import { AuthMockError, parentRequestPasswordReset, setNewPassword } from '@/auth/mock-auth-api';
 
 type Method = 'email' | 'phone';
@@ -48,7 +47,6 @@ export default function ParentForgotPasswordScreen() {
     setLoading(true);
     try {
       await setNewPassword({ newPassword, confirmPassword });
-      Alert.alert('Password updated', 'Please log in with your new password.');
       router.replace('/(auth)/parent/login');
     } catch (err) {
       setError(err instanceof AuthMockError ? err.message : 'Something went wrong. Please try again.');
@@ -59,7 +57,7 @@ export default function ParentForgotPasswordScreen() {
 
   return (
     <AuthScreen title="Reset Password" subtitle="We'll send a code to confirm it's you.">
-      <GlassCard style={shadows.lg}>
+      <AuthPanel>
         <View style={styles.formContent}>
           <SegmentedToggle
             value={method}
@@ -83,7 +81,7 @@ export default function ParentForgotPasswordScreen() {
             editable={!otp}
           />
           {!otp ? (
-            <PrimaryButton label="Send Reset Code" onPress={onRequestCode} loading={loading} />
+            <PrimaryButton label="Send reset code" onPress={onRequestCode} loading={loading} color={portalAccents.parent.from} />
           ) : (
             <>
               <Banner tone="warning">{`Development OTP: ${otp}`}</Banner>
@@ -97,13 +95,13 @@ export default function ParentForgotPasswordScreen() {
               />
               <FormField label="New Password" value={newPassword} onChangeText={setNewPasswordValue} placeholder="At least 8 characters" secureTextEntry />
               <FormField label="Confirm Password" value={confirmPassword} onChangeText={setConfirmPassword} placeholder="Re-enter new password" secureTextEntry />
-              <PrimaryButton label="Update Password" onPress={onReset} loading={loading} />
+              <PrimaryButton label="Update password" onPress={onReset} loading={loading} color={portalAccents.parent.from} />
             </>
           )}
           {error ? <Banner tone="error">{error}</Banner> : null}
           <LinkButton label="Back to login" onPress={() => router.replace('/(auth)/parent/login')} />
         </View>
-      </GlassCard>
+      </AuthPanel>
     </AuthScreen>
   );
 }

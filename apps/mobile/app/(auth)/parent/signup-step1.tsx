@@ -5,10 +5,9 @@ import { Banner } from '@/components/auth/Banner';
 import { PrimaryButton } from '@/components/auth/Buttons';
 import { FormField } from '@/components/auth/FormField';
 import { ProgressDots } from '@/components/auth/ProgressDots';
-import { AuthScreen } from '@/components/auth/Screen';
+import { AuthPanel, AuthScreen } from '@/components/auth/Screen';
 import { StepHeader } from '@/components/auth/StepHeader';
-import { GlassCard } from '@/components/glass/GlassCard';
-import { shadows, spacing } from '@/design/tokens';
+import { portalAccents, spacing } from '@/design/tokens';
 import { useAuthFlowStore } from '@/auth/auth-flow.store';
 
 export default function ParentSignupStep1() {
@@ -34,7 +33,7 @@ export default function ParentSignupStep1() {
         <ProgressDots count={3} activeIndex={0} />
       </View>
 
-      <GlassCard style={shadows.lg}>
+      <AuthPanel>
         <View style={styles.formContent}>
           <FormField
             label="Full Name"
@@ -65,9 +64,9 @@ export default function ParentSignupStep1() {
             secureTextEntry
           />
           {error ? <Banner tone="error">{error}</Banner> : null}
-          <PrimaryButton label="Continue" onPress={onContinue} />
+          <PrimaryButton label="Continue" onPress={onContinue} color={portalAccents.parent.from} />
         </View>
-      </GlassCard>
+      </AuthPanel>
     </AuthScreen>
   );
 }

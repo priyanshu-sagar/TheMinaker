@@ -1,7 +1,7 @@
 import { useRef } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { AppTextInput } from '@/components/glass/AppTextInput';
-import { colors, radius, spacing, typography } from '@/design/tokens';
+import { colors, palette, radius, spacing, typography } from '@/design/tokens';
 
 export function FormField({
   label,
@@ -77,7 +77,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.borderStrong,
     borderRadius: radius.md,
-    backgroundColor: 'rgba(255,255,255,0.92)',
+    backgroundColor: palette.white,
     justifyContent: 'center',
   },
   input: {

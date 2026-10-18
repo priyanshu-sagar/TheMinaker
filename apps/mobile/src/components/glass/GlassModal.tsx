@@ -12,6 +12,7 @@ export function GlassModal({
   maxHeight = '85%',
   fill = false,
   scroll = true,
+  onBack,
   children,
 }: {
   visible: boolean;
@@ -22,12 +23,17 @@ export function GlassModal({
   fill?: boolean;
   /** Turn off when the sheet body is a virtualized list. */
   scroll?: boolean;
+  /** iOS-style back. Defaults to closing the sheet. */
+  onBack?: () => void;
   children: ReactNode;
 }) {
   const sheet = (
     <View style={[styles.sheet, fill ? styles.sheetFill : null]}>
       <View style={styles.header}>
-        <Text style={styles.title}>{title}</Text>
+        <Pressable style={styles.backBtn} onPress={onBack ?? onClose} hitSlop={8}>
+          <Text style={styles.backText}>‹ Back</Text>
+        </Pressable>
+        <Text style={styles.title} numberOfLines={1}>{title}</Text>
         <Pressable style={styles.closeBtn} onPress={onClose} hitSlop={8}>
           <Text style={styles.closeText}>✕</Text>
         </Pressable>
@@ -99,7 +105,9 @@ const styles = StyleSheet.create({
     paddingTop: spacing.lg,
     paddingBottom: spacing.sm,
   },
-  title: { fontSize: 18, fontWeight: '700', color: colors.textPrimary },
+  title: { flex: 1, fontSize: 17, fontWeight: '700', color: colors.textPrimary, textAlign: 'center' },
+  backBtn: { minWidth: 64, minHeight: 32, justifyContent: 'center' },
+  backText: { fontSize: 16, fontWeight: '600', color: colors.info },
   closeBtn: {
     width: 32,
     height: 32,

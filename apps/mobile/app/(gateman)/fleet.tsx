@@ -9,6 +9,7 @@ import { NotificationBell } from '@/components/gateman/NotificationBell';
 import { BusDetail, SearchField, SHEET } from '@/components/gateman/sheets';
 import { colors, palette, portalAccents, radius, spacing, typography } from '@/design/tokens';
 import { BusStatus, useGatemanStore } from '@/store/gateman.store';
+import { useConductorStore } from '@/store/conductor.store';
 
 const FILTERS: Array<BusStatus | 'All'> = ['All', 'En Route', 'At School', 'Delayed', 'Offline', 'Standby'];
 
@@ -27,6 +28,10 @@ export default function FleetScreen() {
   const [areaQuery, setAreaQuery] = useState('');
   const [selected, setSelected] = useState<string[]>([]);
   const [mapOn, setMapOn] = useState(false);
+  const [routeOpen, setRouteOpen] = useState(false);
+  const routeStudents = useConductorStore((state) => state.studentManifest);
+  const setRouteOrder = useConductorStore((state) => state.setRouteOrder);
+  const [routeIds, setRouteIds] = useState<string[]>([]);
 
   const rows = useMemo(() => {
     const needle = query.trim().toLowerCase();
@@ -95,6 +100,9 @@ export default function FleetScreen() {
                 <Text style={styles.pillText}>{item.name}</Text>
               </AnimatedPressable>
             ))}
+            <AnimatedPressable haptic="selection" onPress={() => { setRouteIds([...routeStudents].sort((a, b) => a.orderIndex - b.orderIndex).map((item) => item.id)); setRouteOpen(true); }} style={styles.pill}>
+              <Text style={styles.pillText}>Design route</Text>
+            </AnimatedPressable>
             <AnimatedPressable haptic="selection" onPress={() => setMapOn(true)} style={styles.pill}>
               <Text style={styles.pillText}>Map</Text>
             </AnimatedPressable>
@@ -173,6 +181,25 @@ export default function FleetScreen() {
             <AnimatedPressable haptic="medium" onPress={saveArea} style={styles.primary}><Text style={styles.primaryText}>Save area</Text></AnimatedPressable>
           ) : null}
         </View>
+      </GlassModal>
+      <GlassModal visible={routeOpen} fill scroll={false} maxHeight="88%" title="Design Bus 7 route" onClose={() => setRouteOpen(false)}>
+        <Text style={styles.meta}>Morning and afternoon both run school, then these students in order, then school.</Text>
+        <FlatList
+          data={routeIds}
+          keyExtractor={(item) => item}
+          bounces={false}
+          style={styles.flex}
+          renderItem={({ item, index }) => {
+            const student = routeStudents.find((row) => row.id === item);
+            return (
+              <View style={styles.row}>
+                <Text style={styles.body}>{index + 1}. {student?.name ?? item}</Text>
+                <AnimatedPressable haptic="selection" onPress={() => setRouteIds((ids) => { if (index === 0) return ids; const next = [...ids]; const swap = next[index - 1]; next[index - 1] = next[index]!; next[index] = swap!; return next; })}><Text style={styles.link}>Up</Text></AnimatedPressable>
+              </View>
+            );
+          }}
+        />
+        <AnimatedPressable haptic="medium" onPress={() => { setRouteOrder(routeIds); setRouteOpen(false); }} style={styles.primary}><Text style={styles.primaryText}>Save route order</Text></AnimatedPressable>
       </GlassModal>
     </MeshBackground>
   );

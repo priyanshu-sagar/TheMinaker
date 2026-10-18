@@ -6,8 +6,8 @@ import { Banner } from './Banner';
 import { PrimaryButton } from './Buttons';
 import { FormField } from './FormField';
 import { AuthScreen } from './Screen';
-import { GlassCard } from '@/components/glass/GlassCard';
-import { shadows, spacing } from '@/design/tokens';
+import { AuthPanel } from './Screen';
+import { portalAccents, spacing } from '@/design/tokens';
 import { useAuthFlowStore } from '@/auth/auth-flow.store';
 import { AuthMockError, ProvisionedRole, setNewPassword } from '@/auth/mock-auth-api';
 import { saveMockSession } from '@/auth/session';
@@ -15,6 +15,7 @@ import { saveMockSession } from '@/auth/session';
 /** Gateman opens its portal. Teacher and every other role stop on the hold screen. */
 function postLoginHref(role: ProvisionedRole): string {
   if (role === UserRole.GATEKEEPER) return '/(gateman)';
+  if (role === UserRole.CONDUCTOR) return '/(conductor)';
   return '/(auth)/signed-in';
 }
 
@@ -65,14 +66,14 @@ export function ProvisionedSetPasswordScreen() {
       subtitle="This is your first time signing in. Please set a new password to continue."
       showBack={false}
     >
-      <GlassCard style={shadows.lg}>
+      <AuthPanel>
         <View style={styles.formContent}>
           <FormField label="New Password" value={newPassword} onChangeText={setNewPasswordValue} placeholder="At least 8 characters" secureTextEntry />
           <FormField label="Confirm Password" value={confirmPassword} onChangeText={setConfirmPassword} placeholder="Re-enter new password" secureTextEntry />
           {error ? <Banner tone="error">{error}</Banner> : null}
-          <PrimaryButton label="Set Password & Continue" onPress={onSubmit} loading={loading} />
+          <PrimaryButton label="Set password and continue" onPress={onSubmit} loading={loading} color={portalAccents[current.role === UserRole.GATEKEEPER ? 'gateman' : current.role === UserRole.CONDUCTOR ? 'conductor' : current.role === UserRole.SCHOOL_ADMIN ? 'schoolAdmin' : 'teacher'].from} />
         </View>
-      </GlassCard>
+      </AuthPanel>
     </AuthScreen>
   );
 }

@@ -17,6 +17,7 @@ export interface SlideToConfirmProps {
   accentColor?: string; // default: palette.emerald
   disabled?: boolean;
   resetOnConfirm?: boolean; // default true
+  compact?: boolean;
 }
 
 const DEFAULT_TRACK_W = Dimensions.get('window').width - spacing.xl * 2 - spacing.xl * 2;
@@ -29,9 +30,13 @@ export function SlideToConfirm({
   accentColor = palette.emerald,
   disabled = false,
   resetOnConfirm = true,
+  compact = false,
 }: SlideToConfirmProps) {
+  const thumb = compact ? 32 : THUMB_SIZE;
+  const thumbRef = useRef(thumb);
+  thumbRef.current = thumb;
   const dragX = useRef(new Animated.Value(0)).current;
-  const fillWidth = useRef(new Animated.Value(THUMB_SIZE + 8)).current;
+  const fillWidth = useRef(new Animated.Value(thumb + 8)).current;
   const confirmed = useRef(false);
   const trackWidthRef = useRef(DEFAULT_TRACK_W);
   const [isConfirmed, setIsConfirmed] = useState(false);
@@ -45,14 +50,14 @@ export function SlideToConfirm({
       },
       onPanResponderMove: (_, gesture) => {
         if (disabled || confirmed.current) return;
-        const maxDrag = Math.max(1, trackWidthRef.current - THUMB_SIZE - 8);
+        const maxDrag = Math.max(1, trackWidthRef.current - thumbRef.current - 8);
         const clamped = Math.max(0, Math.min(gesture.dx, maxDrag));
         dragX.setValue(clamped);
-        fillWidth.setValue(THUMB_SIZE + 8 + clamped);
+        fillWidth.setValue(thumbRef.current + 8 + clamped);
       },
       onPanResponderRelease: (_, gesture) => {
         if (disabled || confirmed.current) return;
-        const maxDrag = Math.max(1, trackWidthRef.current - THUMB_SIZE - 8);
+        const maxDrag = Math.max(1, trackWidthRef.current - thumbRef.current - 8);
         if (gesture.dx >= maxDrag * 0.85) {
           // Confirmed!
           confirmed.current = true;
@@ -72,7 +77,7 @@ export function SlideToConfirm({
                   useNativeDriver: false,
                 }).start();
                 Animated.spring(fillWidth, {
-                  toValue: THUMB_SIZE + 8,
+                  toValue: thumbRef.current + 8,
                   useNativeDriver: false,
                 }).start();
                 confirmed.current = false;
@@ -87,7 +92,7 @@ export function SlideToConfirm({
             useNativeDriver: false,
           }).start();
           Animated.spring(fillWidth, {
-            toValue: THUMB_SIZE + 8,
+            toValue: thumbRef.current + 8,
             useNativeDriver: false,
           }).start();
         }
@@ -103,7 +108,7 @@ export function SlideToConfirm({
 
   return (
     <View
-      style={[styles.track, { opacity: disabled ? 0.5 : 1 }]}
+      style={[styles.track, compact ? styles.trackCompact : null, { opacity: disabled ? 0.5 : 1 }]}
       onLayout={(e) => {
         const w = e.nativeEvent.layout.width;
         if (w > 0) {
@@ -131,7 +136,7 @@ export function SlideToConfirm({
 
       {/* Thumb */}
       <Animated.View
-        style={[styles.thumb, { transform: [{ translateX: dragX }] }]}
+        style={[styles.thumb, compact ? styles.thumbCompact : null, { transform: [{ translateX: dragX }] }]}
         {...panResponder.panHandlers}
       >
         {isConfirmed ? (
@@ -163,6 +168,8 @@ export function SlideToConfirm({
 }
 
 const styles = StyleSheet.create({
+  trackCompact: { height: 40, borderRadius: 20 },
+  thumbCompact: { width: 32, height: 32, borderRadius: 16, top: 4 },
   track: {
     height: 56,
     borderRadius: 28,

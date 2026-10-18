@@ -1,39 +1,28 @@
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { BlurView } from 'expo-blur';
 import { AnimatedPressable } from '@/components/glass/AnimatedPressable';
-import { colors, palette, radius, shadows, spacing, typography } from '@/design/tokens';
+import { colors, palette, radius, spacing, typography } from '@/design/tokens';
 
 export function PrimaryButton({
   label,
   onPress,
   loading = false,
   disabled = false,
+  color = colors.primary,
 }: {
   label: string;
   onPress: () => void;
   loading?: boolean;
   disabled?: boolean;
+  color?: string;
 }) {
   const isDisabled = disabled || loading;
   return (
     <AnimatedPressable
       onPress={onPress}
       disabled={isDisabled}
-      style={[styles.primaryWrapper, shadows.md, isDisabled ? styles.disabled : null]}
+      style={[styles.primaryInner, { backgroundColor: color }, isDisabled ? styles.disabled : null]}
     >
-      <LinearGradient
-        colors={[colors.primary, '#6366F1']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 0 }}
-        style={styles.primaryInner}
-      >
-        {loading ? (
-          <ActivityIndicator color={palette.white} />
-        ) : (
-          <Text style={styles.primaryText}>{label}</Text>
-        )}
-      </LinearGradient>
+      {loading ? <ActivityIndicator color={palette.white} /> : <Text style={styles.primaryText}>{label}</Text>}
     </AnimatedPressable>
   );
 }
@@ -51,13 +40,9 @@ export function SecondaryButton({
     <AnimatedPressable
       onPress={onPress}
       disabled={disabled}
-      style={[styles.secondaryWrapper, shadows.sm, disabled ? styles.disabled : null]}
+      style={[styles.secondaryInner, disabled ? styles.disabled : null]}
     >
-      <BlurView intensity={40} tint="light" style={styles.secondaryBlur}>
-        <View style={styles.secondaryInner}>
-          <Text style={styles.secondaryText}>{label}</Text>
-        </View>
-      </BlurView>
+      <Text style={styles.secondaryText}>{label}</Text>
     </AnimatedPressable>
   );
 }
@@ -66,10 +51,12 @@ export function LinkButton({
   label,
   onPress,
   disabled = false,
+  color = colors.primary,
 }: {
   label: string;
   onPress: () => void;
   disabled?: boolean;
+  color?: string;
 }) {
   return (
     <AnimatedPressable
@@ -78,19 +65,15 @@ export function LinkButton({
       disabled={disabled}
       hitSlop={8}
     >
-      <Text style={styles.linkText}>{label}</Text>
+      <Text style={[styles.linkText, { color }]}>{label}</Text>
     </AnimatedPressable>
   );
 }
 
 const styles = StyleSheet.create({
-  primaryWrapper: {
-    borderRadius: radius.md,
-    overflow: 'hidden',
-  },
   primaryInner: {
     minHeight: 48,
-    borderRadius: radius.md,
+    borderRadius: radius.full,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: spacing.lg,
@@ -101,22 +84,15 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
   },
-  secondaryWrapper: {
-    borderRadius: radius.md,
-    overflow: 'hidden',
-  },
-  secondaryBlur: {
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.borderStrong,
-    overflow: 'hidden',
-  },
   secondaryInner: {
     minHeight: 48,
+    borderRadius: radius.full,
+    borderWidth: 1,
+    borderColor: colors.borderStrong,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: spacing.lg,
-    backgroundColor: colors.surfaceStrong,
+    backgroundColor: palette.white,
   },
   secondaryText: {
     ...typography.label,
@@ -132,7 +108,6 @@ const styles = StyleSheet.create({
   },
   linkText: {
     ...typography.bodyBold,
-    color: colors.primary,
     fontSize: 15,
   },
   disabled: {

@@ -5,10 +5,9 @@ import { Banner } from '@/components/auth/Banner';
 import { PrimaryButton } from '@/components/auth/Buttons';
 import { FormField } from '@/components/auth/FormField';
 import { ProgressDots } from '@/components/auth/ProgressDots';
-import { AuthScreen } from '@/components/auth/Screen';
+import { AuthPanel, AuthScreen } from '@/components/auth/Screen';
 import { StepHeader } from '@/components/auth/StepHeader';
-import { GlassCard } from '@/components/glass/GlassCard';
-import { shadows, spacing } from '@/design/tokens';
+import { portalAccents, spacing } from '@/design/tokens';
 import { useAuthFlowStore } from '@/auth/auth-flow.store';
 import { sendEmailOtp } from '@/auth/mock-auth-api';
 
@@ -42,7 +41,7 @@ export default function ParentSignupStep2() {
         <ProgressDots count={3} activeIndex={1} />
       </View>
 
-      <GlassCard style={shadows.lg}>
+      <AuthPanel>
         <View style={styles.formContent}>
           <FormField
             label="Student Name"
@@ -72,9 +71,9 @@ export default function ParentSignupStep2() {
             autoCapitalize="words"
           />
           {error ? <Banner tone="error">{error}</Banner> : null}
-          <PrimaryButton label="Continue" onPress={onContinue} loading={loading} />
+          <PrimaryButton label="Continue" onPress={onContinue} loading={loading} color={portalAccents.parent.from} />
         </View>
-      </GlassCard>
+      </AuthPanel>
     </AuthScreen>
   );
 }

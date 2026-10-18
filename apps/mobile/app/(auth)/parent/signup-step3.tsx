@@ -6,10 +6,9 @@ import { Banner } from '@/components/auth/Banner';
 import { LinkButton, PrimaryButton } from '@/components/auth/Buttons';
 import { FormField } from '@/components/auth/FormField';
 import { ProgressDots } from '@/components/auth/ProgressDots';
-import { AuthScreen } from '@/components/auth/Screen';
+import { AuthPanel, AuthScreen } from '@/components/auth/Screen';
 import { StepHeader } from '@/components/auth/StepHeader';
-import { GlassCard } from '@/components/glass/GlassCard';
-import { shadows, spacing } from '@/design/tokens';
+import { portalAccents, spacing } from '@/design/tokens';
 import { useAuthFlowStore } from '@/auth/auth-flow.store';
 import { AuthMockError, sendEmailOtp, verifyEmailOtp } from '@/auth/mock-auth-api';
 import { saveMockSession } from '@/auth/session';
@@ -54,7 +53,7 @@ export default function ParentSignupStep3() {
         <ProgressDots count={3} activeIndex={2} />
       </View>
 
-      <GlassCard style={shadows.lg}>
+      <AuthPanel>
         <View style={styles.formContent}>
           {signupOtp ? <Banner tone="warning">{`Development OTP: ${signupOtp}`}</Banner> : null}
           <FormField
@@ -67,10 +66,10 @@ export default function ParentSignupStep3() {
           />
           {info ? <Banner tone="info">{info}</Banner> : null}
           {error ? <Banner tone="error">{error}</Banner> : null}
-          <PrimaryButton label="Verify & Create Account" onPress={onVerify} loading={loading} />
+          <PrimaryButton label="Verify and create account" onPress={onVerify} loading={loading} color={portalAccents.parent.from} />
           <LinkButton label="Resend code" onPress={onResend} />
         </View>
-      </GlassCard>
+      </AuthPanel>
     </AuthScreen>
   );
 }

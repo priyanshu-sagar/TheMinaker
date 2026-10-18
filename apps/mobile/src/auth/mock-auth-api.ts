@@ -72,7 +72,8 @@ export async function provisionedLogin(input: {
   if (input.password.trim().length < 4) {
     throw new AuthMockError('Enter your password.');
   }
-  return { firstLogin: isFirstLoginId(input.id), fullName: `${roleLabel(input.role)} ${input.id}` };
+  const fullName = input.role === UserRole.CONDUCTOR ? 'Ranjit Singh' : `${roleLabel(input.role)} ${input.id}`;
+  return { firstLogin: isFirstLoginId(input.id), fullName };
 }
 
 export async function setNewPassword(input: {

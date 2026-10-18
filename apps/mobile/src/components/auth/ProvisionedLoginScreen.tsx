@@ -7,8 +7,8 @@ import { Banner } from './Banner';
 import { LinkButton, PrimaryButton } from './Buttons';
 import { FormField } from './FormField';
 import { AuthScreen } from './Screen';
-import { GlassCard } from '@/components/glass/GlassCard';
-import { portalAccents, radius, shadows, spacing } from '@/design/tokens';
+import { AuthPanel } from './Screen';
+import { portalAccents, palette, radius, spacing, typography } from '@/design/tokens';
 import { AuthMockError, ProvisionedRole, provisionedLogin } from '@/auth/mock-auth-api';
 import { useAuthFlowStore } from '@/auth/auth-flow.store';
 import { saveMockSession } from '@/auth/session';
@@ -23,6 +23,7 @@ const ROLE_TO_PORTAL: Record<ProvisionedRole, keyof typeof portalAccents> = {
 /** Gateman opens its portal. Teacher and every other role stop on the hold screen. */
 function postLoginHref(role: ProvisionedRole): string {
   if (role === UserRole.GATEKEEPER) return '/(gateman)';
+  if (role === UserRole.CONDUCTOR) return '/(conductor)';
   return '/(auth)/signed-in';
 }
 
@@ -90,19 +91,19 @@ export function ProvisionedLoginScreen({
           end={{ x: 1, y: 1 }}
           style={styles.iconCircle}
         >
-          <Text style={styles.iconEmoji}>{accent.icon}</Text>
+          <Text style={styles.iconEmoji}>{title.slice(0, 1)}</Text>
         </LinearGradient>
       }
     >
-      <GlassCard style={shadows.lg}>
+      <AuthPanel>
         <View style={styles.formContent}>
           <FormField label={idLabel} value={id} onChangeText={setId} placeholder={idPlaceholder} />
           <FormField label="Password" value={password} onChangeText={setPassword} placeholder="Password" secureTextEntry />
           {error ? <Banner tone="error">{error}</Banner> : null}
-          <PrimaryButton label="Log In" onPress={onLogin} loading={loading} />
-          <LinkButton label="Forgot password?" onPress={() => router.push(forgotPasswordHref as never)} />
+          <PrimaryButton label="Log in" onPress={onLogin} loading={loading} color={accent.from} />
+          <LinkButton label="Forgot password?" color={accent.from} onPress={() => router.push(forgotPasswordHref as never)} />
         </View>
-      </GlassCard>
+      </AuthPanel>
     </AuthScreen>
   );
 }
@@ -116,7 +117,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   iconEmoji: {
-    fontSize: 24,
+    ...typography.heading,
+    color: palette.white,
+    backgroundColor: 'transparent',
+    fontSize: 20,
   },
   formContent: {
     marginBottom: spacing.sm,

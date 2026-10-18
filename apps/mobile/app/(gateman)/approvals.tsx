@@ -11,6 +11,7 @@ import { ConfirmRequest, GlassConfirmModal } from '@/components/gateman/GlassCon
 import { StudentDossier } from '@/components/gateman/StudentDossier';
 import { colors, palette, portalAccents, radius, spacing, typography } from '@/design/tokens';
 import { useGatemanStore } from '@/store/gateman.store';
+import { useConductorStore } from '@/store/conductor.store';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 type Filter = 'All' | 'Pending' | 'Stop Change' | 'Bus Transfer' | 'Resolved';
@@ -30,6 +31,9 @@ export function ApprovalsPanel() {
   const busChanges = useGatemanStore((state) => state.conductorBusChangeRequests);
   const approveBusChange = useGatemanStore((state) => state.approveBusChange);
   const rejectBusChange = useGatemanStore((state) => state.rejectBusChange);
+  const liveSwaps = useConductorStore((state) => state.busChangeRequests);
+  const offerSwap = useConductorStore((state) => state.offerSwap);
+  const decideSwap = useConductorStore((state) => state.receiveBusChangeDecision);
   const [filter, setFilter] = useState<Filter>('Pending');
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState<string[]>([]);
@@ -64,6 +68,18 @@ export function ApprovalsPanel() {
         contentContainerStyle={styles.list}
         ListHeaderComponent={
           <View>
+            <Text style={styles.kicker}>Swap a conductor bus</Text>
+            <AnimatedPressable haptic="medium" onPress={() => offerSwap('Bus 12', 'Route B: North Zone → School', 'Sunita Devi')}><Text style={styles.link}>Assign Bus 12 to the duty conductor</Text></AnimatedPressable>
+            {liveSwaps.filter((item) => item.status === 'Pending').map((item) => (
+              <View key={item.id} style={styles.card}>
+                <View style={styles.main}>
+                  <Text style={styles.body}>{item.fromBusNumber} to {item.toBusNumber}</Text>
+                  <Text style={styles.meta}>{item.reason}</Text>
+                </View>
+                <AnimatedPressable haptic="medium" onPress={() => setAsk({ tone: 'approve', title: 'Approve bus swap', summary: `Move the conductor from ${item.fromBusNumber} to ${item.toBusNumber}. They must accept it on their shift screen.`, confirmLabel: 'Approve', onConfirm: () => { decideSwap(item.id, true, 'Approved by the gateman'); offerSwap(item.toBusNumber, `Route for ${item.toBusNumber}`, 'Sunita Devi'); } })}><Text style={styles.link}>Approve</Text></AnimatedPressable>
+                <AnimatedPressable haptic="medium" onPress={() => setAsk({ tone: 'reject', title: 'Reject bus swap', summary: item.reason, confirmLabel: 'Reject', reasons: ['Bus is full', 'Stay on the assigned route'], onConfirm: (reason) => decideSwap(item.id, false, reason ?? 'Rejected') })}><Text style={styles.noText}>Reject</Text></AnimatedPressable>
+              </View>
+            ))}
             {pendingBusChanges.map((item) => (
               <View key={item.id} style={styles.card}>
                 <View style={styles.main}>

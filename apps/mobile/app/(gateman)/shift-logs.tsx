@@ -13,6 +13,7 @@ import { colors, palette, portalAccents, radius, spacing, typography } from '@/d
 import { ConfirmRequest, GlassConfirmModal } from '@/components/gateman/GlassConfirmModal';
 import { useAuthStore } from '@/store/auth.store';
 import { AuditCategory, isBusOnCampus, ReportSpan, useGatemanStore } from '@/store/gateman.store';
+import { useConductorStore } from '@/store/conductor.store';
 
 const CATEGORIES: Array<{ key: AuditCategory | 'all'; label: string }> = [
   { key: 'all', label: 'All daily logs' },
@@ -70,6 +71,10 @@ export default function ShiftLogsScreen() {
   const [quiz, setQuiz] = useState(false);
   const [table, setTable] = useState(true);
   const [ask, setAsk] = useState<ConfirmRequest | null>(null);
+  const fleet = useGatemanStore((state) => state.buses);
+  const conductorLogs = useConductorStore((state) => state.shiftLogs);
+  const [busPick, setBusPick] = useState('Bus 7');
+  const [busMenu, setBusMenu] = useState(false);
   const [answers, setAnswers] = useState<Array<string | null>>(Array(5).fill(null));
   const [incoming, setIncoming] = useState(INCOMING[0]);
   const [tags, setTags] = useState<string[]>([]);
@@ -150,6 +155,15 @@ export default function ShiftLogsScreen() {
                 <Text style={styles.meta}>On duty {clock} · Gate {gateOpen ? 'open' : 'closed'}</Text>
                 <AnimatedPressable haptic="medium" onPress={startSignOut} style={styles.signOut}><Text style={styles.signOutText}>End shift and sign out</Text></AnimatedPressable>
               </View>
+              <Text style={styles.kicker}>Fleet and bus logs</Text>
+              <AnimatedPressable haptic="selection" onPress={() => setBusMenu((value) => !value)} style={styles.dropdown}><Text style={styles.body}>{busPick}</Text></AnimatedPressable>
+              {busMenu ? ['Bus 7', ...fleet.slice(0, 12).map((bus) => bus.busNumber)].map((bus) => (
+                <AnimatedPressable key={bus} haptic="selection" onPress={() => { setBusPick(bus); setBusMenu(false); }} style={styles.option}><Text style={styles.meta}>{bus}</Text></AnimatedPressable>
+              )) : null}
+              {(busPick === 'Bus 7' ? conductorLogs : logs.filter((item) => `${item.detail} ${item.subject ?? ''}`.includes(busPick))).slice(0, 6).map((item) => (
+                <Text key={item.id} style={styles.meta}>{new Date(item.timestamp).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })} · {'action' in item ? item.action : item.title}</Text>
+              ))}
+              <AnimatedPressable haptic="selection" onPress={() => exportReport((busPick === 'Bus 7' ? conductorLogs : logs.filter((item) => `${item.detail} ${item.subject ?? ''}`.includes(busPick))).map((item) => ({ timestamp: item.timestamp, gatemanName: 'gatemanName' in item ? item.gatemanName : 'Ranjit Singh', category: 'category' in item ? item.category : 'bus', subject: busPick, title: 'action' in item ? item.action : item.title, detail: 'detail' in item ? item.detail : item.action })), (summary) => setAsk({ tone: 'info', title: 'Bus report ready', summary, confirmLabel: 'OK', onConfirm: () => undefined }))}><Text style={styles.link}>Export this bus report</Text></AnimatedPressable>
               <AnimatedPressable haptic="selection" onPress={() => setMenu((value) => !value)} style={styles.dropdown}>
                 <Text style={styles.body}>{label}</Text>
               </AnimatedPressable>
